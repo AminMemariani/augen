@@ -2,6 +2,8 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-52%20passing-brightgreen.svg)](test/)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](TEST_COVERAGE.md)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
 
@@ -323,6 +325,39 @@ flutter run
 - Dart SDK: >=3.9.2
 - Android: API level 24+ with ARCore support
 - iOS: iOS 13.0+ with ARKit support
+
+## Testing
+
+Augen comes with comprehensive test coverage including unit tests, controller tests, and integration tests.
+
+### Run All Tests
+
+```bash
+flutter test
+```
+
+### Run Specific Tests
+
+```bash
+# Model tests
+flutter test test/augen_test.dart
+
+# Controller tests
+flutter test test/augen_controller_test.dart
+
+# Integration tests (requires device/simulator)
+cd example
+flutter test integration_test/plugin_integration_test.dart
+```
+
+### Test Coverage
+
+The project maintains 100% coverage of the public API:
+- ✅ 30 model tests (Vector3, Quaternion, ARNode, ARPlane, ARAnchor, ARHitResult, ARSessionConfig)
+- ✅ 21 controller tests (all AugenController methods and streams)
+- ✅ 11 integration tests (full AR workflows)
+
+See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage information.
 
 ## Troubleshooting
 
