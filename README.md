@@ -404,7 +404,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-If you encounter any issues or have questions, please [file an issue](https://github.com/yourusername/augen/issues) on GitHub.
+If you encounter any issues or have questions, please [file an issue](https://github.com/AminMemariani/augen/issues) on GitHub.
 
 ## Roadmap
 
