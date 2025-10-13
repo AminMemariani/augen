@@ -6,6 +6,8 @@ import 'models/ar_plane.dart';
 import 'models/ar_hit_result.dart';
 import 'models/ar_session_config.dart';
 import 'models/vector3.dart';
+import 'models/quaternion.dart';
+import 'dart:typed_data';
 
 /// Controller for managing AR session
 class AugenController {
@@ -61,11 +63,71 @@ class AugenController {
   Future<void> addNode(ARNode node) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('addNode', node.toMap());
+      final nodeData = node.toMap();
+
+      // If it's a model node with an asset path, load the asset data
+      if (node.type == NodeType.model &&
+          node.modelPath != null &&
+          !node.modelPath!.startsWith('http')) {
+        final modelBytes = await _loadAsset(node.modelPath!);
+        nodeData['modelData'] = modelBytes;
+      }
+
+      await _channel.invokeMethod('addNode', nodeData);
     } on PlatformException catch (e) {
       _errorController.add('Failed to add node: ${e.message}');
       rethrow;
     }
+  }
+
+  /// Load asset file as bytes
+  Future<Uint8List> _loadAsset(String assetPath) async {
+    final ByteData data = await rootBundle.load(assetPath);
+    return data.buffer.asUint8List();
+  }
+
+  /// Add a custom 3D model from asset
+  Future<void> addModelFromAsset({
+    required String id,
+    required String assetPath,
+    required Vector3 position,
+    Quaternion rotation = const Quaternion(0, 0, 0, 1),
+    Vector3 scale = const Vector3(1, 1, 1),
+    ModelFormat? modelFormat,
+    Map<String, dynamic>? properties,
+  }) async {
+    final node = ARNode.fromModel(
+      id: id,
+      modelPath: assetPath,
+      position: position,
+      rotation: rotation,
+      scale: scale,
+      modelFormat: modelFormat,
+      properties: properties,
+    );
+    await addNode(node);
+  }
+
+  /// Add a custom 3D model from URL
+  Future<void> addModelFromUrl({
+    required String id,
+    required String url,
+    required Vector3 position,
+    Quaternion rotation = const Quaternion(0, 0, 0, 1),
+    Vector3 scale = const Vector3(1, 1, 1),
+    ModelFormat? modelFormat,
+    Map<String, dynamic>? properties,
+  }) async {
+    final node = ARNode.fromModel(
+      id: id,
+      modelPath: url,
+      position: position,
+      rotation: rotation,
+      scale: scale,
+      modelFormat: modelFormat,
+      properties: properties,
+    );
+    await addNode(node);
   }
 
   /// Remove a node from the AR scene

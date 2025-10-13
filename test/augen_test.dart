@@ -181,6 +181,105 @@ void main() {
         });
         expect(cylinder.type, NodeType.cylinder);
       });
+
+      test('creates model node with factory constructor', () {
+        final model = ARNode.fromModel(
+          id: 'model1',
+          modelPath: 'assets/models/object.glb',
+          position: Vector3(1.0, 2.0, 3.0),
+          scale: Vector3(0.5, 0.5, 0.5),
+        );
+
+        expect(model.type, NodeType.model);
+        expect(model.modelPath, 'assets/models/object.glb');
+        expect(model.modelFormat, ModelFormat.glb);
+        expect(model.position, Vector3(1.0, 2.0, 3.0));
+      });
+
+      test('detects model format from file extension', () {
+        expect(ARNode.detectModelFormat('model.glb'), ModelFormat.glb);
+        expect(ARNode.detectModelFormat('model.gltf'), ModelFormat.gltf);
+        expect(ARNode.detectModelFormat('model.obj'), ModelFormat.obj);
+        expect(ARNode.detectModelFormat('model.usdz'), ModelFormat.usdz);
+        expect(ARNode.detectModelFormat('model.unknown'), isNull);
+      });
+
+      test('model node requires modelPath', () {
+        expect(
+          () => ARNode(
+            id: 'model1',
+            type: NodeType.model,
+            position: Vector3.zero(),
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+      });
+
+      test('model node serialization includes modelPath and format', () {
+        final model = ARNode.fromModel(
+          id: 'model1',
+          modelPath: 'assets/models/spaceship.glb',
+          position: Vector3(1.0, 2.0, 3.0),
+          modelFormat: ModelFormat.glb,
+        );
+
+        final map = model.toMap();
+        expect(map['type'], 'model');
+        expect(map['modelPath'], 'assets/models/spaceship.glb');
+        expect(map['modelFormat'], 'glb');
+      });
+
+      test('model node deserialization includes modelPath and format', () {
+        final map = {
+          'id': 'model1',
+          'type': 'model',
+          'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
+          'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+          'scale': {'x': 0.5, 'y': 0.5, 'z': 0.5},
+          'modelPath': 'assets/models/car.glb',
+          'modelFormat': 'glb',
+        };
+
+        final model = ARNode.fromMap(map);
+        expect(model.type, NodeType.model);
+        expect(model.modelPath, 'assets/models/car.glb');
+        expect(model.modelFormat, ModelFormat.glb);
+      });
+
+      test('copyWith preserves model properties', () {
+        final original = ARNode.fromModel(
+          id: 'model1',
+          modelPath: 'assets/models/object.glb',
+          position: Vector3.zero(),
+        );
+
+        final modified = original.copyWith(
+          position: Vector3(1, 2, 3),
+          scale: Vector3(2, 2, 2),
+        );
+
+        expect(modified.modelPath, original.modelPath);
+        expect(modified.modelFormat, original.modelFormat);
+        expect(modified.type, NodeType.model);
+        expect(modified.position, Vector3(1, 2, 3));
+      });
+    });
+
+    group('ModelFormat', () {
+      test('all formats are available', () {
+        expect(ModelFormat.values.length, 4);
+        expect(ModelFormat.values, contains(ModelFormat.gltf));
+        expect(ModelFormat.values, contains(ModelFormat.glb));
+        expect(ModelFormat.values, contains(ModelFormat.obj));
+        expect(ModelFormat.values, contains(ModelFormat.usdz));
+      });
+
+      test('format names are correct', () {
+        expect(ModelFormat.gltf.name, 'gltf');
+        expect(ModelFormat.glb.name, 'glb');
+        expect(ModelFormat.obj.name, 'obj');
+        expect(ModelFormat.usdz.name, 'usdz');
+      });
     });
 
     group('ARSessionConfig', () {

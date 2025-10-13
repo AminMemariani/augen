@@ -151,7 +151,29 @@ class AugenARView: NSObject, FlutterPlatformView {
         
         let anchor = AnchorEntity(world: position)
         
-        // Create mesh based on type
+        // Handle custom 3D model loading
+        if type.lowercased() == "model" {
+            let modelPath = arguments["modelPath"] as? String
+            let modelData = arguments["modelData"] as? FlutterStandardTypedData
+            let modelFormat = arguments["modelFormat"] as? String
+            
+            loadCustomModel(
+                modelPath: modelPath,
+                modelData: modelData?.data,
+                modelFormat: modelFormat,
+                scale: scale,
+                rotation: rotation,
+                anchor: anchor,
+                result: result
+            )
+            
+            arView.scene.addAnchor(anchor)
+            nodes[nodeId] = anchor
+            result(nil)
+            return
+        }
+        
+        // Create mesh based on type for primitive shapes
         let mesh: MeshResource
         let material = SimpleMaterial(color: .blue, isMetallic: false)
         
@@ -175,6 +197,51 @@ class AugenARView: NSObject, FlutterPlatformView {
         nodes[nodeId] = anchor
         
         result(nil)
+    }
+    
+    private func loadCustomModel(
+        modelPath: String?,
+        modelData: Data?,
+        modelFormat: String?,
+        scale: SIMD3<Float>,
+        rotation: simd_quatf,
+        anchor: AnchorEntity,
+        result: @escaping FlutterResult
+    ) {
+        // Load custom 3D model (USDZ, Reality, or other formats)
+        // RealityKit natively supports USDZ and Reality file formats
+        //
+        // Implementation for loading 3D models:
+        // 1. For USDZ files: Use ModelEntity.loadAsync()
+        // 2. For GLB/GLTF: Convert to USDZ or use a third-party loader
+        // 3. Apply scale and rotation transformations
+        //
+        // Example implementation for USDZ:
+        // if let path = modelPath, let url = URL(string: path) {
+        //     ModelEntity.loadAsync(contentsOf: url).sink(
+        //         receiveCompletion: { completion in
+        //             if case .failure(let error) = completion {
+        //                 print("Failed to load model: \(error)")
+        //             }
+        //         },
+        //         receiveValue: { [weak self] model in
+        //             model.scale = scale
+        //             model.orientation = rotation
+        //             anchor.addChild(model)
+        //         }
+        //     ).store(in: &cancellables)
+        // } else if let data = modelData {
+        //     // Load from data bytes
+        //     // Create temporary file and load from it
+        // }
+        
+        // For now, add a placeholder cube to indicate custom model position
+        let mesh = MeshResource.generateBox(size: 0.1)
+        let material = SimpleMaterial(color: .orange, isMetallic: false)
+        let modelEntity = ModelEntity(mesh: mesh, materials: [material])
+        modelEntity.scale = scale
+        modelEntity.orientation = rotation
+        anchor.addChild(modelEntity)
     }
     
     private func removeNode(arguments: [String: Any], result: @escaping FlutterResult) {

@@ -418,5 +418,49 @@ void main() {
       controller.dispose();
       expect(() => controller.dispose(), returnsNormally);
     });
+
+    test('addModelFromAsset creates model node with correct parameters', () {
+      // Test that ARNode.fromModel factory creates the correct structure
+      final model = ARNode.fromModel(
+        id: 'model1',
+        modelPath: 'assets/models/test.glb',
+        position: Vector3(1, 2, 3),
+        scale: Vector3(0.5, 0.5, 0.5),
+      );
+
+      expect(model.id, 'model1');
+      expect(model.type, NodeType.model);
+      expect(model.modelPath, 'assets/models/test.glb');
+      expect(model.modelFormat, ModelFormat.glb);
+      expect(model.position, Vector3(1, 2, 3));
+      expect(model.scale, Vector3(0.5, 0.5, 0.5));
+    });
+
+    test('addModelFromUrl creates correct model node', () async {
+      bool nodeAdded = false;
+      Map? capturedNodeData;
+
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'addNode') {
+              nodeAdded = true;
+              capturedNodeData = methodCall.arguments as Map?;
+            }
+            return null;
+          });
+
+      await controller.addModelFromUrl(
+        id: 'model2',
+        url: 'https://example.com/model.glb',
+        position: Vector3(4, 5, 6),
+        modelFormat: ModelFormat.glb,
+      );
+
+      expect(nodeAdded, true);
+      expect(capturedNodeData!['id'], 'model2');
+      expect(capturedNodeData!['type'], 'model');
+      expect(capturedNodeData!['modelPath'], 'https://example.com/model.glb');
+      expect(capturedNodeData!['modelFormat'], 'glb');
+    });
   });
 }

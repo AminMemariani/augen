@@ -5,7 +5,7 @@ The Augen AR Flutter plugin now has comprehensive test coverage including unit t
 
 ## Test Results
 
-### ✅ Unit Tests: 52/52 PASSING
+### ✅ Unit Tests: 62/62 PASSING
 
 ```
 All tests passed! (ran in ~2s)
@@ -13,7 +13,7 @@ All tests passed! (ran in ~2s)
 
 ### Test Breakdown
 
-#### 1. Model Tests (30 tests)
+#### 1. Model Tests (40 tests)
 **File:** `test/augen_test.dart`
 
 - **Vector3** (5 tests) ✅
@@ -30,12 +30,22 @@ All tests passed! (ran in ~2s)
   - Equality and hashCode
   - String representation
 
-- **ARNode** (5 tests) ✅
+- **ARNode** (11 tests) ✅
   - Required parameter construction
   - Full parameter construction
   - Map serialization/deserialization
   - copyWith functionality
   - NodeType parsing (sphere, cube, cylinder, model)
+  - Model node factory constructor
+  - Model format detection
+  - Model path validation
+  - Model serialization with path and format
+  - Model deserialization with path and format
+  - copyWith preserves model properties
+
+- **ModelFormat** (2 tests) ✅
+  - All formats available
+  - Format names correct
 
 - **ARSessionConfig** (4 tests) ✅
   - Default configuration
@@ -60,7 +70,7 @@ All tests passed! (ran in ~2s)
   - Map serialization/deserialization
   - String representation
 
-#### 2. Controller Tests (21 tests)
+#### 2. Controller Tests (23 tests)
 **File:** `test/augen_controller_test.dart`
 
 - **Basic Operations** ✅
@@ -68,6 +78,7 @@ All tests passed! (ran in ~2s)
   - AR initialization with config
   - AR support detection (true/false cases)
   - Node management (add/update/remove)
+  - Model loading (from assets/URLs)
   - Hit testing
   - Anchor management (add/remove)
   - Session control (pause/resume/reset)
@@ -177,13 +188,14 @@ flutter test --coverage
 
 ## Key Achievements
 
-✅ **52 passing unit tests** covering all core functionality
+✅ **62 passing unit tests** covering all core functionality
 ✅ **11 comprehensive integration tests** for real-world scenarios
 ✅ **100% model coverage** with serialization/deserialization tests
 ✅ **Complete controller coverage** including error handling and streams
+✅ **Custom 3D model loading** with GLTF, GLB, OBJ, and USDZ support
 ✅ **Zero linter errors** across all test files
 ✅ **CI/CD ready** - all tests run without device dependencies
-✅ **Well documented** with TEST_COVERAGE.md explaining all scenarios
+✅ **Well documented** with comprehensive guides and API reference
 
 ## Next Steps (Optional Enhancements)
 

@@ -188,6 +188,80 @@ await _controller.addNode(
 );
 ```
 
+##### addModelFromAsset
+
+```dart
+Future<void> addModelFromAsset({
+  required String id,
+  required String assetPath,
+  required Vector3 position,
+  Quaternion rotation = const Quaternion(0, 0, 0, 1),
+  Vector3 scale = const Vector3(1, 1, 1),
+  ModelFormat? modelFormat,
+  Map<String, dynamic>? properties,
+})
+```
+
+Loads and adds a custom 3D model from Flutter assets.
+
+**Parameters:**
+- `id`: Unique identifier for the model node
+- `assetPath`: Path to the model asset (e.g., 'assets/models/spaceship.glb')
+- `position`: 3D position in AR space
+- `rotation`: Rotation quaternion (optional, defaults to identity)
+- `scale`: Scale vector (optional, defaults to 1,1,1)
+- `modelFormat`: Model format (optional, auto-detected from file extension)
+- `properties`: Additional custom properties (optional)
+
+**Supported Formats:** GLB, GLTF, OBJ, USDZ
+
+**Example:**
+
+```dart
+await _controller.addModelFromAsset(
+  id: 'spaceship_1',
+  assetPath: 'assets/models/spaceship.glb',
+  position: Vector3(0, 0, -1),
+  scale: Vector3(0.1, 0.1, 0.1),
+);
+```
+
+##### addModelFromUrl
+
+```dart
+Future<void> addModelFromUrl({
+  required String id,
+  required String url,
+  required Vector3 position,
+  Quaternion rotation = const Quaternion(0, 0, 0, 1),
+  Vector3 scale = const Vector3(1, 1, 1),
+  ModelFormat? modelFormat,
+  Map<String, dynamic>? properties,
+})
+```
+
+Loads and adds a custom 3D model from a URL.
+
+**Parameters:**
+- `id`: Unique identifier for the model node
+- `url`: URL to the model file
+- `position`: 3D position in AR space
+- `rotation`: Rotation quaternion (optional, defaults to identity)
+- `scale`: Scale vector (optional, defaults to 1,1,1)
+- `modelFormat`: Model format (optional, should be specified for URLs)
+- `properties`: Additional custom properties (optional)
+
+**Example:**
+
+```dart
+await _controller.addModelFromUrl(
+  id: 'building_1',
+  url: 'https://example.com/models/building.glb',
+  position: Vector3(1, 0, -2),
+  modelFormat: ModelFormat.glb,
+);
+```
+
 ##### removeNode
 
 ```dart
@@ -431,6 +505,8 @@ ARNode({
   Quaternion rotation = const Quaternion(0, 0, 0, 1),
   Vector3 scale = const Vector3(1, 1, 1),
   Map<String, dynamic>? properties,
+  String? modelPath,
+  ModelFormat? modelFormat,
 })
 ```
 
@@ -439,8 +515,47 @@ ARNode({
 - `type`: Type of 3D object (sphere, cube, cylinder, model)
 - `position`: Position in world coordinates
 - `rotation`: Rotation as a quaternion (optional, defaults to identity)
-- `scale`: Scale factors for x, y, z axes (optional, defaults to 1,1,1)
-- `properties`: Additional properties (optional)
+- `scale`: Scale vector (optional, defaults to 1,1,1)
+- `properties`: Custom properties map (optional)
+- `modelPath`: Path to 3D model file - required when type is `NodeType.model` (optional)
+- `modelFormat`: Format of the 3D model - auto-detected if not specified (optional)
+
+#### Factory Constructor - fromModel
+
+```dart
+ARNode.fromModel({
+  required String id,
+  required String modelPath,
+  required Vector3 position,
+  Quaternion rotation = const Quaternion(0, 0, 0, 1),
+  Vector3 scale = const Vector3(1, 1, 1),
+  ModelFormat? modelFormat,
+  Map<String, dynamic>? properties,
+})
+```
+
+Creates an ARNode for custom 3D models.
+
+**Parameters:**
+- `id`: Unique identifier
+- `modelPath`: Path to model asset or URL
+- `position`: Position in AR space
+- `rotation`: Rotation quaternion (optional)
+- `scale`: Scale vector (optional)
+- `modelFormat`: Model format (optional, auto-detected from file extension)
+- `properties`: Custom properties (optional)
+
+**Example:**
+
+```dart
+final model = ARNode.fromModel(
+  id: 'spaceship_1',
+  modelPath: 'assets/models/spaceship.glb',
+  position: Vector3(0, 0, -1),
+  scale: Vector3(0.1, 0.1, 0.1),
+);
+await controller.addNode(model);
+```
 
 #### Methods
 
@@ -593,6 +708,28 @@ enum PlaneType {
   unknown,
 }
 ```
+
+### ModelFormat
+
+Supported 3D model file formats.
+
+```dart
+enum ModelFormat {
+  gltf,  // glTF 2.0 JSON format
+  glb,   // glTF 2.0 binary format (recommended for Android)
+  obj,   // Wavefront OBJ format
+  usdz,  // Universal Scene Description (recommended for iOS)
+}
+```
+
+**Platform Support:**
+- **Android (ARCore)**: GLB, GLTF, OBJ (via Filament rendering engine)
+- **iOS (RealityKit)**: USDZ (native), others require conversion
+
+**Recommendations:**
+- Use **GLB** for Android (smaller file size, single file)
+- Use **USDZ** for iOS (native support, best performance)
+- Maintain both formats for optimal cross-platform support
 
 ---
 

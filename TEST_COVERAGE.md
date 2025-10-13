@@ -4,7 +4,7 @@ This document provides an overview of the test coverage for the Augen AR Flutter
 
 ## Test Summary
 
-✅ **All unit tests passing**: 52/52 tests pass
+✅ **All unit tests passing**: 62/62 tests pass
 
 ### Unit Tests
 
@@ -25,12 +25,22 @@ Comprehensive tests for all data models:
 - Equality works correctly
 - toString returns correct format
 
-**ARNode** (5 tests)
+**ARNode** (11 tests)
 - Creates node with required parameters
 - Creates node with all parameters
 - Converts to and from map
 - copyWith creates modified copy
 - Parses all node types correctly (sphere, cube, cylinder, model)
+- Creates model node with factory constructor
+- Detects model format from file extension
+- Model node requires modelPath assertion
+- Model node serialization includes modelPath and format
+- Model node deserialization includes modelPath and format
+- copyWith preserves model properties
+
+**ModelFormat** (2 tests)
+- All formats are available
+- Format names are correct
 
 **ARSessionConfig** (4 tests)
 - Creates default config
@@ -61,7 +71,7 @@ Comprehensive tests for all data models:
 #### Controller Tests (`test/augen_controller_test.dart`)
 Comprehensive tests for AugenController:
 
-**Basic Operations** (21 tests)
+**Basic Operations** (23 tests)
 - Creates controller with correct viewId
 - Initialize sends correct config
 - isARSupported returns correct values
@@ -82,6 +92,8 @@ Comprehensive tests for AugenController:
 - throws StateError when used after dispose
 - handles PlatformException gracefully
 - dispose can be called multiple times safely
+- addModelFromAsset creates model node with correct parameters
+- addModelFromUrl creates correct model node
 
 ### Integration Tests
 
@@ -118,12 +130,13 @@ flutter test integration_test/plugin_integration_test.dart
 |-----------|-----------|-------------------|----------|
 | Vector3 | ✅ 5 tests | N/A | 100% |
 | Quaternion | ✅ 5 tests | N/A | 100% |
-| ARNode | ✅ 5 tests | ✅ Covered | 100% |
+| ARNode | ✅ 11 tests | ✅ Covered | 100% |
+| ModelFormat | ✅ 2 tests | N/A | 100% |
 | ARPlane | ✅ 4 tests | ✅ Covered | 100% |
 | ARAnchor | ✅ 3 tests | ✅ Covered | 100% |
 | ARHitResult | ✅ 4 tests | ✅ Covered | 100% |
 | ARSessionConfig | ✅ 4 tests | ✅ Covered | 100% |
-| AugenController | ✅ 21 tests | ✅ Covered | 100% |
+| AugenController | ✅ 23 tests | ✅ Covered | 100% |
 | AugenView | N/A | ✅ Covered | 100% |
 | Method Channel | ✅ 1 test | N/A | 100% |
 

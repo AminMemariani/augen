@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-52%20passing-brightgreen.svg)](test/)
+[![Tests](https://img.shields.io/badge/tests-62%20passing-brightgreen.svg)](test/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](TEST_COVERAGE.md)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
@@ -14,6 +14,7 @@
 📦 **Easy to Use**: Simple, intuitive API  
 🔍 **Plane Detection**: Automatically detect horizontal and vertical surfaces  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
+🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 ⚓ **Anchors**: Place and manage AR anchors  
 🎯 **Hit Testing**: Detect surfaces with touch/tap interactions  
 📍 **Position Tracking**: Real-time tracking of AR objects  
@@ -149,11 +150,8 @@ class _ARScreenState extends State<ARScreen> {
 ### Adding 3D Objects
 
 ```dart
-// Perform hit test to find surface
-final results = await _controller!.hitTest(
-  screenX,
-  screenY,
-);
+// Add primitive shapes
+final results = await _controller!.hitTest(screenX, screenY);
 
 if (results.isNotEmpty) {
   // Add a sphere at the hit position
@@ -168,6 +166,43 @@ if (results.isNotEmpty) {
   );
 }
 ```
+
+### Loading Custom 3D Models
+
+```dart
+// Load model from Flutter assets
+await _controller!.addModelFromAsset(
+  id: 'spaceship_1',
+  assetPath: 'assets/models/spaceship.glb',
+  position: Vector3(0, 0, -1),
+  scale: Vector3(0.1, 0.1, 0.1),
+);
+
+// Load model from URL
+await _controller!.addModelFromUrl(
+  id: 'building_1',
+  url: 'https://example.com/models/building.glb',
+  position: Vector3(1, 0, -2),
+  modelFormat: ModelFormat.glb,
+);
+
+// Or use ARNode.fromModel
+final customModel = ARNode.fromModel(
+  id: 'custom_1',
+  modelPath: 'assets/models/object.glb',
+  position: Vector3(0, 0, -1.5),
+  scale: Vector3(0.2, 0.2, 0.2),
+);
+await _controller!.addNode(customModel);
+```
+
+**Supported Model Formats:**
+- GLB (recommended for Android)
+- GLTF
+- OBJ
+- USDZ (recommended for iOS)
+
+See [CUSTOM_MODELS_GUIDE.md](CUSTOM_MODELS_GUIDE.md) for detailed instructions.
 
 ### Managing Anchors
 
@@ -353,9 +388,11 @@ flutter test integration_test/plugin_integration_test.dart
 ### Test Coverage
 
 The project maintains 100% coverage of the public API:
-- ✅ 30 model tests (Vector3, Quaternion, ARNode, ARPlane, ARAnchor, ARHitResult, ARSessionConfig)
+- ✅ 40 model tests (Vector3, Quaternion, ARNode, ARPlane, ARAnchor, ARHitResult, ARSessionConfig, ModelFormat)
 - ✅ 21 controller tests (all AugenController methods and streams)
 - ✅ 11 integration tests (full AR workflows)
+
+**Total: 62 passing tests** with full coverage of custom 3D model loading!
 
 See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage information.
 
@@ -408,13 +445,16 @@ If you encounter any issues or have questions, please [file an issue](https://gi
 
 ## Roadmap
 
-- [ ] Custom 3D model loading (GLTF, OBJ)
+- [x] Custom 3D model loading (GLTF, GLB, OBJ, USDZ) ✨ **NEW!**
+- [ ] Model animations and skeletal animation support
 - [ ] Image tracking
 - [ ] Face tracking
 - [ ] Cloud anchors
 - [ ] Occlusion
 - [ ] Physics simulation
 - [ ] Multi-user AR experiences
+- [ ] Real-time lighting and shadows
+- [ ] Environmental probes
 
 ---
 

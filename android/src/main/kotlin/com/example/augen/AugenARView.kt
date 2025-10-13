@@ -129,6 +129,9 @@ class AugenARView(
             val rotation = nodeData["rotation"] as Map<String, Any>
             val scale = nodeData["scale"] as Map<String, Any>
             val properties = nodeData["properties"] as? Map<String, Any>
+            val modelPath = nodeData["modelPath"] as? String
+            val modelFormat = nodeData["modelFormat"] as? String
+            val modelData = nodeData["modelData"] as? ByteArray
 
             val node = ARNode(
                 id = nodeId,
@@ -149,14 +152,43 @@ class AugenARView(
                     (scale["y"] as Number).toFloat(),
                     (scale["z"] as Number).toFloat()
                 ),
-                properties = properties
+                properties = properties,
+                modelPath = modelPath,
+                modelFormat = modelFormat,
+                modelData = modelData
             )
+
+            // Handle custom 3D model loading
+            if (type == "model" && (modelData != null || modelPath != null)) {
+                loadAndRender3DModel(node)
+            }
 
             nodes[nodeId] = node
             result.success(null)
         } catch (e: Exception) {
             result.error("ADD_NODE_ERROR", "Failed to add node: ${e.message}", null)
         }
+    }
+
+    private fun loadAndRender3DModel(node: ARNode) {
+        // Implementation for loading 3D models (GLB, GLTF, OBJ)
+        // This would integrate with Filament or Sceneform for rendering
+        // 
+        // Example implementation:
+        // 1. Parse model data based on format (glb, gltf, obj, etc.)
+        // 2. Create renderable from model data
+        // 3. Attach renderable to AR anchor at specified position
+        //
+        // For production use, you would use:
+        // - Filament (Google's rendering engine)
+        // - Or Sceneform (deprecated but still functional)
+        //
+        // Sample code structure:
+        // when (node.modelFormat) {
+        //     "glb", "gltf" -> loadGLTFModel(node)
+        //     "obj" -> loadOBJModel(node)
+        //     else -> throw IllegalArgumentException("Unsupported format")
+        // }
     }
 
     private fun removeNode(call: MethodCall, result: MethodChannel.Result) {
@@ -320,7 +352,10 @@ class AugenARView(
         val position: Vector3,
         val rotation: Quaternion,
         val scale: Vector3,
-        val properties: Map<String, Any>?
+        val properties: Map<String, Any>?,
+        val modelPath: String? = null,
+        val modelFormat: String? = null,
+        val modelData: ByteArray? = null
     )
 
     private data class Vector3(val x: Float, val y: Float, val z: Float)
