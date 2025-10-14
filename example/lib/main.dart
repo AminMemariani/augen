@@ -86,6 +86,7 @@ class _ARHomePageState extends State<ARHomePage> {
 
       // Listen to errors
       _controller!.errorStream.listen((error) {
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('AR Error: $error')));
@@ -109,6 +110,7 @@ class _ARHomePageState extends State<ARHomePage> {
       );
 
       if (results.isEmpty) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -134,10 +136,12 @@ class _ARHomePageState extends State<ARHomePage> {
         ),
       );
 
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Added object: $nodeId')));
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to add object: $e')));
@@ -158,11 +162,13 @@ class _ARHomePageState extends State<ARHomePage> {
       );
 
       if (anchor != null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Anchor added: ${anchor.id}')));
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to add anchor: $e')));
@@ -174,6 +180,7 @@ class _ARHomePageState extends State<ARHomePage> {
 
     try {
       await _controller!.reset();
+      if (!mounted) return;
       setState(() {
         _nodeCounter = 0;
         _detectedPlanes.clear();
@@ -182,6 +189,7 @@ class _ARHomePageState extends State<ARHomePage> {
         context,
       ).showSnackBar(const SnackBar(content: Text('AR Session Reset')));
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to reset: $e')));
@@ -216,7 +224,7 @@ class _ARHomePageState extends State<ARHomePage> {
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withValues(alpha: 0.7),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Column(

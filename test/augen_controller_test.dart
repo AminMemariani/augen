@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:augen/augen.dart';
+import 'package:augen/src/models/animation_state_machine.dart' as sm;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -630,6 +631,422 @@ void main() {
       expect(status.animationId, 'walk');
       expect(status.state, AnimationState.playing);
       expect(status.currentTime, 1.5);
+    });
+
+    // ===== ANIMATION BLENDING TESTS =====
+
+    group('Animation Blending Methods', () {
+      test('playBlendSet sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'playBlendSet') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        final blendSet = AnimationBlendSet(
+          id: 'test_blend',
+          animations: [
+            AnimationBlend(animationId: 'walk', weight: 0.6),
+            AnimationBlend(animationId: 'run', weight: 0.4),
+          ],
+        );
+
+        await controller.playBlendSet(nodeId: 'character1', blendSet: blendSet);
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['blendSet'], isA<Map>());
+        expect(capturedArgs!['blendSet']['id'], 'test_blend');
+      });
+
+      test('stopBlendSet sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'stopBlendSet') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.stopBlendSet(
+          nodeId: 'character1',
+          blendSetId: 'test_blend',
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['blendSetId'], 'test_blend');
+      });
+
+      test('updateBlendWeights sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'updateBlendWeights') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.updateBlendWeights(
+          nodeId: 'character1',
+          blendSetId: 'test_blend',
+          weights: {'walk': 0.3, 'run': 0.7},
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['blendSetId'], 'test_blend');
+        expect(capturedArgs!['weights'], {'walk': 0.3, 'run': 0.7});
+      });
+
+      test('startCrossfadeTransition sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'startCrossfadeTransition') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        final transition = CrossfadeTransition(
+          id: 'walk_to_run',
+          fromAnimationId: 'walk',
+          toAnimationId: 'run',
+          duration: 0.5,
+        );
+
+        await controller.startCrossfadeTransition(
+          nodeId: 'character1',
+          transition: transition,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['transition'], isA<Map>());
+      });
+
+      test('startStateMachine sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'startStateMachine') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        final stateMachine = AnimationStateMachine(
+          id: 'character_fsm',
+          name: 'Character FSM',
+          states: [
+            sm.AnimationState(
+              id: 'idle',
+              name: 'Idle',
+              animationId: 'idle_anim',
+              isEntryState: true,
+            ),
+          ],
+        );
+
+        await controller.startStateMachine(
+          nodeId: 'character1',
+          stateMachine: stateMachine,
+          initialParameters: {'speed': 0.0},
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['stateMachine'], isA<Map>());
+        expect(capturedArgs!['initialParameters'], {'speed': 0.0});
+      });
+
+      test('updateStateMachineParameters sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'updateStateMachineParameters') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.updateStateMachineParameters(
+          nodeId: 'character1',
+          stateMachineId: 'character_fsm',
+          parameters: {'speed': 2.5, 'grounded': true},
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['stateMachineId'], 'character_fsm');
+        expect(capturedArgs!['parameters'], {'speed': 2.5, 'grounded': true});
+      });
+
+      test('startBlendTree sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'startBlendTree') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        final blendTree = AnimationBlendTree(
+          id: 'movement_tree',
+          name: 'Movement Tree',
+          rootNode: AnimationNode(
+            id: 'root',
+            name: 'Root',
+            animationId: 'idle',
+          ),
+        );
+
+        await controller.startBlendTree(
+          nodeId: 'character1',
+          blendTree: blendTree,
+          initialParameters: {'speed': 1.0},
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['blendTree'], isA<Map>());
+        expect(capturedArgs!['initialParameters'], {'speed': 1.0});
+      });
+
+      test('playAdditiveAnimation sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'playAdditiveAnimation') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.playAdditiveAnimation(
+          nodeId: 'character1',
+          animationId: 'wave',
+          targetLayer: 1,
+          weight: 0.8,
+          boneMask: ['arm_left', 'arm_right'],
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['animationId'], 'wave');
+        expect(capturedArgs!['targetLayer'], 1);
+        expect(capturedArgs!['weight'], 0.8);
+        expect(capturedArgs!['boneMask'], ['arm_left', 'arm_right']);
+      });
+
+      test('setAnimationLayerWeight sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'setAnimationLayerWeight') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.setAnimationLayerWeight(
+          nodeId: 'character1',
+          layer: 2,
+          weight: 0.6,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        expect(capturedArgs!['layer'], 2);
+        expect(capturedArgs!['weight'], 0.6);
+      });
+
+      test('getAnimationLayers returns layers', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getAnimationLayers') {
+                return [
+                  <String, dynamic>{
+                    'layer': 0,
+                    'weight': 1.0,
+                    'animations': ['idle'],
+                  },
+                  <String, dynamic>{
+                    'layer': 1,
+                    'weight': 0.5,
+                    'animations': ['wave'],
+                  },
+                ];
+              }
+              return null;
+            });
+
+        final layers = await controller.getAnimationLayers('character1');
+
+        expect(layers.length, 2);
+        expect(layers[0]['layer'], 0);
+        expect(layers[0]['weight'], 1.0);
+        expect(layers[1]['layer'], 1);
+        expect(layers[1]['weight'], 0.5);
+      });
+
+      test('getBoneHierarchy returns bone names', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getBoneHierarchy') {
+                return [
+                  'root',
+                  'spine',
+                  'arm_left',
+                  'arm_right',
+                  'leg_left',
+                  'leg_right',
+                ];
+              }
+              return null;
+            });
+
+        final bones = await controller.getBoneHierarchy('character1');
+
+        expect(bones.length, 6);
+        expect(bones, contains('root'));
+        expect(bones, contains('spine'));
+        expect(bones, contains('arm_left'));
+      });
+
+      test('crossfadeToAnimation creates and starts transition', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'startCrossfadeTransition') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.crossfadeToAnimation(
+          nodeId: 'character1',
+          fromAnimationId: 'idle',
+          toAnimationId: 'walk',
+          duration: 0.4,
+          curve: TransitionCurve.easeInOut,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        final transitionData = capturedArgs!['transition'] as Map;
+        expect(transitionData['fromAnimationId'], 'idle');
+        expect(transitionData['toAnimationId'], 'walk');
+        expect(transitionData['duration'], 0.4);
+      });
+
+      test('blendAnimations creates and starts blend set', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'playBlendSet') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.blendAnimations(
+          nodeId: 'character1',
+          animationWeights: {'walk': 0.7, 'run': 0.3},
+          fadeInDuration: 0.5,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'character1');
+        final blendSetData = capturedArgs!['blendSet'] as Map;
+        expect(blendSetData['fadeInDuration'], 0.5);
+        final animations = blendSetData['animations'] as List;
+        expect(animations.length, 2);
+      });
+    });
+
+    group('Animation Blending Streams', () {
+      test(
+        'transitionStatusStream emits transition status from platform',
+        () async {
+          final completer = Completer<TransitionStatus>();
+
+          controller.transitionStatusStream.listen((status) {
+            if (!completer.isCompleted) {
+              completer.complete(status);
+            }
+          });
+
+          // Simulate platform callback
+          final messenger =
+              TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+          await messenger.handlePlatformMessage(
+            'augen_$viewId',
+            const StandardMethodCodec().encodeMethodCall(
+              const MethodCall('onTransitionStatus', {
+                'transitionId': 'fade1',
+                'state': 'transitioning',
+                'toAnimationId': 'run',
+                'progress': 0.5,
+                'elapsedTime': 0.15,
+                'totalDuration': 0.3,
+                'sourceWeight': 0.5,
+                'targetWeight': 0.5,
+              }),
+            ),
+            (data) {},
+          );
+
+          final status = await completer.future.timeout(Duration(seconds: 2));
+          expect(status.transitionId, 'fade1');
+          expect(status.state, TransitionState.transitioning);
+          expect(status.progress, 0.5);
+        },
+      );
+
+      test(
+        'stateMachineStatusStream emits state machine status from platform',
+        () async {
+          final completer = Completer<StateMachineStatus>();
+
+          controller.stateMachineStatusStream.listen((status) {
+            if (!completer.isCompleted) {
+              completer.complete(status);
+            }
+          });
+
+          // Simulate platform callback
+          final messenger =
+              TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+          await messenger.handlePlatformMessage(
+            'augen_$viewId',
+            const StandardMethodCodec().encodeMethodCall(
+              const MethodCall('onStateMachineStatus', {
+                'stateMachineId': 'character_fsm',
+                'currentStateId': 'walk',
+                'previousStateId': 'idle',
+                'timeInState': 2.5,
+                'isActive': true,
+                'parameters': {'speed': 3.0},
+              }),
+            ),
+            (data) {},
+          );
+
+          final status = await completer.future.timeout(Duration(seconds: 2));
+          expect(status.stateMachineId, 'character_fsm');
+          expect(status.currentStateId, 'walk');
+          expect(status.previousStateId, 'idle');
+          expect(status.timeInState, 2.5);
+        },
+      );
     });
   });
 }

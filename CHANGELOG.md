@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2025-10-14
+
+### Added
+- 🚀 **Advanced Animation Blending and Transitions** - Professional-grade animation system
+  - Animation blending with weighted combinations
+  - Smooth crossfade transitions with customizable curves
+  - Animation state machines with conditional transitions
+  - Blend trees (1D, 2D, conditional, selector nodes)
+  - Layered and additive animations
+  - Bone masking for selective animation
+  - Real-time transition and state machine status updates
+
+#### New Animation Models
+- `AnimationBlend` and `AnimationBlendSet` - Complex animation blending
+- `AnimationTransition` and `CrossfadeTransition` - Smooth transitions
+- `AnimationStateMachine` and `AnimationState` - State-based animation workflow
+- `AnimationBlendTree` and various blend tree nodes - Parameter-driven animation
+- `TransitionStatus` and `StateMachineStatus` - Real-time status tracking
+
+#### New Controller Methods
+- **Blending**: `playBlendSet()`, `updateBlendWeights()`, `blendAnimations()`
+- **Transitions**: `startCrossfadeTransition()`, `crossfadeToAnimation()`
+- **State Machines**: `startStateMachine()`, `updateStateMachineParameters()`
+- **Blend Trees**: `startBlendTree()`, `updateBlendTreeParameters()`
+- **Layered**: `playAdditiveAnimation()`, `setAnimationLayerWeight()`, `getBoneHierarchy()`
+
+#### New Streams
+- `transitionStatusStream` - Monitor transition progress
+- `stateMachineStatusStream` - Monitor state machine updates
+
+#### Comprehensive Testing
+- 90 new tests for animation blending features
+- Total test count increased from 87 to 177 tests
+- 100% test coverage maintained
+
+#### Documentation
+- Complete `Documentation.md` consolidating all guides (3,500+ lines)
+- Advanced animation blending guide with real-world examples
+- Performance tips and best practices
+- Troubleshooting guide
+
+### Changed
+- `AugenController` extended with 18 new animation methods
+- Enhanced `ARNode` support for complex animation workflows
+- Updated README.md with v0.4.0 and consolidated documentation links
+- Fixed `BuildContext` across async gaps in example app (8 fixes)
+
+### Merged Documentation
+- All individual documentation files merged into single `Documentation.md`
+- Improved navigation with comprehensive table of contents
+- Consolidated examples and best practices
+
+### Platform Support
+- Animation blending API ready for native implementation
+- Data structures optimized for ARCore Filament and RealityKit
+
 ## [0.3.1] - 2025-10-14
 
 ### Changed

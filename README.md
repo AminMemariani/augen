@@ -2,8 +2,8 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-87%20passing-brightgreen.svg)](test/)
-[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](TEST_COVERAGE.md)
+[![Tests](https://img.shields.io/badge/tests-177%20passing-brightgreen.svg)](test/)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](Documentation.md#6-testing)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
 
@@ -15,11 +15,23 @@
 🔍 **Plane Detection**: Automatically detect horizontal and vertical surfaces  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
-🎬 **Animations**: Full skeletal and model animation support with playback control  
+🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
 ⚓ **Anchors**: Place and manage AR anchors  
 🎯 **Hit Testing**: Detect surfaces with touch/tap interactions  
 📍 **Position Tracking**: Real-time tracking of AR objects  
 💡 **Light Estimation**: Realistic lighting for AR objects  
+
+## Documentation
+
+📚 **[Complete Documentation](Documentation.md)** - All-in-one comprehensive guide covering:
+- Getting Started
+- API Reference
+- Custom 3D Models
+- Animations & Advanced Blending
+- Testing
+- Examples & Best Practices
+
+For an in-depth guide on advanced animation features, see the comprehensive [Documentation.md](Documentation.md).
 
 ## Platform Support
 
@@ -34,7 +46,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.3.0
+  augen: ^0.4.0
 ```
 
 Run:
@@ -203,7 +215,7 @@ await _controller!.addNode(customModel);
 - OBJ
 - USDZ (recommended for iOS)
 
-See [CUSTOM_MODELS_GUIDE.md](CUSTOM_MODELS_GUIDE.md) for detailed instructions.
+See [Documentation.md - Custom 3D Models](Documentation.md#3-custom-3d-models) for detailed instructions.
 
 ### Model Animations
 
@@ -248,7 +260,9 @@ final animations = await _controller!.getAvailableAnimations('character_1');
 print('Available: $animations');  // [walk, run, idle, jump]
 ```
 
-See [ANIMATIONS_GUIDE.md](ANIMATIONS_GUIDE.md) for comprehensive animation documentation.
+See [Documentation.md - Animations](Documentation.md#4-animations) for comprehensive animation documentation.
+
+**New!** For advanced animation features including blending, transitions, state machines, and blend trees, see [Documentation.md - Advanced Animation Blending](Documentation.md#5-advanced-animation-blending---complete-guide) for a comprehensive in-depth guide.
 
 ### Managing Anchors
 
@@ -439,9 +453,9 @@ The project maintains 100% coverage of the public API:
 - ✅ 30 controller tests (all AugenController methods, streams, and animation controls)
 - ✅ 11 integration tests (full AR workflows)
 
-**Total: 87 passing tests** with full coverage of 3D models and animations!
+**Total: 177 passing tests** with full coverage of all features including advanced animation blending!
 
-See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage information.
+See [Documentation.md - Testing](Documentation.md#6-testing) for detailed coverage information.
 
 ## Troubleshooting
 
@@ -505,9 +519,11 @@ Please report it! Include:
 
 #### Testing the New Features?
 
-We've just released **animation support** and **custom 3D model loading**! We'd love your feedback:
+We've just released **advanced animation blending and transitions** (v0.4.0)! We'd love your feedback:
+- Test animation blending and crossfade transitions
+- Try state machines and blend trees
+- Experiment with layered and additive animations
 - Test with different model formats (GLB, GLTF, OBJ, USDZ)
-- Try various animations and loop modes
 - Report any compatibility issues
 - Share your use cases and suggestions
 
@@ -524,7 +540,7 @@ Have an idea for improvement? Let us know!
 
 - [x] Custom 3D model loading (GLTF, GLB, OBJ, USDZ) ✅ **v0.2.0**
 - [x] Model animations and skeletal animation support ✅ **v0.3.0**
-- [ ] Advanced animation blending and transitions
+- [x] Advanced animation blending and transitions ✅ **v0.4.0**
 - [ ] Image tracking and recognition
 - [ ] Face tracking capabilities
 - [ ] Cloud anchors for persistent AR

@@ -8,7 +8,10 @@ import 'models/ar_session_config.dart';
 import 'models/vector3.dart';
 import 'models/quaternion.dart';
 import 'models/ar_animation.dart';
-import 'dart:typed_data';
+import 'models/animation_blend.dart';
+import 'models/animation_transition.dart';
+import 'models/animation_state_machine.dart';
+import 'models/animation_blend_tree.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -23,6 +26,10 @@ class AugenController {
       StreamController<String>.broadcast();
   final StreamController<AnimationStatus> _animationStatusController =
       StreamController<AnimationStatus>.broadcast();
+  final StreamController<TransitionStatus> _transitionStatusController =
+      StreamController<TransitionStatus>.broadcast();
+  final StreamController<StateMachineStatus> _stateMachineStatusController =
+      StreamController<StateMachineStatus>.broadcast();
 
   bool _isDisposed = false;
 
@@ -42,6 +49,14 @@ class AugenController {
   /// Stream of animation status updates
   Stream<AnimationStatus> get animationStatusStream =>
       _animationStatusController.stream;
+
+  /// Stream of animation transition status updates
+  Stream<TransitionStatus> get transitionStatusStream =>
+      _transitionStatusController.stream;
+
+  /// Stream of animation state machine status updates
+  Stream<StateMachineStatus> get stateMachineStatusStream =>
+      _stateMachineStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -260,6 +275,16 @@ class AugenController {
         final status = AnimationStatus.fromMap(statusData);
         _animationStatusController.add(status);
         break;
+      case 'onTransitionStatus':
+        final statusData = call.arguments as Map;
+        final status = TransitionStatus.fromMap(statusData);
+        _transitionStatusController.add(status);
+        break;
+      case 'onStateMachineStatus':
+        final statusData = call.arguments as Map;
+        final status = StateMachineStatus.fromMap(statusData);
+        _stateMachineStatusController.add(status);
+        break;
     }
   }
 
@@ -388,6 +413,369 @@ class AugenController {
     }
   }
 
+  // ===== ANIMATION BLENDING METHODS =====
+
+  /// Play a blend set on a node
+  Future<void> playBlendSet({
+    required String nodeId,
+    required AnimationBlendSet blendSet,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('playBlendSet', {
+        'nodeId': nodeId,
+        'blendSet': blendSet.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to play blend set: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Stop a blend set on a node
+  Future<void> stopBlendSet({
+    required String nodeId,
+    required String blendSetId,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('stopBlendSet', {
+        'nodeId': nodeId,
+        'blendSetId': blendSetId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to stop blend set: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update blend weights in a running blend set
+  Future<void> updateBlendWeights({
+    required String nodeId,
+    required String blendSetId,
+    required Map<String, double> weights,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateBlendWeights', {
+        'nodeId': nodeId,
+        'blendSetId': blendSetId,
+        'weights': weights,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update blend weights: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Start a crossfade transition between two animations
+  Future<void> startCrossfadeTransition({
+    required String nodeId,
+    required CrossfadeTransition transition,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('startCrossfadeTransition', {
+        'nodeId': nodeId,
+        'transition': transition.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to start crossfade transition: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Stop a running transition
+  Future<void> stopTransition({
+    required String nodeId,
+    required String transitionId,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('stopTransition', {
+        'nodeId': nodeId,
+        'transitionId': transitionId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to stop transition: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Start an animation state machine on a node
+  Future<void> startStateMachine({
+    required String nodeId,
+    required AnimationStateMachine stateMachine,
+    Map<String, dynamic>? initialParameters,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('startStateMachine', {
+        'nodeId': nodeId,
+        'stateMachine': stateMachine.toMap(),
+        if (initialParameters != null) 'initialParameters': initialParameters,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to start state machine: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Stop an animation state machine
+  Future<void> stopStateMachine({
+    required String nodeId,
+    required String stateMachineId,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('stopStateMachine', {
+        'nodeId': nodeId,
+        'stateMachineId': stateMachineId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to stop state machine: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update parameters in a running state machine
+  Future<void> updateStateMachineParameters({
+    required String nodeId,
+    required String stateMachineId,
+    required Map<String, dynamic> parameters,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateStateMachineParameters', {
+        'nodeId': nodeId,
+        'stateMachineId': stateMachineId,
+        'parameters': parameters,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update state machine parameters: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Trigger a transition in a state machine
+  Future<void> triggerStateMachineTransition({
+    required String nodeId,
+    required String stateMachineId,
+    required String targetStateId,
+    Map<String, dynamic>? parameters,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('triggerStateMachineTransition', {
+        'nodeId': nodeId,
+        'stateMachineId': stateMachineId,
+        'targetStateId': targetStateId,
+        if (parameters != null) 'parameters': parameters,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to trigger state machine transition: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Start a blend tree on a node
+  Future<void> startBlendTree({
+    required String nodeId,
+    required AnimationBlendTree blendTree,
+    Map<String, dynamic>? initialParameters,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('startBlendTree', {
+        'nodeId': nodeId,
+        'blendTree': blendTree.toMap(),
+        if (initialParameters != null) 'initialParameters': initialParameters,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to start blend tree: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Stop a blend tree
+  Future<void> stopBlendTree({
+    required String nodeId,
+    required String blendTreeId,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('stopBlendTree', {
+        'nodeId': nodeId,
+        'blendTreeId': blendTreeId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to stop blend tree: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update parameters in a running blend tree
+  Future<void> updateBlendTreeParameters({
+    required String nodeId,
+    required String blendTreeId,
+    required Map<String, dynamic> parameters,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateBlendTreeParameters', {
+        'nodeId': nodeId,
+        'blendTreeId': blendTreeId,
+        'parameters': parameters,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update blend tree parameters: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Set animation layer weight
+  Future<void> setAnimationLayerWeight({
+    required String nodeId,
+    required int layer,
+    required double weight,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setAnimationLayerWeight', {
+        'nodeId': nodeId,
+        'layer': layer,
+        'weight': weight,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to set animation layer weight: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Get current animation layers for a node
+  Future<List<Map<String, dynamic>>> getAnimationLayers(String nodeId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<List>('getAnimationLayers', {
+        'nodeId': nodeId,
+      });
+      return result?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ??
+          [];
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get animation layers: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Play additive animation on top of base layer
+  Future<void> playAdditiveAnimation({
+    required String nodeId,
+    required String animationId,
+    required int targetLayer,
+    double weight = 1.0,
+    AnimationLoopMode loopMode = AnimationLoopMode.loop,
+    List<String>? boneMask,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('playAdditiveAnimation', {
+        'nodeId': nodeId,
+        'animationId': animationId,
+        'targetLayer': targetLayer,
+        'weight': weight,
+        'loopMode': loopMode.name,
+        if (boneMask != null) 'boneMask': boneMask,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to play additive animation: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Set bone mask for an animation layer
+  Future<void> setAnimationBoneMask({
+    required String nodeId,
+    required int layer,
+    required List<String> boneMask,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setAnimationBoneMask', {
+        'nodeId': nodeId,
+        'layer': layer,
+        'boneMask': boneMask,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set animation bone mask: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get bone hierarchy for a model
+  Future<List<String>> getBoneHierarchy(String nodeId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<List>('getBoneHierarchy', {
+        'nodeId': nodeId,
+      });
+      return result?.cast<String>() ?? [];
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get bone hierarchy: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Create and play a simple crossfade between two animations
+  Future<void> crossfadeToAnimation({
+    required String nodeId,
+    required String fromAnimationId,
+    required String toAnimationId,
+    double duration = 0.3,
+    TransitionCurve curve = TransitionCurve.linear,
+  }) async {
+    final transition = CrossfadeTransition(
+      id: 'crossfade_${DateTime.now().millisecondsSinceEpoch}',
+      fromAnimationId: fromAnimationId,
+      toAnimationId: toAnimationId,
+      duration: duration,
+      curve: curve,
+    );
+
+    await startCrossfadeTransition(nodeId: nodeId, transition: transition);
+  }
+
+  /// Create and play a blend between multiple animations with weights
+  Future<void> blendAnimations({
+    required String nodeId,
+    required Map<String, double> animationWeights,
+    String? blendSetId,
+    BlendType blendType = BlendType.linear,
+    double fadeInDuration = 0.3,
+  }) async {
+    final blends = animationWeights.entries.map((entry) {
+      return AnimationBlend(animationId: entry.key, weight: entry.value);
+    }).toList();
+
+    final blendSet = AnimationBlendSet(
+      id: blendSetId ?? 'blend_${DateTime.now().millisecondsSinceEpoch}',
+      animations: blends,
+      blendType: blendType,
+      fadeInDuration: fadeInDuration,
+    );
+
+    await playBlendSet(nodeId: nodeId, blendSet: blendSet);
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -396,6 +784,8 @@ class AugenController {
     _anchorsController.close();
     _errorController.close();
     _animationStatusController.close();
+    _transitionStatusController.close();
+    _stateMachineStatusController.close();
     _channel.setMethodCallHandler(null);
   }
 }

@@ -15,10 +15,10 @@ class AugenView extends StatefulWidget {
   final ARSessionConfig config;
 
   const AugenView({
-    Key? key,
+    super.key,
     required this.onViewCreated,
     this.config = const ARSessionConfig(),
-  }) : super(key: key);
+  });
 
   @override
   State<AugenView> createState() => _AugenViewState();
