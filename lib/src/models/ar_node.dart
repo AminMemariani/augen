@@ -15,7 +15,7 @@ class ARNode {
   final Quaternion rotation;
   final Vector3 scale;
   final Map<String, dynamic>? properties;
-  
+
   /// Path to the 3D model asset (required when type is NodeType.model)
   /// For Flutter assets: 'assets/models/mymodel.glb'
   /// For network URLs: 'https://example.com/model.glb'
@@ -104,7 +104,7 @@ class ARNode {
     final format =
         modelFormat ??
         (modelPath != null ? detectModelFormat(modelPath!) : null);
-    
+
     return {
       'id': id,
       'type': type.name,
