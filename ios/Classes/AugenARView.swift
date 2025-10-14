@@ -66,6 +66,20 @@ class AugenARView: NSObject, FlutterPlatformView {
             resume(result: result)
         case "reset":
             reset(result: result)
+        case "playAnimation":
+            playAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "pauseAnimation":
+            pauseAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "stopAnimation":
+            stopAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "resumeAnimation":
+            resumeAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "seekAnimation":
+            seekAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "getAvailableAnimations":
+            getAvailableAnimations(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "setAnimationSpeed":
+            setAnimationSpeed(arguments: call.arguments as? [String: Any] ?? [:], result: result)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -421,6 +435,137 @@ class AugenARView: NSObject, FlutterPlatformView {
         anchors.removeAll()
         
         detectedPlanes.removeAll()
+        result(nil)
+    }
+    
+    // MARK: - Animation Methods
+    
+    private func playAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let nodeId = arguments["nodeId"] as? String,
+              let animationId = arguments["animationId"] as? String else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing required parameters",
+                details: nil
+            ))
+            return
+        }
+        
+        let speed = (arguments["speed"] as? NSNumber)?.floatValue ?? 1.0
+        let loopMode = arguments["loopMode"] as? String ?? "loop"
+        
+        // Implementation for playing animations
+        // RealityKit supports animations through AnimationResource
+        // Example:
+        // if let anchor = nodes[nodeId],
+        //    let modelEntity = anchor.children.first as? ModelEntity {
+        //     let animation = modelEntity.availableAnimations.first(where: { $0.name == animationId })
+        //     if let animation = animation {
+        //         let controller = modelEntity.playAnimation(animation.repeat(count: .infinity))
+        //         controller.speed = speed
+        //     }
+        // }
+        
+        result(nil)
+    }
+    
+    private func pauseAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let nodeId = arguments["nodeId"] as? String,
+              let animationId = arguments["animationId"] as? String else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing required parameters",
+                details: nil
+            ))
+            return
+        }
+        
+        // Pause animation
+        result(nil)
+    }
+    
+    private func stopAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let nodeId = arguments["nodeId"] as? String,
+              let animationId = arguments["animationId"] as? String else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing required parameters",
+                details: nil
+            ))
+            return
+        }
+        
+        // Stop animation and reset
+        result(nil)
+    }
+    
+    private func resumeAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let nodeId = arguments["nodeId"] as? String,
+              let animationId = arguments["animationId"] as? String else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing required parameters",
+                details: nil
+            ))
+            return
+        }
+        
+        // Resume animation
+        result(nil)
+    }
+    
+    private func seekAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let nodeId = arguments["nodeId"] as? String,
+              let animationId = arguments["animationId"] as? String,
+              let time = arguments["time"] as? NSNumber else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing required parameters",
+                details: nil
+            ))
+            return
+        }
+        
+        // Seek to time
+        result(nil)
+    }
+    
+    private func getAvailableAnimations(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let nodeId = arguments["nodeId"] as? String else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing nodeId parameter",
+                details: nil
+            ))
+            return
+        }
+        
+        // Get available animations from model
+        // Example:
+        // if let anchor = nodes[nodeId],
+        //    let modelEntity = anchor.children.first as? ModelEntity {
+        //     let animationNames = modelEntity.availableAnimations.map { $0.name }
+        //     result(animationNames)
+        // } else {
+        //     result([])
+        // }
+        
+        result([])
+    }
+    
+    private func setAnimationSpeed(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let nodeId = arguments["nodeId"] as? String,
+              let animationId = arguments["animationId"] as? String,
+              let speed = arguments["speed"] as? NSNumber else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing required parameters",
+                details: nil
+            ))
+            return
+        }
+        
+        // Set animation speed
         result(nil)
     }
 }

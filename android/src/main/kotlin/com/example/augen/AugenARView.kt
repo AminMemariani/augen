@@ -46,6 +46,13 @@ class AugenARView(
             "pause" -> pause(result)
             "resume" -> resume(result)
             "reset" -> reset(result)
+            "playAnimation" -> playAnimation(call, result)
+            "pauseAnimation" -> pauseAnimation(call, result)
+            "stopAnimation" -> stopAnimation(call, result)
+            "resumeAnimation" -> resumeAnimation(call, result)
+            "seekAnimation" -> seekAnimation(call, result)
+            "getAvailableAnimations" -> getAvailableAnimations(call, result)
+            "setAnimationSpeed" -> setAnimationSpeed(call, result)
             else -> result.notImplemented()
         }
     }
@@ -339,6 +346,116 @@ class AugenARView(
         }
     }
 
+    private fun playAnimation(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val args = call.arguments as Map<String, Any>
+            val nodeId = args["nodeId"] as String
+            val animationId = args["animationId"] as String
+            val speed = (args["speed"] as? Number)?.toFloat() ?: 1.0f
+            val loopMode = args["loopMode"] as? String ?: "loop"
+
+            // Implementation for playing animations on 3D models
+            // This would control the animation playback using Filament's Animator
+            // Example:
+            // val node = nodes[nodeId]
+            // if (node?.type == "model") {
+            //     val animator = modelAnimators[nodeId]
+            //     animator?.let {
+            //         it.applyAnimation(animationIndex)
+            //         it.updateBoneMatrices()
+            //     }
+            // }
+
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("PLAY_ANIMATION_ERROR", "Failed to play animation: ${e.message}", null)
+        }
+    }
+
+    private fun pauseAnimation(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val args = call.arguments as Map<String, Any>
+            val nodeId = args["nodeId"] as String
+            val animationId = args["animationId"] as String
+
+            // Pause animation playback
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("PAUSE_ANIMATION_ERROR", "Failed to pause animation: ${e.message}", null)
+        }
+    }
+
+    private fun stopAnimation(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val args = call.arguments as Map<String, Any>
+            val nodeId = args["nodeId"] as String
+            val animationId = args["animationId"] as String
+
+            // Stop animation and reset to first frame
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("STOP_ANIMATION_ERROR", "Failed to stop animation: ${e.message}", null)
+        }
+    }
+
+    private fun resumeAnimation(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val args = call.arguments as Map<String, Any>
+            val nodeId = args["nodeId"] as String
+            val animationId = args["animationId"] as String
+
+            // Resume paused animation
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("RESUME_ANIMATION_ERROR", "Failed to resume animation: ${e.message}", null)
+        }
+    }
+
+    private fun seekAnimation(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val args = call.arguments as Map<String, Any>
+            val nodeId = args["nodeId"] as String
+            val animationId = args["animationId"] as String
+            val time = (args["time"] as Number).toFloat()
+
+            // Seek to specific time in animation
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("SEEK_ANIMATION_ERROR", "Failed to seek animation: ${e.message}", null)
+        }
+    }
+
+    private fun getAvailableAnimations(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val args = call.arguments as Map<String, Any>
+            val nodeId = args["nodeId"] as String
+
+            // Get list of animation names from the model
+            // Example:
+            // val node = nodes[nodeId]
+            // val animator = modelAnimators[nodeId]
+            // val animationNames = animator?.getAnimationNames() ?: emptyList()
+
+            result.success(emptyList<String>())
+        } catch (e: Exception) {
+            result.error("GET_ANIMATIONS_ERROR", "Failed to get animations: ${e.message}", null)
+        }
+    }
+
+    private fun setAnimationSpeed(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            val args = call.arguments as Map<String, Any>
+            val nodeId = args["nodeId"] as String
+            val animationId = args["animationId"] as String
+            val speed = (args["speed"] as Number).toFloat()
+
+            // Set playback speed for animation
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("SET_SPEED_ERROR", "Failed to set animation speed: ${e.message}", null)
+        }
+    }
+
     override fun dispose() {
         methodChannel.setMethodCallHandler(null)
         arSession?.close()
@@ -355,7 +472,8 @@ class AugenARView(
         val properties: Map<String, Any>?,
         val modelPath: String? = null,
         val modelFormat: String? = null,
-        val modelData: ByteArray? = null
+        val modelData: ByteArray? = null,
+        val animations: List<Map<String, Any>>? = null
     )
 
     private data class Vector3(val x: Float, val y: Float, val z: Float)

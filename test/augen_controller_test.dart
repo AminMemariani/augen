@@ -462,5 +462,174 @@ void main() {
       expect(capturedNodeData!['modelPath'], 'https://example.com/model.glb');
       expect(capturedNodeData!['modelFormat'], 'glb');
     });
+
+    test('playAnimation sends correct parameters', () async {
+      Map? capturedArgs;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'playAnimation') {
+              capturedArgs = methodCall.arguments as Map?;
+            }
+            return null;
+          });
+
+      await controller.playAnimation(
+        nodeId: 'node1',
+        animationId: 'walk',
+        speed: 1.5,
+        loopMode: AnimationLoopMode.loop,
+      );
+
+      expect(capturedArgs, isNotNull);
+      expect(capturedArgs!['nodeId'], 'node1');
+      expect(capturedArgs!['animationId'], 'walk');
+      expect(capturedArgs!['speed'], 1.5);
+      expect(capturedArgs!['loopMode'], 'loop');
+    });
+
+    test('pauseAnimation sends correct parameters', () async {
+      Map? capturedArgs;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'pauseAnimation') {
+              capturedArgs = methodCall.arguments as Map?;
+            }
+            return null;
+          });
+
+      await controller.pauseAnimation(nodeId: 'node1', animationId: 'walk');
+
+      expect(capturedArgs, isNotNull);
+      expect(capturedArgs!['nodeId'], 'node1');
+      expect(capturedArgs!['animationId'], 'walk');
+    });
+
+    test('stopAnimation sends correct parameters', () async {
+      Map? capturedArgs;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'stopAnimation') {
+              capturedArgs = methodCall.arguments as Map?;
+            }
+            return null;
+          });
+
+      await controller.stopAnimation(nodeId: 'node1', animationId: 'walk');
+
+      expect(capturedArgs, isNotNull);
+      expect(capturedArgs!['nodeId'], 'node1');
+      expect(capturedArgs!['animationId'], 'walk');
+    });
+
+    test('resumeAnimation sends correct parameters', () async {
+      Map? capturedArgs;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'resumeAnimation') {
+              capturedArgs = methodCall.arguments as Map?;
+            }
+            return null;
+          });
+
+      await controller.resumeAnimation(nodeId: 'node1', animationId: 'walk');
+
+      expect(capturedArgs, isNotNull);
+      expect(capturedArgs!['nodeId'], 'node1');
+      expect(capturedArgs!['animationId'], 'walk');
+    });
+
+    test('seekAnimation sends correct parameters', () async {
+      Map? capturedArgs;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'seekAnimation') {
+              capturedArgs = methodCall.arguments as Map?;
+            }
+            return null;
+          });
+
+      await controller.seekAnimation(
+        nodeId: 'node1',
+        animationId: 'walk',
+        time: 2.5,
+      );
+
+      expect(capturedArgs, isNotNull);
+      expect(capturedArgs!['nodeId'], 'node1');
+      expect(capturedArgs!['animationId'], 'walk');
+      expect(capturedArgs!['time'], 2.5);
+    });
+
+    test('getAvailableAnimations returns list', () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'getAvailableAnimations') {
+              return ['walk', 'run', 'idle'];
+            }
+            return null;
+          });
+
+      final animations = await controller.getAvailableAnimations('node1');
+
+      expect(animations, isA<List<String>>());
+      expect(animations.length, 3);
+      expect(animations, contains('walk'));
+      expect(animations, contains('run'));
+      expect(animations, contains('idle'));
+    });
+
+    test('setAnimationSpeed sends correct parameters', () async {
+      Map? capturedArgs;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'setAnimationSpeed') {
+              capturedArgs = methodCall.arguments as Map?;
+            }
+            return null;
+          });
+
+      await controller.setAnimationSpeed(
+        nodeId: 'node1',
+        animationId: 'walk',
+        speed: 2.0,
+      );
+
+      expect(capturedArgs, isNotNull);
+      expect(capturedArgs!['nodeId'], 'node1');
+      expect(capturedArgs!['animationId'], 'walk');
+      expect(capturedArgs!['speed'], 2.0);
+    });
+
+    test('animationStatusStream emits status from platform', () async {
+      final completer = Completer<AnimationStatus>();
+
+      controller.animationStatusStream.listen((status) {
+        if (!completer.isCompleted) {
+          completer.complete(status);
+        }
+      });
+
+      // Simulate platform callback
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      await messenger.handlePlatformMessage(
+        'augen_$viewId',
+        const StandardMethodCodec().encodeMethodCall(
+          const MethodCall('onAnimationStatus', {
+            'animationId': 'walk',
+            'state': 'playing',
+            'currentTime': 1.5,
+            'duration': 3.0,
+            'isLooping': true,
+          }),
+        ),
+        (data) {},
+      );
+
+      final status = await completer.future.timeout(Duration(seconds: 2));
+      expect(status.animationId, 'walk');
+      expect(status.state, AnimationState.playing);
+      expect(status.currentTime, 1.5);
+    });
   });
 }

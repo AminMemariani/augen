@@ -1,5 +1,6 @@
 import 'vector3.dart';
 import 'quaternion.dart';
+import 'ar_animation.dart';
 
 /// Types of AR nodes that can be added to the scene
 enum NodeType { sphere, cube, cylinder, model }
@@ -24,6 +25,9 @@ class ARNode {
   /// Format of the 3D model (auto-detected from file extension if not specified)
   final ModelFormat? modelFormat;
 
+  /// List of animations for this model
+  final List<ARAnimation>? animations;
+
   ARNode({
     required this.id,
     required this.type,
@@ -33,12 +37,18 @@ class ARNode {
     this.properties,
     this.modelPath,
     this.modelFormat,
+    this.animations,
   }) : assert(
          type != NodeType.model || modelPath != null,
          'modelPath is required when type is NodeType.model',
        );
 
   factory ARNode.fromMap(Map<dynamic, dynamic> map) {
+    final animationsData = map['animations'] as List?;
+    final animations = animationsData
+        ?.map((e) => ARAnimation.fromMap(e as Map))
+        .toList();
+
     return ARNode(
       id: map['id'] as String,
       type: _parseNodeType(map['type'] as String),
@@ -50,6 +60,7 @@ class ARNode {
       modelFormat: map['modelFormat'] != null
           ? _parseModelFormat(map['modelFormat'] as String)
           : null,
+      animations: animations,
     );
   }
 
@@ -114,6 +125,8 @@ class ARNode {
       'properties': properties,
       if (modelPath != null) 'modelPath': modelPath,
       if (format != null) 'modelFormat': format.name,
+      if (animations != null && animations!.isNotEmpty)
+        'animations': animations!.map((a) => a.toMap()).toList(),
     };
   }
 
@@ -126,6 +139,7 @@ class ARNode {
     Map<String, dynamic>? properties,
     String? modelPath,
     ModelFormat? modelFormat,
+    List<ARAnimation>? animations,
   }) {
     return ARNode(
       id: id ?? this.id,
@@ -136,6 +150,7 @@ class ARNode {
       properties: properties ?? this.properties,
       modelPath: modelPath ?? this.modelPath,
       modelFormat: modelFormat ?? this.modelFormat,
+      animations: animations ?? this.animations,
     );
   }
 
@@ -147,6 +162,7 @@ class ARNode {
     Quaternion rotation = const Quaternion(0, 0, 0, 1),
     Vector3 scale = const Vector3(1, 1, 1),
     ModelFormat? modelFormat,
+    List<ARAnimation>? animations,
     Map<String, dynamic>? properties,
   }) {
     return ARNode(
@@ -157,6 +173,7 @@ class ARNode {
       scale: scale,
       modelPath: modelPath,
       modelFormat: modelFormat ?? detectModelFormat(modelPath),
+      animations: animations,
       properties: properties,
     );
   }

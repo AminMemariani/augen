@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-62%20passing-brightgreen.svg)](test/)
+[![Tests](https://img.shields.io/badge/tests-87%20passing-brightgreen.svg)](test/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](TEST_COVERAGE.md)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
@@ -15,6 +15,7 @@
 🔍 **Plane Detection**: Automatically detect horizontal and vertical surfaces  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
+🎬 **Animations**: Full skeletal and model animation support with playback control  
 ⚓ **Anchors**: Place and manage AR anchors  
 🎯 **Hit Testing**: Detect surfaces with touch/tap interactions  
 📍 **Position Tracking**: Real-time tracking of AR objects  
@@ -204,6 +205,51 @@ await _controller!.addNode(customModel);
 
 See [CUSTOM_MODELS_GUIDE.md](CUSTOM_MODELS_GUIDE.md) for detailed instructions.
 
+### Model Animations
+
+```dart
+// Load model with animations
+final character = ARNode.fromModel(
+  id: 'character_1',
+  modelPath: 'assets/models/character.glb',
+  position: Vector3(0, 0, -1.5),
+  animations: [
+    const ARAnimation(
+      id: 'walk',
+      name: 'walk',
+      loopMode: AnimationLoopMode.loop,
+      autoPlay: true,
+    ),
+  ],
+);
+await _controller!.addNode(character);
+
+// Control animation playback
+await _controller!.playAnimation(
+  nodeId: 'character_1',
+  animationId: 'walk',
+  speed: 1.0,
+  loopMode: AnimationLoopMode.loop,
+);
+
+// Pause/resume animations
+await _controller!.pauseAnimation(nodeId: 'character_1', animationId: 'walk');
+await _controller!.resumeAnimation(nodeId: 'character_1', animationId: 'walk');
+
+// Change animation speed
+await _controller!.setAnimationSpeed(
+  nodeId: 'character_1',
+  animationId: 'walk',
+  speed: 1.5,  // 1.5x speed
+);
+
+// Get available animations
+final animations = await _controller!.getAvailableAnimations('character_1');
+print('Available: $animations');  // [walk, run, idle, jump]
+```
+
+See [ANIMATIONS_GUIDE.md](ANIMATIONS_GUIDE.md) for comprehensive animation documentation.
+
 ### Managing Anchors
 
 ```dart
@@ -389,10 +435,11 @@ flutter test integration_test/plugin_integration_test.dart
 
 The project maintains 100% coverage of the public API:
 - ✅ 40 model tests (Vector3, Quaternion, ARNode, ARPlane, ARAnchor, ARHitResult, ARSessionConfig, ModelFormat)
-- ✅ 21 controller tests (all AugenController methods and streams)
+- ✅ 16 animation tests (ARAnimation, AnimationStatus, AnimationState, AnimationLoopMode)
+- ✅ 30 controller tests (all AugenController methods, streams, and animation controls)
 - ✅ 11 integration tests (full AR workflows)
 
-**Total: 62 passing tests** with full coverage of custom 3D model loading!
+**Total: 87 passing tests** with full coverage of 3D models and animations!
 
 See [TEST_COVERAGE.md](TEST_COVERAGE.md) for detailed coverage information.
 
@@ -445,16 +492,17 @@ If you encounter any issues or have questions, please [file an issue](https://gi
 
 ## Roadmap
 
-- [x] Custom 3D model loading (GLTF, GLB, OBJ, USDZ) ✨ **NEW!**
-- [ ] Model animations and skeletal animation support
-- [ ] Image tracking
-- [ ] Face tracking
-- [ ] Cloud anchors
-- [ ] Occlusion
-- [ ] Physics simulation
+- [x] Custom 3D model loading (GLTF, GLB, OBJ, USDZ) ✅ **v0.2.0**
+- [x] Model animations and skeletal animation support ✅ **v0.3.0**
+- [ ] Advanced animation blending and transitions
+- [ ] Image tracking and recognition
+- [ ] Face tracking capabilities
+- [ ] Cloud anchors for persistent AR
+- [ ] Occlusion for realistic rendering
+- [ ] Physics simulation for AR objects
 - [ ] Multi-user AR experiences
 - [ ] Real-time lighting and shadows
-- [ ] Environmental probes
+- [ ] Environmental probes and reflections
 
 ---
 

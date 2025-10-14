@@ -7,6 +7,7 @@ import 'models/ar_hit_result.dart';
 import 'models/ar_session_config.dart';
 import 'models/vector3.dart';
 import 'models/quaternion.dart';
+import 'models/ar_animation.dart';
 import 'dart:typed_data';
 
 /// Controller for managing AR session
@@ -20,6 +21,8 @@ class AugenController {
       StreamController<List<ARAnchor>>.broadcast();
   final StreamController<String> _errorController =
       StreamController<String>.broadcast();
+  final StreamController<AnimationStatus> _animationStatusController =
+      StreamController<AnimationStatus>.broadcast();
 
   bool _isDisposed = false;
 
@@ -35,6 +38,10 @@ class AugenController {
 
   /// Stream of errors
   Stream<String> get errorStream => _errorController.stream;
+
+  /// Stream of animation status updates
+  Stream<AnimationStatus> get animationStatusStream =>
+      _animationStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -248,6 +255,136 @@ class AugenController {
         final error = call.arguments as String;
         _errorController.add(error);
         break;
+      case 'onAnimationStatus':
+        final statusData = call.arguments as Map;
+        final status = AnimationStatus.fromMap(statusData);
+        _animationStatusController.add(status);
+        break;
+    }
+  }
+
+  /// Play an animation on a node
+  Future<void> playAnimation({
+    required String nodeId,
+    required String animationId,
+    double speed = 1.0,
+    AnimationLoopMode loopMode = AnimationLoopMode.loop,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('playAnimation', {
+        'nodeId': nodeId,
+        'animationId': animationId,
+        'speed': speed,
+        'loopMode': loopMode.name,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to play animation: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Pause an animation on a node
+  Future<void> pauseAnimation({
+    required String nodeId,
+    required String animationId,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('pauseAnimation', {
+        'nodeId': nodeId,
+        'animationId': animationId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to pause animation: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Stop an animation on a node
+  Future<void> stopAnimation({
+    required String nodeId,
+    required String animationId,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('stopAnimation', {
+        'nodeId': nodeId,
+        'animationId': animationId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to stop animation: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Resume an animation on a node
+  Future<void> resumeAnimation({
+    required String nodeId,
+    required String animationId,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('resumeAnimation', {
+        'nodeId': nodeId,
+        'animationId': animationId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to resume animation: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Seek to a specific time in an animation
+  Future<void> seekAnimation({
+    required String nodeId,
+    required String animationId,
+    required double time,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('seekAnimation', {
+        'nodeId': nodeId,
+        'animationId': animationId,
+        'time': time,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to seek animation: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get available animations for a model node
+  Future<List<String>> getAvailableAnimations(String nodeId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<List>(
+        'getAvailableAnimations',
+        {'nodeId': nodeId},
+      );
+      return result?.cast<String>() ?? [];
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get animations: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Set animation speed
+  Future<void> setAnimationSpeed({
+    required String nodeId,
+    required String animationId,
+    required double speed,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setAnimationSpeed', {
+        'nodeId': nodeId,
+        'animationId': animationId,
+        'speed': speed,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set animation speed: ${e.message}');
+      rethrow;
     }
   }
 
@@ -258,6 +395,7 @@ class AugenController {
     _planesController.close();
     _anchorsController.close();
     _errorController.close();
+    _animationStatusController.close();
     _channel.setMethodCallHandler(null);
   }
 }

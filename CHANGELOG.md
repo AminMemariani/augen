@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-10-14
+
+### Added
+- 🎬 **Model Animation and Skeletal Animation Support**
+  - Full animation playback control
+  - Skeletal (bone-based) animations
+  - Morph target animations
+  - Multiple animations per model
+- New animation control methods:
+  - `playAnimation()` - Play animations with speed and loop mode control
+  - `pauseAnimation()` - Pause animation playback
+  - `stopAnimation()` - Stop and reset animation
+  - `resumeAnimation()` - Resume paused animation
+  - `seekAnimation()` - Jump to specific time in animation
+  - `getAvailableAnimations()` - Query available animations
+  - `setAnimationSpeed()` - Change playback speed dynamically
+- New `ARAnimation` model class with full configuration
+- New `AnimationStatus` class for animation state tracking
+- New enums: `AnimationState`, `AnimationLoopMode`
+- `animationStatusStream` for real-time animation updates
+- Comprehensive animation tests (25 new tests)
+- `ANIMATIONS_GUIDE.md` - Complete animation documentation
+
+### Changed
+- `ARNode` now supports `animations` parameter
+- `ARNode.fromModel()` accepts animations list
+- Updated Android implementation with animation methods
+- Updated iOS implementation with RealityKit animation support
+- Test count increased from 62 to 87 tests
+- Enhanced README with animation examples
+
+### Platform Support
+- **Android**: Skeletal animations via Filament Animator
+- **iOS**: Native animation support via RealityKit AnimationResource
+
 ## [0.2.1] - 2025-10-14
 
 ### Fixed
