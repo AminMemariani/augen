@@ -34,7 +34,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.1.0
+  augen: ^0.3.0
 ```
 
 Run:
@@ -489,6 +489,36 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Support
 
 If you encounter any issues or have questions, please [file an issue](https://github.com/AminMemariani/augen/issues) on GitHub.
+
+### 🐛 Help Us Improve!
+
+We're constantly working to make Augen better! **Your feedback is invaluable.**
+
+#### Found a Bug?
+Please report it! Include:
+- Device information (OS version, model)
+- Steps to reproduce
+- Expected vs actual behavior
+- Error logs or screenshots
+
+[**Report a Bug →**](https://github.com/AminMemariani/augen/issues/new?labels=bug&template=bug_report.md)
+
+#### Testing the New Features?
+
+We've just released **animation support** and **custom 3D model loading**! We'd love your feedback:
+- Test with different model formats (GLB, GLTF, OBJ, USDZ)
+- Try various animations and loop modes
+- Report any compatibility issues
+- Share your use cases and suggestions
+
+[**Share Feedback →**](https://github.com/AminMemariani/augen/issues/new?labels=feedback)
+
+#### Want a Feature?
+Have an idea for improvement? Let us know!
+
+[**Request a Feature →**](https://github.com/AminMemariani/augen/issues/new?labels=enhancement)
+
+**Your contributions help make Augen better for everyone!** ⭐ Star the repo if you find it useful!
 
 ## Roadmap
 
