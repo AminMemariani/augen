@@ -12,6 +12,8 @@ import 'models/animation_blend.dart';
 import 'models/animation_transition.dart';
 import 'models/animation_state_machine.dart';
 import 'models/animation_blend_tree.dart';
+import 'models/ar_image_target.dart';
+import 'models/ar_tracked_image.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -30,6 +32,10 @@ class AugenController {
       StreamController<TransitionStatus>.broadcast();
   final StreamController<StateMachineStatus> _stateMachineStatusController =
       StreamController<StateMachineStatus>.broadcast();
+  final StreamController<List<ARImageTarget>> _imageTargetsController =
+      StreamController<List<ARImageTarget>>.broadcast();
+  final StreamController<List<ARTrackedImage>> _trackedImagesController =
+      StreamController<List<ARTrackedImage>>.broadcast();
 
   bool _isDisposed = false;
 
@@ -57,6 +63,14 @@ class AugenController {
   /// Stream of animation state machine status updates
   Stream<StateMachineStatus> get stateMachineStatusStream =>
       _stateMachineStatusController.stream;
+
+  /// Stream of image targets
+  Stream<List<ARImageTarget>> get imageTargetsStream =>
+      _imageTargetsController.stream;
+
+  /// Stream of tracked images
+  Stream<List<ARTrackedImage>> get trackedImagesStream =>
+      _trackedImagesController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -284,6 +298,20 @@ class AugenController {
         final statusData = call.arguments as Map;
         final status = StateMachineStatus.fromMap(statusData);
         _stateMachineStatusController.add(status);
+        break;
+      case 'onImageTargetsUpdated':
+        final targetsData = call.arguments as List;
+        final targets = targetsData
+            .map((e) => ARImageTarget.fromMap(e as Map))
+            .toList();
+        _imageTargetsController.add(targets);
+        break;
+      case 'onTrackedImagesUpdated':
+        final trackedData = call.arguments as List;
+        final trackedImages = trackedData
+            .map((e) => ARTrackedImage.fromMap(e as Map))
+            .toList();
+        _trackedImagesController.add(trackedImages);
         break;
     }
   }
@@ -776,6 +804,128 @@ class AugenController {
     await playBlendSet(nodeId: nodeId, blendSet: blendSet);
   }
 
+  // ===== IMAGE TRACKING METHODS =====
+
+  /// Add an image target for tracking
+  Future<void> addImageTarget(ARImageTarget target) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('addImageTarget', target.toMap());
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to add image target: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove an image target
+  Future<void> removeImageTarget(String targetId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('removeImageTarget', {'targetId': targetId});
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to remove image target: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all registered image targets
+  Future<List<ARImageTarget>> getImageTargets() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<List>('getImageTargets');
+      return result?.map((e) => ARImageTarget.fromMap(e as Map)).toList() ?? [];
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get image targets: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Get currently tracked images
+  Future<List<ARTrackedImage>> getTrackedImages() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<List>('getTrackedImages');
+      return result?.map((e) => ARTrackedImage.fromMap(e as Map)).toList() ??
+          [];
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get tracked images: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Enable or disable image tracking
+  Future<void> setImageTrackingEnabled(bool enabled) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setImageTrackingEnabled', {
+        'enabled': enabled,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set image tracking: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Check if image tracking is enabled
+  Future<bool> isImageTrackingEnabled() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'isImageTrackingEnabled',
+      );
+      return result ?? false;
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to check image tracking status: ${e.message}',
+      );
+      return false;
+    }
+  }
+
+  /// Add a node anchored to a tracked image
+  Future<void> addNodeToTrackedImage({
+    required String nodeId,
+    required String trackedImageId,
+    required ARNode node,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final nodeData = node.toMap();
+      nodeData['trackedImageId'] = trackedImageId;
+
+      // If it's a model node with an asset path, load the asset data
+      if (node.type == NodeType.model &&
+          node.modelPath != null &&
+          !node.modelPath!.startsWith('http')) {
+        final modelBytes = await _loadAsset(node.modelPath!);
+        nodeData['modelData'] = modelBytes;
+      }
+
+      await _channel.invokeMethod('addNodeToTrackedImage', {
+        'nodeId': nodeId,
+        'nodeData': nodeData,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to add node to tracked image: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove a node from a tracked image
+  Future<void> removeNodeFromTrackedImage(String nodeId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('removeNodeFromTrackedImage', {
+        'nodeId': nodeId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to remove node from tracked image: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -786,6 +936,8 @@ class AugenController {
     _animationStatusController.close();
     _transitionStatusController.close();
     _stateMachineStatusController.close();
+    _imageTargetsController.close();
+    _trackedImagesController.close();
     _channel.setMethodCallHandler(null);
   }
 }

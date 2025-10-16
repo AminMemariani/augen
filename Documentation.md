@@ -26,7 +26,14 @@
    - [Platform Considerations](#platform-considerations)
    - [Best Practices](#best-practices-models)
 
-4. [Animations](#4-animations)
+4. [Image Tracking](#4-image-tracking)
+   - [Overview](#overview-image-tracking)
+   - [Setting Up Image Targets](#setting-up-image-targets)
+   - [Tracking Images](#tracking-images)
+   - [Anchoring Content](#anchoring-content)
+   - [Best Practices](#best-practices-image-tracking)
+
+5. [Animations](#5-animations)
    - [Basic Animations](#basic-animations)
    - [Advanced Animation Features](#advanced-animation-features)
    - [Animation Blending](#animation-blending)
@@ -35,7 +42,7 @@
    - [Blend Trees](#blend-trees)
    - [Layered Animations](#layered-animations)
 
-5. [Advanced Animation Blending - Complete Guide](#5-advanced-animation-blending---complete-guide)
+6. [Advanced Animation Blending - Complete Guide](#6-advanced-animation-blending---complete-guide)
    - [Overview](#overview-advanced)
    - [Animation Blending In-Depth](#animation-blending-in-depth)
    - [Crossfade Transitions In-Depth](#crossfade-transitions-in-depth)
@@ -47,32 +54,32 @@
    - [Performance Tips](#performance-tips)
    - [Troubleshooting](#troubleshooting)
 
-6. [Advanced Animation Features Summary](#6-advanced-animation-features-summary)
+7. [Advanced Animation Features Summary](#7-advanced-animation-features-summary)
    - [Implementation Overview](#implementation-overview)
    - [New Features](#new-features)
    - [Files Created](#files-created)
    - [Key Capabilities](#key-capabilities)
    - [Platform Implementation Notes](#platform-implementation-notes)
 
-7. [Testing](#7-testing)
+8. [Testing](#8-testing)
    - [Test Summary](#test-summary)
    - [Test Coverage](#test-coverage)
    - [Running Tests](#running-tests)
 
-8. [Project Information](#8-project-information)
+9. [Project Information](#9-project-information)
    - [Features](#features)
    - [Architecture](#architecture)
    - [Roadmap](#roadmap)
    - [Contributing](#contributing)
 
-9. [Project Summary & Architecture](#9-project-summary--architecture)
-   - [Project Overview](#project-overview)
-   - [Project Structure](#project-structure)
-   - [Core Features Implemented](#core-features-implemented)
-   - [API Highlights](#api-highlights)
-   - [Platform Requirements](#platform-requirements)
-   - [Example Application](#example-application)
-   - [What Makes This Plugin Special](#what-makes-this-plugin-special)
+10. [Project Summary & Architecture](#10-project-summary--architecture)
+    - [Project Overview](#project-overview)
+    - [Project Structure](#project-structure)
+    - [Core Features Implemented](#core-features-implemented)
+    - [API Highlights](#api-highlights)
+    - [Platform Requirements](#platform-requirements)
+    - [Example Application](#example-application)
+    - [What Makes This Plugin Special](#what-makes-this-plugin-special)
 
 ---
 
@@ -478,6 +485,8 @@ Stream<String> get errorStream
 Stream<AnimationStatus> get animationStatusStream
 Stream<TransitionStatus> get transitionStatusStream
 Stream<StateMachineStatus> get stateMachineStatusStream
+Stream<List<ARImageTarget>> get imageTargetsStream
+Stream<List<ARTrackedImage>> get trackedImagesStream
 ```
 
 **Example:**
@@ -489,6 +498,18 @@ _controller.planesStream.listen((planes) {
 
 _controller.errorStream.listen((error) {
   print('AR Error: $error');
+});
+
+_controller.imageTargetsStream.listen((targets) {
+  print('Registered ${targets.length} image targets');
+});
+
+_controller.trackedImagesStream.listen((trackedImages) {
+  for (final trackedImage in trackedImages) {
+    if (trackedImage.isTracked) {
+      print('Tracking image: ${trackedImage.targetId}');
+    }
+  }
 });
 ```
 
@@ -811,6 +832,148 @@ Future<void> setAnimationBoneMask({
 Future<List<String>> getBoneHierarchy(String nodeId)
 ```
 
+#### Image Tracking Methods
+
+##### addImageTarget
+
+```dart
+Future<void> addImageTarget(ARImageTarget target)
+```
+
+Adds an image target for tracking.
+
+**Example:**
+
+```dart
+final target = ARImageTarget(
+  id: 'poster1',
+  name: 'Movie Poster',
+  imagePath: 'assets/images/poster.jpg',
+  physicalSize: const ImageTargetSize(0.3, 0.4), // 30cm x 40cm
+);
+
+await _controller.addImageTarget(target);
+```
+
+##### removeImageTarget
+
+```dart
+Future<void> removeImageTarget(String targetId)
+```
+
+Removes an image target from tracking.
+
+**Example:**
+
+```dart
+await _controller.removeImageTarget('poster1');
+```
+
+##### getImageTargets
+
+```dart
+Future<List<ARImageTarget>> getImageTargets()
+```
+
+Gets all registered image targets.
+
+**Example:**
+
+```dart
+final targets = await _controller.getImageTargets();
+print('Registered ${targets.length} image targets');
+```
+
+##### getTrackedImages
+
+```dart
+Future<List<ARTrackedImage>> getTrackedImages()
+```
+
+Gets currently tracked images.
+
+**Example:**
+
+```dart
+final trackedImages = await _controller.getTrackedImages();
+for (final trackedImage in trackedImages) {
+  if (trackedImage.isTracked) {
+    print('Tracking: ${trackedImage.targetId}');
+  }
+}
+```
+
+##### setImageTrackingEnabled
+
+```dart
+Future<void> setImageTrackingEnabled(bool enabled)
+```
+
+Enables or disables image tracking.
+
+**Example:**
+
+```dart
+await _controller.setImageTrackingEnabled(true);
+```
+
+##### isImageTrackingEnabled
+
+```dart
+Future<bool> isImageTrackingEnabled()
+```
+
+Checks if image tracking is enabled.
+
+**Example:**
+
+```dart
+final isEnabled = await _controller.isImageTrackingEnabled();
+print('Image tracking enabled: $isEnabled');
+```
+
+##### addNodeToTrackedImage
+
+```dart
+Future<void> addNodeToTrackedImage({
+  required String nodeId,
+  required String trackedImageId,
+  required ARNode node,
+})
+```
+
+Adds a 3D node anchored to a tracked image.
+
+**Example:**
+
+```dart
+final node = ARNode.fromModel(
+  id: 'character1',
+  modelPath: 'assets/models/character.glb',
+  position: const Vector3(0, 0, 0.1), // 10cm above the image
+);
+
+await _controller.addNodeToTrackedImage(
+  nodeId: 'character1',
+  trackedImageId: 'tracked1',
+  node: node,
+);
+```
+
+##### removeNodeFromTrackedImage
+
+```dart
+Future<void> removeNodeFromTrackedImage(String nodeId)
+```
+
+Removes a node from a tracked image.
+
+**Example:**
+
+```dart
+await _controller.removeNodeFromTrackedImage('character1');
+```
+
 ## Configuration
 
 ### ARSessionConfig
@@ -915,6 +1078,79 @@ Result from a hit test operation.
 - `double distance`: Distance from camera to hit point
 - `String? planeId`: ID of the plane that was hit (if any)
 
+### ImageTargetSize
+
+Represents the physical size of an image target.
+
+```dart
+const ImageTargetSize(double width, double height)
+```
+
+**Properties:**
+- `double width`: Width in meters
+- `double height`: Height in meters
+
+**Example:**
+
+```dart
+const size = ImageTargetSize(0.3, 0.4); // 30cm x 40cm
+```
+
+### ARImageTarget
+
+Represents an image target for AR tracking.
+
+**Properties:**
+- `String id`: Unique identifier
+- `String name`: Human-readable name
+- `String imagePath`: Path to the image file
+- `ImageTargetSize physicalSize`: Physical dimensions in meters
+- `bool isActive`: Whether the target is active for tracking
+
+**Example:**
+
+```dart
+final target = ARImageTarget(
+  id: 'poster1',
+  name: 'Movie Poster',
+  imagePath: 'assets/images/poster.jpg',
+  physicalSize: const ImageTargetSize(0.3, 0.4),
+  isActive: true,
+);
+```
+
+### ARTrackedImage
+
+Represents a tracked image in the AR scene.
+
+**Properties:**
+- `String id`: Unique identifier for the tracked instance
+- `String targetId`: ID of the original image target
+- `Vector3 position`: 3D position in world space
+- `Quaternion rotation`: 3D rotation in world space
+- `ImageTargetSize estimatedSize`: Estimated size of the tracked image
+- `ImageTrackingState trackingState`: Current tracking state
+- `double confidence`: Tracking confidence (0.0 to 1.0)
+- `DateTime lastUpdated`: Last update timestamp
+
+**Computed Properties:**
+- `bool isTracked`: Whether the image is currently being tracked
+- `bool isReliable`: Whether tracking confidence is high (>0.7)
+
+**Example:**
+
+```dart
+_controller.trackedImagesStream.listen((trackedImages) {
+  for (final trackedImage in trackedImages) {
+    if (trackedImage.isTracked && trackedImage.isReliable) {
+      print('Reliably tracking: ${trackedImage.targetId}');
+      print('Position: ${trackedImage.position}');
+      print('Confidence: ${(trackedImage.confidence * 100).toStringAsFixed(1)}%');
+    }
+  }
+});
+```
+
 ## Enums
 
 ### NodeType
@@ -958,6 +1194,18 @@ enum BlendType { linear, slerp, cubic, step }
 ```dart
 enum TransitionCurve { linear, easeIn, easeOut, easeInOut, cubic, elastic, bounce }
 ```
+
+### ImageTrackingState
+
+```dart
+enum ImageTrackingState { tracked, notTracked, paused, failed }
+```
+
+**Values:**
+- `tracked`: Image is being tracked
+- `notTracked`: Image was tracked but is no longer visible
+- `paused`: Image tracking is paused
+- `failed`: Image tracking failed
 
 ## Error Handling
 
@@ -1126,7 +1374,296 @@ final largeScale = Vector3(5, 5, 5);
 
 ---
 
-# 4. Animations
+# 4. Image Tracking
+
+Image tracking allows you to detect and track specific images in the real world, then anchor 3D content to them. This is perfect for creating AR experiences that respond to posters, business cards, product packaging, or any printed material.
+
+## Overview
+
+Image tracking works by:
+
+1. **Registering Image Targets**: You provide reference images that the system should look for
+2. **Real-time Detection**: The camera continuously scans for these images
+3. **Tracking**: When found, the system tracks the image's position and orientation
+4. **Content Anchoring**: You can attach 3D models, animations, or other content to tracked images
+
+### Key Features
+
+- **Real-time tracking** of multiple images simultaneously
+- **High accuracy** position and orientation tracking
+- **Confidence scoring** to determine tracking reliability
+- **Automatic detection** when images appear or disappear
+- **Cross-platform support** on both Android and iOS
+
+## Setting Up Image Targets
+
+### 1. Prepare Your Images
+
+For best results, your reference images should:
+
+- **High contrast**: Clear distinction between light and dark areas
+- **Rich detail**: Avoid plain colors or simple patterns
+- **Good resolution**: At least 1000x1000 pixels recommended
+- **Unique features**: Distinctive elements that won't be confused with other images
+- **Stable content**: Avoid images with text that might change
+
+### 2. Add Images to Assets
+
+```yaml
+# pubspec.yaml
+flutter:
+  assets:
+    - assets/images/targets/
+```
+
+### 3. Create Image Targets
+
+```dart
+// Create an image target
+final posterTarget = ARImageTarget(
+  id: 'movie_poster',
+  name: 'Movie Poster',
+  imagePath: 'assets/images/targets/poster.jpg',
+  physicalSize: const ImageTargetSize(0.3, 0.4), // 30cm x 40cm
+  isActive: true,
+);
+
+// Register the target
+await _controller.addImageTarget(posterTarget);
+```
+
+### 4. Enable Image Tracking
+
+```dart
+// Enable image tracking
+await _controller.setImageTrackingEnabled(true);
+```
+
+## Tracking Images
+
+### Listening to Tracked Images
+
+```dart
+_controller.trackedImagesStream.listen((trackedImages) {
+  for (final trackedImage in trackedImages) {
+    if (trackedImage.isTracked && trackedImage.isReliable) {
+      print('Tracking: ${trackedImage.targetId}');
+      print('Position: ${trackedImage.position}');
+      print('Confidence: ${(trackedImage.confidence * 100).toStringAsFixed(1)}%');
+    }
+  }
+});
+```
+
+### Checking Tracking Status
+
+```dart
+// Get all currently tracked images
+final trackedImages = await _controller.getTrackedImages();
+
+for (final trackedImage in trackedImages) {
+  switch (trackedImage.trackingState) {
+    case ImageTrackingState.tracked:
+      print('${trackedImage.targetId} is being tracked');
+      break;
+    case ImageTrackingState.notTracked:
+      print('${trackedImage.targetId} is not visible');
+      break;
+    case ImageTrackingState.paused:
+      print('${trackedImage.targetId} tracking is paused');
+      break;
+    case ImageTrackingState.failed:
+      print('${trackedImage.targetId} tracking failed');
+      break;
+  }
+}
+```
+
+## Anchoring Content
+
+### Adding 3D Models to Tracked Images
+
+```dart
+// Wait for an image to be tracked
+_controller.trackedImagesStream.listen((trackedImages) async {
+  for (final trackedImage in trackedImages) {
+    if (trackedImage.isTracked && trackedImage.isReliable) {
+      // Create a 3D model
+      final character = ARNode.fromModel(
+        id: 'character_${trackedImage.targetId}',
+        modelPath: 'assets/models/character.glb',
+        position: const Vector3(0, 0, 0.1), // 10cm above the image
+        scale: const Vector3(0.5, 0.5, 0.5),
+      );
+
+      // Anchor to the tracked image
+      await _controller.addNodeToTrackedImage(
+        nodeId: 'character_${trackedImage.targetId}',
+        trackedImageId: trackedImage.id,
+        node: character,
+      );
+    }
+  }
+});
+```
+
+### Adding Multiple Objects
+
+```dart
+// Add different content based on the target
+_controller.trackedImagesStream.listen((trackedImages) async {
+  for (final trackedImage in trackedImages) {
+    if (trackedImage.isTracked && trackedImage.isReliable) {
+      switch (trackedImage.targetId) {
+        case 'movie_poster':
+          await _addMovieContent(trackedImage);
+          break;
+        case 'product_box':
+          await _addProductInfo(trackedImage);
+          break;
+        case 'business_card':
+          await _addContactInfo(trackedImage);
+          break;
+      }
+    }
+  }
+});
+
+Future<void> _addMovieContent(ARTrackedImage trackedImage) async {
+  final trailer = ARNode.fromModel(
+    id: 'trailer_${trackedImage.id}',
+    modelPath: 'assets/models/movie_screen.glb',
+    position: const Vector3(0, 0, 0.2),
+  );
+  
+  await _controller.addNodeToTrackedImage(
+    nodeId: 'trailer_${trackedImage.id}',
+    trackedImageId: trackedImage.id,
+    node: trailer,
+  );
+}
+```
+
+## Best Practices
+
+### Image Target Design
+
+1. **Use high-contrast images** with distinct features
+2. **Avoid reflective surfaces** that might cause tracking issues
+3. **Test in various lighting conditions** to ensure reliability
+4. **Keep physical size accurate** - this affects tracking precision
+
+### Performance Optimization
+
+1. **Limit the number of active targets** (recommended: 5-10 max)
+2. **Use appropriate image sizes** (1000x1000 to 2000x2000 pixels)
+3. **Monitor tracking confidence** and only show content when reliable
+4. **Remove unused targets** to free up resources
+
+### User Experience
+
+1. **Provide visual feedback** when images are detected
+2. **Handle tracking loss gracefully** by hiding content
+3. **Use appropriate content positioning** relative to the image
+4. **Test on various devices** to ensure compatibility
+
+### Example: Complete Image Tracking Setup
+
+```dart
+class ImageTrackingExample extends StatefulWidget {
+  @override
+  _ImageTrackingExampleState createState() => _ImageTrackingExampleState();
+}
+
+class _ImageTrackingExampleState extends State<ImageTrackingExample> {
+  AugenController? _controller;
+  final Set<String> _trackedImages = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _setupImageTracking();
+  }
+
+  Future<void> _setupImageTracking() async {
+    // Add image targets
+    final targets = [
+      ARImageTarget(
+        id: 'poster1',
+        name: 'Movie Poster',
+        imagePath: 'assets/images/poster.jpg',
+        physicalSize: const ImageTargetSize(0.3, 0.4),
+      ),
+      ARImageTarget(
+        id: 'product1',
+        name: 'Product Box',
+        imagePath: 'assets/images/product.jpg',
+        physicalSize: const ImageTargetSize(0.2, 0.15),
+      ),
+    ];
+
+    for (final target in targets) {
+      await _controller?.addImageTarget(target);
+    }
+
+    // Enable tracking
+    await _controller?.setImageTrackingEnabled(true);
+
+    // Listen for tracked images
+    _controller?.trackedImagesStream.listen(_onTrackedImagesUpdated);
+  }
+
+  void _onTrackedImagesUpdated(List<ARTrackedImage> trackedImages) {
+    for (final trackedImage in trackedImages) {
+      if (trackedImage.isTracked && trackedImage.isReliable) {
+        if (!_trackedImages.contains(trackedImage.id)) {
+          _trackedImages.add(trackedImage.id);
+          _addContentToImage(trackedImage);
+        }
+      } else {
+        _trackedImages.remove(trackedImage.id);
+        _removeContentFromImage(trackedImage.id);
+      }
+    }
+  }
+
+  Future<void> _addContentToImage(ARTrackedImage trackedImage) async {
+    final node = ARNode.fromModel(
+      id: 'content_${trackedImage.id}',
+      modelPath: 'assets/models/ar_content.glb',
+      position: const Vector3(0, 0, 0.1),
+    );
+
+    await _controller?.addNodeToTrackedImage(
+      nodeId: 'content_${trackedImage.id}',
+      trackedImageId: trackedImage.id,
+      node: node,
+    );
+  }
+
+  Future<void> _removeContentFromImage(String trackedImageId) async {
+    await _controller?.removeNodeFromTrackedImage('content_$trackedImageId');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: AugenView(
+        onViewCreated: (controller) {
+          _controller = controller;
+        },
+        config: const ARSessionConfig(
+          planeDetection: false, // Disable plane detection for image tracking
+        ),
+      ),
+    );
+  }
+}
+```
+
+---
+
+# 5. Animations
 
 Complete guide for model animations and skeletal animations in Augen AR.
 
@@ -3535,7 +4072,7 @@ The example app demonstrates:
 
 **Made with ❤️ for the Flutter community**
 
-**Version**: 0.4.0  
+**Version**: 0.5.0  
 **Platforms**: Android 7.0+ | iOS 13.0+  
 **License**: MIT
 

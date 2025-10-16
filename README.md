@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-177%20passing-brightgreen.svg)](test/)
+[![Tests](https://img.shields.io/badge/tests-208%20passing-brightgreen.svg)](test/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](Documentation.md#6-testing)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
@@ -13,6 +13,7 @@
 🎯 **Pure Dart**: No need to write native code  
 📦 **Easy to Use**: Simple, intuitive API  
 🔍 **Plane Detection**: Automatically detect horizontal and vertical surfaces  
+🖼️ **Image Tracking**: Track specific images and anchor content to them  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
@@ -27,6 +28,7 @@
 - Getting Started
 - API Reference
 - Custom 3D Models
+- Image Tracking
 - Animations & Advanced Blending
 - Testing
 - Examples & Best Practices
@@ -46,7 +48,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.4.0
+  augen: ^0.5.0
 ```
 
 Run:
@@ -207,6 +209,44 @@ final customModel = ARNode.fromModel(
   scale: Vector3(0.2, 0.2, 0.2),
 );
 await _controller!.addNode(customModel);
+```
+
+### Image Tracking
+
+```dart
+// Set up image tracking
+Future<void> _setupImageTracking() async {
+  // Add an image target
+  final target = ARImageTarget(
+    id: 'poster1',
+    name: 'Movie Poster',
+    imagePath: 'assets/images/poster.jpg',
+    physicalSize: const ImageTargetSize(0.3, 0.4), // 30cm x 40cm
+  );
+  
+  await _controller!.addImageTarget(target);
+  await _controller!.setImageTrackingEnabled(true);
+  
+  // Listen for tracked images
+  _controller!.trackedImagesStream.listen((trackedImages) {
+    for (final trackedImage in trackedImages) {
+      if (trackedImage.isTracked && trackedImage.isReliable) {
+        // Add 3D content to the tracked image
+        final character = ARNode.fromModel(
+          id: 'character_${trackedImage.id}',
+          modelPath: 'assets/models/character.glb',
+          position: const Vector3(0, 0, 0.1), // 10cm above the image
+        );
+        
+        _controller!.addNodeToTrackedImage(
+          nodeId: 'character_${trackedImage.id}',
+          trackedImageId: trackedImage.id,
+          node: character,
+        );
+      }
+    }
+  });
+}
 ```
 
 **Supported Model Formats:**
@@ -541,7 +581,7 @@ Have an idea for improvement? Let us know!
 - [x] Custom 3D model loading (GLTF, GLB, OBJ, USDZ) ✅ **v0.2.0**
 - [x] Model animations and skeletal animation support ✅ **v0.3.0**
 - [x] Advanced animation blending and transitions ✅ **v0.4.0**
-- [ ] Image tracking and recognition
+- [x] Image tracking and recognition ✅ **v0.5.0**
 - [ ] Face tracking capabilities
 - [ ] Cloud anchors for persistent AR
 - [ ] Occlusion for realistic rendering

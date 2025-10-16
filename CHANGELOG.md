@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2025-01-14
+
+### Added
+- 🖼️ **Image Tracking and Recognition** - Complete image tracking system
+  - Real-time detection and tracking of specific images
+  - Multiple simultaneous image target support
+  - High accuracy position and orientation tracking
+  - Confidence scoring for tracking reliability
+  - Automatic content anchoring to tracked images
+  - Cross-platform support (ARCore/ARKit)
+
+#### New Image Tracking Models
+- `ARImageTarget` - Represents image targets for tracking
+- `ARTrackedImage` - Represents currently tracked images
+- `ImageTargetSize` - Physical dimensions of image targets
+- `ImageTrackingState` - Tracking state enumeration
+
+#### New Controller Methods
+- `addImageTarget()` - Register image targets for tracking
+- `removeImageTarget()` - Remove image targets
+- `getImageTargets()` - Get all registered targets
+- `getTrackedImages()` - Get currently tracked images
+- `setImageTrackingEnabled()` - Enable/disable image tracking
+- `isImageTrackingEnabled()` - Check tracking status
+- `addNodeToTrackedImage()` - Anchor content to tracked images
+- `removeNodeFromTrackedImage()` - Remove anchored content
+
+#### New Streams
+- `imageTargetsStream` - Real-time image target updates
+- `trackedImagesStream` - Real-time tracked image updates
+
+#### Testing
+- 21 new image tracking model tests
+- 10 new controller method tests
+- 2 new stream tests
+- Total test count: 208 tests (all passing)
+
+#### Documentation
+- Complete Image Tracking section in Documentation.md
+- API reference for all new methods and models
+- Best practices and performance optimization guide
+- Real-world examples and usage patterns
+- Updated README with image tracking features
+
+### Changed
+- Updated test count from 177 to 208 tests
+- Enhanced documentation with comprehensive image tracking guide
+
 ## [0.4.0] - 2025-10-14
 
 ### Added

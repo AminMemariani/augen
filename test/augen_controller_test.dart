@@ -1048,5 +1048,267 @@ void main() {
         },
       );
     });
+
+    group('Image Tracking Methods', () {
+      test('addImageTarget sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'addImageTarget') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        final target = ARImageTarget(
+          id: 'target1',
+          name: 'Test Target',
+          imagePath: 'assets/images/test.jpg',
+          physicalSize: const ImageTargetSize(10.0, 20.0),
+        );
+
+        await controller.addImageTarget(target);
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['id'], 'target1');
+        expect(capturedArgs!['name'], 'Test Target');
+        expect(capturedArgs!['imagePath'], 'assets/images/test.jpg');
+        expect(capturedArgs!['physicalSize']['width'], 10.0);
+        expect(capturedArgs!['physicalSize']['height'], 20.0);
+      });
+
+      test('removeImageTarget sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'removeImageTarget') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.removeImageTarget('target1');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['targetId'], 'target1');
+      });
+
+      test('getImageTargets returns parsed targets', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getImageTargets') {
+                return [
+                  {
+                    'id': 'target1',
+                    'name': 'Test Target 1',
+                    'imagePath': 'assets/images/test1.jpg',
+                    'physicalSize': {'width': 10.0, 'height': 20.0},
+                    'isActive': true,
+                  },
+                  {
+                    'id': 'target2',
+                    'name': 'Test Target 2',
+                    'imagePath': 'assets/images/test2.jpg',
+                    'physicalSize': {'width': 15.0, 'height': 25.0},
+                    'isActive': false,
+                  },
+                ];
+              }
+              return null;
+            });
+
+        final targets = await controller.getImageTargets();
+
+        expect(targets.length, 2);
+        expect(targets[0].id, 'target1');
+        expect(targets[0].name, 'Test Target 1');
+        expect(targets[0].physicalSize.width, 10.0);
+        expect(targets[0].isActive, true);
+        expect(targets[1].id, 'target2');
+        expect(targets[1].isActive, false);
+      });
+
+      test('getTrackedImages returns parsed tracked images', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getTrackedImages') {
+                return [
+                  {
+                    'id': 'tracked1',
+                    'targetId': 'target1',
+                    'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
+                    'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                    'estimatedSize': {'width': 10.0, 'height': 20.0},
+                    'trackingState': 'tracked',
+                    'confidence': 0.85,
+                    'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                  },
+                ];
+              }
+              return null;
+            });
+
+        final trackedImages = await controller.getTrackedImages();
+
+        expect(trackedImages.length, 1);
+        expect(trackedImages[0].id, 'tracked1');
+        expect(trackedImages[0].targetId, 'target1');
+        expect(trackedImages[0].position, const Vector3(1.0, 2.0, 3.0));
+        expect(trackedImages[0].trackingState, ImageTrackingState.tracked);
+        expect(trackedImages[0].confidence, 0.85);
+      });
+
+      test('setImageTrackingEnabled sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'setImageTrackingEnabled') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.setImageTrackingEnabled(true);
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['enabled'], true);
+      });
+
+      test('isImageTrackingEnabled returns correct value', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'isImageTrackingEnabled') {
+                return true;
+              }
+              return null;
+            });
+
+        final enabled = await controller.isImageTrackingEnabled();
+
+        expect(enabled, true);
+      });
+
+      test('addNodeToTrackedImage sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'addNodeToTrackedImage') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        final node = ARNode.fromModel(
+          id: 'node1',
+          modelPath: 'https://example.com/models/test.glb',
+          position: const Vector3(0, 0, 0),
+        );
+
+        await controller.addNodeToTrackedImage(
+          nodeId: 'node1',
+          trackedImageId: 'tracked1',
+          node: node,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'node1');
+        expect(capturedArgs!['nodeData']['id'], 'node1');
+        expect(capturedArgs!['nodeData']['trackedImageId'], 'tracked1');
+      });
+
+      test('removeNodeFromTrackedImage sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'removeNodeFromTrackedImage') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.removeNodeFromTrackedImage('node1');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'node1');
+      });
+    });
+
+    group('Image Tracking Streams', () {
+      test('imageTargetsStream emits image targets from platform', () async {
+        final completer = Completer<List<ARImageTarget>>();
+
+        controller.imageTargetsStream.listen((targets) {
+          if (!completer.isCompleted) {
+            completer.complete(targets);
+          }
+        });
+
+        // Simulate platform callback
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        await messenger.handlePlatformMessage(
+          'augen_$viewId',
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('onImageTargetsUpdated', [
+              {
+                'id': 'target1',
+                'name': 'Test Target',
+                'imagePath': 'assets/images/test.jpg',
+                'physicalSize': {'width': 10.0, 'height': 20.0},
+                'isActive': true,
+              },
+            ]),
+          ),
+          (data) {},
+        );
+
+        final targets = await completer.future.timeout(Duration(seconds: 2));
+        expect(targets.length, 1);
+        expect(targets[0].id, 'target1');
+        expect(targets[0].name, 'Test Target');
+        expect(targets[0].physicalSize.width, 10.0);
+      });
+
+      test('trackedImagesStream emits tracked images from platform', () async {
+        final completer = Completer<List<ARTrackedImage>>();
+
+        controller.trackedImagesStream.listen((trackedImages) {
+          if (!completer.isCompleted) {
+            completer.complete(trackedImages);
+          }
+        });
+
+        // Simulate platform callback
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        await messenger.handlePlatformMessage(
+          'augen_$viewId',
+          const StandardMethodCodec().encodeMethodCall(
+            const MethodCall('onTrackedImagesUpdated', [
+              {
+                'id': 'tracked1',
+                'targetId': 'target1',
+                'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
+                'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                'estimatedSize': {'width': 10.0, 'height': 20.0},
+                'trackingState': 'tracked',
+                'confidence': 0.85,
+                'lastUpdated': 1672531200000, // Fixed timestamp
+              },
+            ]),
+          ),
+          (data) {},
+        );
+
+        final trackedImages = await completer.future.timeout(
+          Duration(seconds: 2),
+        );
+        expect(trackedImages.length, 1);
+        expect(trackedImages[0].id, 'tracked1');
+        expect(trackedImages[0].targetId, 'target1');
+        expect(trackedImages[0].trackingState, ImageTrackingState.tracked);
+        expect(trackedImages[0].confidence, 0.85);
+      });
+    });
   });
 }
