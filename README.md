@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-208%20passing-brightgreen.svg)](test/)
+[![Tests](https://img.shields.io/badge/tests-230%20passing-brightgreen.svg)](test/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](Documentation.md#6-testing)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
@@ -14,6 +14,7 @@
 📦 **Easy to Use**: Simple, intuitive API  
 🔍 **Plane Detection**: Automatically detect horizontal and vertical surfaces  
 🖼️ **Image Tracking**: Track specific images and anchor content to them  
+👤 **Face Tracking**: Detect and track human faces with facial landmarks  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
@@ -29,6 +30,7 @@
 - API Reference
 - Custom 3D Models
 - Image Tracking
+- Face Tracking
 - Animations & Advanced Blending
 - Testing
 - Examples & Best Practices
@@ -48,7 +50,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.5.0
+  augen: ^0.6.0
 ```
 
 Run:
@@ -249,6 +251,51 @@ Future<void> _setupImageTracking() async {
 }
 ```
 
+### Face Tracking
+
+```dart
+// Set up face tracking
+Future<void> _setupFaceTracking() async {
+  // Enable face tracking
+  await _controller!.setFaceTrackingEnabled(true);
+  
+  // Configure face tracking
+  await _controller!.setFaceTrackingConfig(
+    detectLandmarks: true,
+    detectExpressions: true,
+    minFaceSize: 0.1,
+    maxFaceSize: 1.0,
+  );
+  
+  // Listen for tracked faces
+  _controller!.facesStream.listen((faces) {
+    for (final face in faces) {
+      if (face.isTracked && face.isReliable) {
+        // Add 3D content to the tracked face
+        final glasses = ARNode.fromModel(
+          id: 'glasses_${face.id}',
+          modelPath: 'assets/models/glasses.glb',
+          position: const Vector3(0, 0, 0.1), // 10cm in front of face
+          scale: const Vector3(0.1, 0.1, 0.1),
+        );
+        
+        _controller!.addNodeToTrackedFace(
+          nodeId: 'glasses_${face.id}',
+          faceId: face.id,
+          node: glasses,
+        );
+        
+        // Get face landmarks
+        final landmarks = await _controller!.getFaceLandmarks(face.id);
+        for (final landmark in landmarks) {
+          print('Landmark ${landmark.name}: ${landmark.position}');
+        }
+      }
+    }
+  });
+}
+```
+
 **Supported Model Formats:**
 - GLB (recommended for Android)
 - GLTF
@@ -352,6 +399,9 @@ Controller for managing the AR session.
 
 - `Stream<List<ARPlane>> planesStream` - Stream of detected planes
 - `Stream<List<ARAnchor>> anchorsStream` - Stream of AR anchors
+- `Stream<List<ARImageTarget>> imageTargetsStream` - Stream of image targets
+- `Stream<List<ARTrackedImage>> trackedImagesStream` - Stream of tracked images
+- `Stream<List<ARFace>> facesStream` - Stream of tracked faces
 - `Stream<String> errorStream` - Stream of errors
 
 ### ARSessionConfig
@@ -490,10 +540,11 @@ flutter test integration_test/plugin_integration_test.dart
 The project maintains 100% coverage of the public API:
 - ✅ 40 model tests (Vector3, Quaternion, ARNode, ARPlane, ARAnchor, ARHitResult, ARSessionConfig, ModelFormat)
 - ✅ 16 animation tests (ARAnimation, AnimationStatus, AnimationState, AnimationLoopMode)
+- ✅ 14 face tracking tests (ARFace, FaceLandmark, FaceTrackingState)
 - ✅ 30 controller tests (all AugenController methods, streams, and animation controls)
 - ✅ 11 integration tests (full AR workflows)
 
-**Total: 177 passing tests** with full coverage of all features including advanced animation blending!
+**Total: 230 passing tests** with full coverage of all features including advanced animation blending and face tracking!
 
 See [Documentation.md - Testing](Documentation.md#6-testing) for detailed coverage information.
 
@@ -582,7 +633,7 @@ Have an idea for improvement? Let us know!
 - [x] Model animations and skeletal animation support ✅ **v0.3.0**
 - [x] Advanced animation blending and transitions ✅ **v0.4.0**
 - [x] Image tracking and recognition ✅ **v0.5.0**
-- [ ] Face tracking capabilities
+- [x] Face tracking capabilities ✅ **v0.6.0**
 - [ ] Cloud anchors for persistent AR
 - [ ] Occlusion for realistic rendering
 - [ ] Physics simulation for AR objects

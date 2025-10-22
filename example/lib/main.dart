@@ -37,9 +37,11 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   List<ARPlane> _detectedPlanes = [];
   List<ARImageTarget> _imageTargets = [];
   List<ARTrackedImage> _trackedImages = [];
+  List<ARFace> _trackedFaces = [];
   int _nodeCounter = 0;
   String _statusMessage = 'Initializing...';
   bool _imageTrackingEnabled = false;
+  bool _faceTrackingEnabled = false;
   int _currentTabIndex = 0;
   late TabController _tabController;
 
@@ -53,6 +55,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   StreamSubscription<List<ARPlane>>? _planesSubscription;
   StreamSubscription<List<ARImageTarget>>? _imageTargetsSubscription;
   StreamSubscription<List<ARTrackedImage>>? _trackedImagesSubscription;
+  StreamSubscription<List<ARFace>>? _facesSubscription;
   StreamSubscription<String>? _errorSubscription;
   StreamSubscription<augen.AnimationStatus>? _animationStatusSubscription;
   StreamSubscription<TransitionStatus>? _transitionStatusSubscription;
@@ -81,6 +84,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     _planesSubscription?.cancel();
     _imageTargetsSubscription?.cancel();
     _trackedImagesSubscription?.cancel();
+    _facesSubscription?.cancel();
     _errorSubscription?.cancel();
     _animationStatusSubscription?.cancel();
     _transitionStatusSubscription?.cancel();
@@ -172,6 +176,19 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       for (final trackedImage in tracked) {
         if (trackedImage.isTracked && trackedImage.isReliable) {
           _addContentToTrackedImage(trackedImage);
+        }
+      }
+    });
+
+    // Tracked faces
+    _facesSubscription = _controller!.facesStream.listen((faces) {
+      if (!mounted) return;
+      setState(() {
+        _trackedFaces = faces;
+      });
+      for (final face in faces) {
+        if (face.isTracked && face.isReliable) {
+          _addContentToTrackedFace(face);
         }
       }
     });
@@ -280,6 +297,39 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _addContentToTrackedFace(ARFace face) async {
+    if (_controller == null) return;
+
+    try {
+      final nodeId = 'face_content_${face.id}';
+
+      // Create a 3D model node for the face
+      final contentNode = ARNode.fromModel(
+        id: nodeId,
+        modelPath: 'https://example.com/models/face_model.glb',
+        position: const Vector3(0, 0, 0.1), // 10cm in front of the face
+        rotation: const Quaternion(0, 0, 0, 1),
+        scale: const Vector3(0.1, 0.1, 0.1),
+      );
+
+      await _controller!.addNodeToTrackedFace(
+        nodeId: nodeId,
+        faceId: face.id,
+        node: contentNode,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Content added to face ${face.id}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add content to face: $e')),
+      );
+    }
+  }
+
   // Image Tracking Methods
   Future<void> _toggleImageTracking() async {
     if (_controller == null) return;
@@ -304,6 +354,33 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to toggle image tracking: $e')),
+      );
+    }
+  }
+
+  Future<void> _toggleFaceTracking() async {
+    if (_controller == null) return;
+
+    try {
+      _faceTrackingEnabled = !_faceTrackingEnabled;
+      await _controller!.setFaceTrackingEnabled(_faceTrackingEnabled);
+
+      if (!mounted) return;
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _faceTrackingEnabled
+                ? 'Face tracking enabled'
+                : 'Face tracking disabled',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to toggle face tracking: $e')),
       );
     }
   }
@@ -512,7 +589,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           tabs: const [
             Tab(icon: Icon(Icons.view_in_ar), text: 'AR View'),
             Tab(icon: Icon(Icons.image_search), text: 'Image Tracking'),
+            Tab(icon: Icon(Icons.face), text: 'Face Tracking'),
             Tab(icon: Icon(Icons.animation), text: 'Animations'),
+            Tab(icon: Icon(Icons.dashboard), text: 'Demo'),
             Tab(icon: Icon(Icons.info), text: 'Status'),
           ],
         ),
@@ -521,7 +600,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         children: [
           _buildARView(),
           _buildImageTrackingView(),
+          _buildFaceTrackingView(),
           _buildAnimationView(),
+          _buildDemoView(),
           _buildStatusView(),
         ],
       ),
@@ -577,6 +658,26 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     'Objects placed: $_nodeCounter',
                     style: const TextStyle(
                       color: Colors.blueAccent,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+                if (_imageTrackingEnabled) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Image Tracking: ON',
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+                if (_faceTrackingEnabled) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Face Tracking: ON',
+                    style: const TextStyle(
+                      color: Colors.pinkAccent,
                       fontSize: 12,
                     ),
                   ),
@@ -711,6 +812,75 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildFaceTrackingView() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Face Tracking',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+
+          // Face tracking toggle
+          Card(
+            child: ListTile(
+              leading: Icon(
+                _faceTrackingEnabled ? Icons.face : Icons.face_retouching_off,
+              ),
+              title: const Text('Face Tracking'),
+              subtitle: Text(_faceTrackingEnabled ? 'Enabled' : 'Disabled'),
+              trailing: Switch(
+                value: _faceTrackingEnabled,
+                onChanged: (_) => _toggleFaceTracking(),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Tracked faces section
+          Text(
+            'Tracked Faces (${_trackedFaces.length})',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+
+          Expanded(
+            child: ListView.builder(
+              itemCount: _trackedFaces.length,
+              itemBuilder: (context, index) {
+                final face = _trackedFaces[index];
+                return Card(
+                  child: ListTile(
+                    leading: Icon(
+                      face.isTracked
+                          ? Icons.tag_faces
+                          : Icons.face_retouching_off,
+                      color: face.isTracked ? Colors.green : Colors.orange,
+                    ),
+                    title: Text('Face ID: ${face.id}'),
+                    subtitle: Text(
+                      'State: ${face.trackingState.name}\n'
+                      'Confidence: ${(face.confidence * 100).toStringAsFixed(1)}%\n'
+                      'Landmarks: ${face.landmarks.length}',
+                    ),
+                    trailing: Icon(
+                      face.isReliable ? Icons.verified : Icons.warning,
+                      color: face.isReliable ? Colors.green : Colors.orange,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnimationView() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -818,6 +988,170 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildDemoView() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Feature Demonstrations',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+
+          // Quick setup section
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Quick Setup',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _addSampleImageTargets,
+                          icon: const Icon(Icons.image_search),
+                          label: const Text('Add Image Targets'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _toggleImageTracking,
+                          icon: Icon(
+                            _imageTrackingEnabled
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          label: Text(
+                            _imageTrackingEnabled
+                                ? 'Disable Image Tracking'
+                                : 'Enable Image Tracking',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _toggleFaceTracking,
+                          icon: Icon(
+                            _faceTrackingEnabled
+                                ? Icons.face
+                                : Icons.face_retouching_off,
+                          ),
+                          label: Text(
+                            _faceTrackingEnabled
+                                ? 'Disable Face Tracking'
+                                : 'Enable Face Tracking',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _resetSession,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Reset Session'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Feature demonstrations
+          Text(
+            'Feature Demonstrations',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+
+          Expanded(
+            child: ListView(
+              children: [
+                _buildDemoCard(
+                  'Basic AR Objects',
+                  'Place spheres, cubes, and cylinders in the AR scene',
+                  Icons.crop_square,
+                  () => _addObjectAtScreenCenter(),
+                ),
+                _buildDemoCard(
+                  '3D Models',
+                  'Load and display custom 3D models from URLs',
+                  Icons.model_training,
+                  () => _addModelFromUrl(),
+                ),
+                _buildDemoCard(
+                  'Image Tracking',
+                  'Track specific images and anchor content to them',
+                  Icons.image_search,
+                  () => _toggleImageTracking(),
+                ),
+                _buildDemoCard(
+                  'Face Tracking',
+                  'Detect and track human faces with landmarks',
+                  Icons.face,
+                  () => _toggleFaceTracking(),
+                ),
+                _buildDemoCard(
+                  'Animations',
+                  'Play, blend, and transition between animations',
+                  Icons.animation,
+                  () => _playSampleAnimation(),
+                ),
+                _buildDemoCard(
+                  'Hit Testing',
+                  'Detect surfaces and place objects precisely',
+                  Icons.touch_app,
+                  () => _performHitTest(),
+                ),
+                _buildDemoCard(
+                  'Anchors',
+                  'Create persistent AR anchors in the scene',
+                  Icons.anchor,
+                  () => _addAnchor(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDemoCard(
+    String title,
+    String description,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(description),
+        trailing: const Icon(Icons.arrow_forward),
+        onTap: onTap,
+      ),
+    );
+  }
+
   Widget _buildStatusView() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -862,10 +1196,18 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     'Tracked Images',
                     _trackedImages.length.toString(),
                   ),
+                  _buildStatRow(
+                    'Tracked Faces',
+                    _trackedFaces.length.toString(),
+                  ),
                   _buildStatRow('Objects Placed', _nodeCounter.toString()),
                   _buildStatRow(
                     'Image Tracking',
                     _imageTrackingEnabled ? 'Enabled' : 'Disabled',
+                  ),
+                  _buildStatRow(
+                    'Face Tracking',
+                    _faceTrackingEnabled ? 'Enabled' : 'Disabled',
                   ),
                 ],
               ),
@@ -927,5 +1269,82 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         ],
       ),
     );
+  }
+
+  Future<void> _addModelFromUrl() async {
+    if (_controller == null) return;
+
+    try {
+      final nodeId = 'model_${DateTime.now().millisecondsSinceEpoch}';
+      final modelNode = ARNode.fromModel(
+        id: nodeId,
+        modelPath: 'https://example.com/models/character.glb',
+        position: const Vector3(0, 0, -1),
+        rotation: const Quaternion(0, 0, 0, 1),
+        scale: const Vector3(0.1, 0.1, 0.1),
+      );
+
+      await _controller!.addNode(modelNode);
+
+      if (!mounted) return;
+      setState(() {
+        _nodeCounter++;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('3D model added to scene')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add model: $e')));
+    }
+  }
+
+  Future<void> _playSampleAnimation() async {
+    if (_controller == null) return;
+
+    try {
+      // Try to play animation on the most recent model
+      if (_nodeCounter > 0) {
+        await _controller!.playAnimation(
+          nodeId: 'model_${DateTime.now().millisecondsSinceEpoch}',
+          animationId: 'idle',
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Animation started')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Add a model first to play animations')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to play animation: $e')));
+    }
+  }
+
+  Future<void> _performHitTest() async {
+    if (_controller == null) return;
+
+    try {
+      final results = await _controller!.hitTest(0.5, 0.5);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Hit test found ${results.length} surfaces')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Hit test failed: $e')));
+    }
   }
 }

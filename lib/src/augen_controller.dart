@@ -14,6 +14,7 @@ import 'models/animation_state_machine.dart';
 import 'models/animation_blend_tree.dart';
 import 'models/ar_image_target.dart';
 import 'models/ar_tracked_image.dart';
+import 'models/ar_face.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -36,6 +37,8 @@ class AugenController {
       StreamController<List<ARImageTarget>>.broadcast();
   final StreamController<List<ARTrackedImage>> _trackedImagesController =
       StreamController<List<ARTrackedImage>>.broadcast();
+  final StreamController<List<ARFace>> _facesController =
+      StreamController<List<ARFace>>.broadcast();
 
   bool _isDisposed = false;
 
@@ -71,6 +74,9 @@ class AugenController {
   /// Stream of tracked images
   Stream<List<ARTrackedImage>> get trackedImagesStream =>
       _trackedImagesController.stream;
+
+  /// Stream of tracked faces
+  Stream<List<ARFace>> get facesStream => _facesController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -312,6 +318,11 @@ class AugenController {
             .map((e) => ARTrackedImage.fromMap(e as Map))
             .toList();
         _trackedImagesController.add(trackedImages);
+        break;
+      case 'onFacesUpdated':
+        final facesData = call.arguments as List;
+        final faces = facesData.map((e) => ARFace.fromMap(e as Map)).toList();
+        _facesController.add(faces);
         break;
     }
   }
@@ -926,6 +937,120 @@ class AugenController {
     }
   }
 
+  // Face Tracking Methods
+
+  /// Enable or disable face tracking
+  Future<void> setFaceTrackingEnabled(bool enabled) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setFaceTrackingEnabled', {
+        'enabled': enabled,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set face tracking: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Check if face tracking is enabled
+  Future<bool> isFaceTrackingEnabled() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<bool>('isFaceTrackingEnabled');
+      return result ?? false;
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to check face tracking status: ${e.message}',
+      );
+      return false;
+    }
+  }
+
+  /// Get currently tracked faces
+  Future<List<ARFace>> getTrackedFaces() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<List>('getTrackedFaces');
+      return result?.map((e) => ARFace.fromMap(e as Map)).toList() ?? [];
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get tracked faces: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Add a node anchored to a tracked face
+  Future<void> addNodeToTrackedFace({
+    required String nodeId,
+    required String faceId,
+    required ARNode node,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('addNodeToTrackedFace', {
+        'nodeId': nodeId,
+        'faceId': faceId,
+        'node': node.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to add node to tracked face: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove a node from a tracked face
+  Future<void> removeNodeFromTrackedFace({
+    required String nodeId,
+    required String faceId,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('removeNodeFromTrackedFace', {
+        'nodeId': nodeId,
+        'faceId': faceId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to remove node from tracked face: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Get face landmarks for a specific face
+  Future<List<FaceLandmark>> getFaceLandmarks(String faceId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod<List>('getFaceLandmarks', {
+        'faceId': faceId,
+      });
+      return result?.map((e) => FaceLandmark.fromMap(e as Map)).toList() ?? [];
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get face landmarks: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Set face tracking configuration
+  Future<void> setFaceTrackingConfig({
+    bool detectLandmarks = true,
+    bool detectExpressions = true,
+    double minFaceSize = 0.1,
+    double maxFaceSize = 1.0,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setFaceTrackingConfig', {
+        'detectLandmarks': detectLandmarks,
+        'detectExpressions': detectExpressions,
+        'minFaceSize': minFaceSize,
+        'maxFaceSize': maxFaceSize,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set face tracking config: ${e.message}');
+      rethrow;
+    }
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -938,6 +1063,7 @@ class AugenController {
     _stateMachineStatusController.close();
     _imageTargetsController.close();
     _trackedImagesController.close();
+    _facesController.close();
     _channel.setMethodCallHandler(null);
   }
 }

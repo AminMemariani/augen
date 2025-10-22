@@ -1310,5 +1310,185 @@ void main() {
         expect(trackedImages[0].confidence, 0.85);
       });
     });
+
+    group('Face Tracking Methods', () {
+      test('setFaceTrackingEnabled sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'setFaceTrackingEnabled') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.setFaceTrackingEnabled(true);
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['enabled'], true);
+      });
+
+      test('isFaceTrackingEnabled returns correct value', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'isFaceTrackingEnabled') {
+                return true;
+              }
+              return null;
+            });
+
+        final isEnabled = await controller.isFaceTrackingEnabled();
+        expect(isEnabled, true);
+      });
+
+      test('getTrackedFaces returns parsed faces', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getTrackedFaces') {
+                return [
+                  {
+                    'id': 'face1',
+                    'position': {'x': 0.0, 'y': 0.0, 'z': -0.5},
+                    'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                    'scale': {'x': 0.2, 'y': 0.3, 'z': 0.1},
+                    'trackingState': 'tracked',
+                    'confidence': 0.85,
+                    'landmarks': [
+                      {
+                        'name': 'left_eye',
+                        'position': {'x': -0.05, 'y': 0.1, 'z': 0.0},
+                        'confidence': 0.9,
+                      },
+                    ],
+                    'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                  },
+                ];
+              }
+              return null;
+            });
+
+        final faces = await controller.getTrackedFaces();
+        expect(faces.length, 1);
+        expect(faces[0].id, 'face1');
+        expect(faces[0].trackingState, FaceTrackingState.tracked);
+        expect(faces[0].confidence, 0.85);
+        expect(faces[0].landmarks.length, 1);
+        expect(faces[0].landmarks[0].name, 'left_eye');
+      });
+
+      test('addNodeToTrackedFace sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'addNodeToTrackedFace') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        final node = ARNode(
+          id: 'test_node',
+          type: NodeType.sphere,
+          position: const Vector3(0, 0, 0),
+          rotation: const Quaternion(0, 0, 0, 1),
+          scale: const Vector3(0.1, 0.1, 0.1),
+        );
+
+        await controller.addNodeToTrackedFace(
+          nodeId: 'test_node',
+          faceId: 'face1',
+          node: node,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'test_node');
+        expect(capturedArgs!['faceId'], 'face1');
+        expect(capturedArgs!['node'], isA<Map>());
+      });
+
+      test('removeNodeFromTrackedFace sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'removeNodeFromTrackedFace') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.removeNodeFromTrackedFace(
+          nodeId: 'test_node',
+          faceId: 'face1',
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'test_node');
+        expect(capturedArgs!['faceId'], 'face1');
+      });
+
+      test('getFaceLandmarks returns parsed landmarks', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getFaceLandmarks') {
+                return [
+                  {
+                    'name': 'nose_tip',
+                    'position': {'x': 0.0, 'y': 0.0, 'z': 0.1},
+                    'confidence': 0.92,
+                  },
+                  {
+                    'name': 'chin',
+                    'position': {'x': 0.0, 'y': -0.1, 'z': 0.0},
+                    'confidence': 0.88,
+                  },
+                ];
+              }
+              return null;
+            });
+
+        final landmarks = await controller.getFaceLandmarks('face1');
+        expect(landmarks.length, 2);
+        expect(landmarks[0].name, 'nose_tip');
+        expect(landmarks[0].confidence, 0.92);
+        expect(landmarks[1].name, 'chin');
+        expect(landmarks[1].confidence, 0.88);
+      });
+
+      test('setFaceTrackingConfig sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'setFaceTrackingConfig') {
+                capturedArgs = methodCall.arguments as Map?;
+              }
+              return null;
+            });
+
+        await controller.setFaceTrackingConfig(
+          detectLandmarks: true,
+          detectExpressions: false,
+          minFaceSize: 0.15,
+          maxFaceSize: 0.8,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['detectLandmarks'], true);
+        expect(capturedArgs!['detectExpressions'], false);
+        expect(capturedArgs!['minFaceSize'], 0.15);
+        expect(capturedArgs!['maxFaceSize'], 0.8);
+      });
+    });
+
+    group('Face Tracking Streams', () {
+      test('facesStream can be listened to', () {
+        // Test that the stream can be created and listened to
+        final subscription = controller.facesStream.listen((faces) {
+          // Stream is working
+        });
+
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+    });
   });
 }

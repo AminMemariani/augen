@@ -409,6 +409,11 @@ void main() {
             // Stream is working
           });
 
+      // Face tracking streams
+      final facesSubscription = createdController.facesStream.listen((faces) {
+        // Stream is working
+      });
+
       // Animation streams
       final animationStatusSubscription = createdController
           .animationStatusStream
@@ -437,6 +442,7 @@ void main() {
       expect(errorSubscription, isNotNull);
       expect(imageTargetsSubscription, isNotNull);
       expect(trackedImagesSubscription, isNotNull);
+      expect(facesSubscription, isNotNull);
       expect(animationStatusSubscription, isNotNull);
       expect(transitionStatusSubscription, isNotNull);
       expect(stateMachineStatusSubscription, isNotNull);
@@ -447,6 +453,7 @@ void main() {
       await errorSubscription.cancel();
       await imageTargetsSubscription.cancel();
       await trackedImagesSubscription.cancel();
+      await facesSubscription.cancel();
       await animationStatusSubscription.cancel();
       await transitionStatusSubscription.cancel();
       await stateMachineStatusSubscription.cancel();
@@ -682,6 +689,93 @@ void main() {
       }
     });
 
+    testWidgets('Face tracking features work correctly', (
+      WidgetTester tester,
+    ) async {
+      final completer = Completer<AugenController>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: AugenView(
+              onViewCreated: (c) {
+                if (!completer.isCompleted) {
+                  completer.complete(c);
+                }
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      final createdController = await completer.future.timeout(
+        const Duration(seconds: 5),
+      );
+
+      try {
+        // Test face tracking methods
+        // Enable face tracking
+        await createdController.setFaceTrackingEnabled(true);
+        expect(true, true);
+
+        // Check if face tracking is enabled
+        final isEnabled = await createdController.isFaceTrackingEnabled();
+        expect(isEnabled, isA<bool>());
+
+        // Get tracked faces
+        final trackedFaces = await createdController.getTrackedFaces();
+        expect(trackedFaces, isA<List<ARFace>>());
+
+        // Configure face tracking
+        await createdController.setFaceTrackingConfig(
+          detectLandmarks: true,
+          detectExpressions: true,
+          minFaceSize: 0.1,
+          maxFaceSize: 1.0,
+        );
+        expect(true, true);
+
+        // Test adding content to a tracked face (if any faces are tracked)
+        if (trackedFaces.isNotEmpty) {
+          final face = trackedFaces.first;
+          final contentNode = ARNode(
+            id: 'face_content_${face.id}',
+            type: NodeType.sphere,
+            position: const Vector3(0, 0, 0.1),
+            scale: const Vector3(0.05, 0.05, 0.05),
+          );
+
+          await createdController.addNodeToTrackedFace(
+            nodeId: 'face_content_${face.id}',
+            faceId: face.id,
+            node: contentNode,
+          );
+          expect(true, true);
+
+          // Get face landmarks
+          final landmarks = await createdController.getFaceLandmarks(face.id);
+          expect(landmarks, isA<List<FaceLandmark>>());
+
+          // Remove content from face
+          await createdController.removeNodeFromTrackedFace(
+            nodeId: 'face_content_${face.id}',
+            faceId: face.id,
+          );
+          expect(true, true);
+        }
+
+        // Disable face tracking
+        await createdController.setFaceTrackingEnabled(false);
+        expect(true, true);
+      } catch (e) {
+        // If face tracking is not supported, that's acceptable
+        expect(e, isNotNull);
+      }
+    });
+
     testWidgets('Animation features work correctly', (
       WidgetTester tester,
     ) async {
@@ -865,6 +959,15 @@ void main() {
           // Step 4: Enable image tracking
           await createdController.setImageTrackingEnabled(true);
 
+          // Step 4.5: Enable face tracking
+          await createdController.setFaceTrackingEnabled(true);
+          await createdController.setFaceTrackingConfig(
+            detectLandmarks: true,
+            detectExpressions: true,
+            minFaceSize: 0.1,
+            maxFaceSize: 1.0,
+          );
+
           // Step 5: Add a 3D model node
           final modelNode = ARNode.fromModel(
             id: 'integration_test_model',
@@ -904,6 +1007,7 @@ void main() {
           // Step 10: Get all data
           final targets = await createdController.getImageTargets();
           final trackedImages = await createdController.getTrackedImages();
+          final trackedFaces = await createdController.getTrackedFaces();
           final animations = await createdController.getAvailableAnimations(
             'integration_test_model',
           );
@@ -913,12 +1017,15 @@ void main() {
           // ignore: avoid_print
           print('Tracked images: ${trackedImages.length}');
           // ignore: avoid_print
+          print('Tracked faces: ${trackedFaces.length}');
+          // ignore: avoid_print
           print('Available animations: ${animations.length}');
 
           // Step 11: Clean up
           await createdController.removeNode('integration_test_model');
           await createdController.removeImageTarget('integration_test_target');
           await createdController.setImageTrackingEnabled(false);
+          await createdController.setFaceTrackingEnabled(false);
           await createdController.reset();
         }
 

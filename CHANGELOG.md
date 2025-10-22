@@ -5,6 +5,61 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-01-14
+
+### Added
+- 👤 **Face Tracking and Recognition** - Complete face tracking system
+  - Real-time detection and tracking of human faces
+  - Multiple simultaneous face tracking support
+  - High accuracy position, rotation, and scale tracking
+  - Confidence scoring for tracking reliability
+  - Automatic content anchoring to tracked faces
+  - Cross-platform support (ARCore/ARKit)
+
+#### New Face Tracking Models
+- `ARFace` - Represents tracked faces with position, rotation, scale, and landmarks
+- `FaceLandmark` - Represents specific facial feature points (eyes, nose, mouth, etc.)
+- `FaceTrackingState` - Enum for face tracking states (tracked, notTracked, paused, failed)
+
+#### New Face Tracking Methods
+- `setFaceTrackingEnabled(bool enabled)` - Enable/disable face tracking
+- `isFaceTrackingEnabled()` - Check if face tracking is enabled
+- `getTrackedFaces()` - Get all currently tracked faces
+- `addNodeToTrackedFace(String nodeId, String faceId, ARNode node)` - Add content to tracked face
+- `removeNodeFromTrackedFace(String nodeId, String faceId)` - Remove content from tracked face
+- `getFaceLandmarks(String faceId)` - Get facial landmarks for a specific face
+- `setFaceTrackingConfig(...)` - Configure face tracking parameters
+
+#### New Face Tracking Streams
+- `facesStream` - Stream of tracked faces with real-time updates
+
+#### Enhanced Example App
+- Added comprehensive face tracking demonstration
+- Interactive face tracking controls
+- Real-time face tracking statistics
+- Face landmark visualization
+- Content anchoring to faces
+
+#### Enhanced Documentation
+- Complete face tracking guide in Documentation.md
+- Face tracking API reference
+- Face tracking best practices
+- Face tracking examples and use cases
+
+### Enhanced
+- **Example App**: Added face tracking tab with full feature demonstration
+- **Integration Tests**: Added comprehensive face tracking integration tests
+- **Documentation**: Updated with face tracking features and examples
+- **Test Coverage**: Added 14 new face tracking tests (230 total tests)
+
+### Technical Details
+- Face tracking uses ARCore's face detection on Android
+- Face tracking uses ARKit's face tracking on iOS
+- Supports multiple faces simultaneously
+- Provides detailed facial landmarks (eyes, nose, mouth, ears, etc.)
+- Real-time confidence scoring for tracking reliability
+- Automatic content positioning relative to face features
+
 ## [0.5.0] - 2025-01-14
 
 ### Added

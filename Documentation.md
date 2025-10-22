@@ -33,7 +33,15 @@
    - [Anchoring Content](#anchoring-content)
    - [Best Practices](#best-practices-image-tracking)
 
-5. [Animations](#5-animations)
+5. [Face Tracking](#5-face-tracking)
+   - [Overview](#overview-face-tracking)
+   - [Setting Up Face Tracking](#setting-up-face-tracking)
+   - [Tracking Faces](#tracking-faces)
+   - [Face Landmarks](#face-landmarks)
+   - [Anchoring Content to Faces](#anchoring-content-to-faces)
+   - [Best Practices](#best-practices-face-tracking)
+
+6. [Animations](#6-animations)
    - [Basic Animations](#basic-animations)
    - [Advanced Animation Features](#advanced-animation-features)
    - [Animation Blending](#animation-blending)
@@ -42,7 +50,7 @@
    - [Blend Trees](#blend-trees)
    - [Layered Animations](#layered-animations)
 
-6. [Advanced Animation Blending - Complete Guide](#6-advanced-animation-blending---complete-guide)
+7. [Advanced Animation Blending - Complete Guide](#7-advanced-animation-blending---complete-guide)
    - [Overview](#overview-advanced)
    - [Animation Blending In-Depth](#animation-blending-in-depth)
    - [Crossfade Transitions In-Depth](#crossfade-transitions-in-depth)
@@ -1663,7 +1671,404 @@ class _ImageTrackingExampleState extends State<ImageTrackingExample> {
 
 ---
 
-# 5. Animations
+# 5. Face Tracking
+
+Face tracking allows you to detect and track human faces in the real world, then anchor 3D content to them. This is perfect for creating AR experiences that respond to facial features, expressions, and movements.
+
+## Overview
+
+Face tracking works by:
+
+1. **Face Detection**: The camera continuously scans for human faces
+2. **Face Tracking**: When found, the system tracks the face's position, orientation, and scale
+3. **Landmark Detection**: Identifies specific facial features like eyes, nose, mouth, etc.
+4. **Content Anchoring**: You can attach 3D models, animations, or other content to tracked faces
+
+### Key Features
+
+- **Real-time Face Detection**: Continuously detects faces in the camera feed
+- **Face Tracking**: Tracks position, rotation, and scale of detected faces
+- **Facial Landmarks**: Provides detailed facial feature points
+- **Content Anchoring**: Attach 3D models to tracked faces
+- **Multiple Face Support**: Track multiple faces simultaneously
+- **Confidence Scoring**: Track the reliability of face detection
+
+### Use Cases
+
+- **AR Filters**: Add virtual glasses, hats, or other accessories
+- **Virtual Makeup**: Apply digital makeup or effects
+- **Facial Animation**: Animate 3D characters based on facial expressions
+- **Interactive Avatars**: Create virtual representations of users
+- **Educational Tools**: Demonstrate facial anatomy or expressions
+
+## Setting Up Face Tracking
+
+### 1. Enable Face Tracking
+
+```dart
+// Enable face tracking
+await controller.setFaceTrackingEnabled(true);
+
+// Check if face tracking is enabled
+bool isEnabled = await controller.isFaceTrackingEnabled();
+```
+
+### 2. Configure Face Tracking
+
+```dart
+// Configure face tracking settings
+await controller.setFaceTrackingConfig(
+  maxFaces: 5,           // Maximum number of faces to track
+  landmarkTypes: [        // Types of landmarks to detect
+    'nose',
+    'leftEye',
+    'rightEye',
+    'mouth',
+    'leftEar',
+    'rightEar',
+  ],
+  trackingQuality: 'high', // Tracking quality: 'low', 'medium', 'high'
+);
+```
+
+### 3. Listen to Face Updates
+
+```dart
+// Listen to face tracking updates
+controller.facesStream.listen((faces) {
+  for (final face in faces) {
+    if (face.isTracked && face.isReliable) {
+      // Face is being tracked reliably
+      print('Face ${face.id} is tracked at ${face.position}');
+    }
+  }
+});
+```
+
+## Tracking Faces
+
+### Face Data Structure
+
+```dart
+class ARFace {
+  final String id;                    // Unique face identifier
+  final Vector3 position;             // Face position in 3D space
+  final Quaternion rotation;          // Face rotation
+  final Vector3 scale;                // Face scale
+  final FaceTrackingState trackingState; // Current tracking state
+  final double confidence;            // Tracking confidence (0.0 - 1.0)
+  final List<FaceLandmark> landmarks; // Detected facial landmarks
+  final DateTime lastUpdated;         // Last update timestamp
+  
+  // Computed properties
+  bool get isTracked;    // True if currently tracked
+  bool get isReliable;   // True if confidence > 0.7
+}
+```
+
+### Face Tracking States
+
+```dart
+enum FaceTrackingState {
+  tracked,      // Face is being tracked
+  notTracked,   // Face is not being tracked
+  paused,       // Tracking is paused
+  failed,       // Tracking failed
+}
+```
+
+### Getting Tracked Faces
+
+```dart
+// Get all currently tracked faces
+List<ARFace> faces = await controller.getTrackedFaces();
+
+// Filter for reliable faces
+List<ARFace> reliableFaces = faces.where((face) => face.isReliable).toList();
+
+// Get specific face by ID
+ARFace? specificFace = faces.firstWhere(
+  (face) => face.id == 'face_123',
+  orElse: () => null,
+);
+```
+
+## Face Landmarks
+
+### Landmark Types
+
+```dart
+class FaceLandmark {
+  final String name;        // Landmark name (e.g., 'nose', 'leftEye')
+  final Vector3 position;   // 3D position of the landmark
+  final double confidence;   // Detection confidence (0.0 - 1.0)
+}
+```
+
+### Common Landmark Names
+
+- `nose` - Nose tip
+- `leftEye` - Left eye center
+- `rightEye` - Right eye center
+- `mouth` - Mouth center
+- `leftEar` - Left ear
+- `rightEar` - Right ear
+- `leftEyebrow` - Left eyebrow
+- `rightEyebrow` - Right eyebrow
+- `chin` - Chin point
+
+### Accessing Landmarks
+
+```dart
+// Get landmarks for a specific face
+List<FaceLandmark> landmarks = await controller.getFaceLandmarks(faceId);
+
+// Find specific landmarks
+FaceLandmark? nose = landmarks.firstWhere(
+  (landmark) => landmark.name == 'nose',
+  orElse: () => null,
+);
+
+if (nose != null) {
+  print('Nose position: ${nose.position}');
+  print('Nose confidence: ${nose.confidence}');
+}
+```
+
+## Anchoring Content to Faces
+
+### Adding 3D Models to Faces
+
+```dart
+// Create a 3D model node
+final glassesNode = ARNode.fromModel(
+  id: 'glasses_${face.id}',
+  modelPath: 'assets/models/glasses.glb',
+  position: const Vector3(0, 0, 0.1), // 10cm in front of face
+  rotation: const Quaternion(0, 0, 0, 1),
+  scale: const Vector3(0.1, 0.1, 0.1),
+);
+
+// Add the node to a tracked face
+await controller.addNodeToTrackedFace(
+  nodeId: 'glasses_${face.id}',
+  faceId: face.id,
+  node: glassesNode,
+);
+```
+
+### Positioning Content Relative to Face
+
+```dart
+// Position content relative to face landmarks
+final noseLandmark = landmarks.firstWhere(
+  (landmark) => landmark.name == 'nose',
+);
+
+final glassesNode = ARNode.fromModel(
+  id: 'glasses_${face.id}',
+  modelPath: 'assets/models/glasses.glb',
+  position: noseLandmark.position + const Vector3(0, 0, 0.05), // 5cm in front of nose
+  rotation: face.rotation,
+  scale: const Vector3(0.1, 0.1, 0.1),
+);
+```
+
+### Removing Content from Faces
+
+```dart
+// Remove a node from a tracked face
+await controller.removeNodeFromTrackedFace(
+  nodeId: 'glasses_${face.id}',
+  faceId: face.id,
+);
+```
+
+## Best Practices
+
+### 1. Optimize for Performance
+
+```dart
+// Limit the number of faces tracked simultaneously
+await controller.setFaceTrackingConfig(
+  maxFaces: 2, // Only track 2 faces at once for better performance
+  trackingQuality: 'medium', // Use medium quality for better performance
+);
+```
+
+### 2. Handle Face Loss Gracefully
+
+```dart
+controller.facesStream.listen((faces) {
+  for (final face in faces) {
+    if (face.trackingState == FaceTrackingState.notTracked) {
+      // Face was lost, remove associated content
+      _removeContentFromFace(face.id);
+    }
+  }
+});
+```
+
+### 3. Use Appropriate Content Sizing
+
+```dart
+// Scale content appropriately for face size
+final faceScale = face.scale;
+final contentScale = Vector3(
+  faceScale.x * 0.1,  // 10% of face width
+  faceScale.y * 0.1,  // 10% of face height
+  faceScale.z * 0.1,  // 10% of face depth
+);
+```
+
+### 4. Implement Confidence Thresholds
+
+```dart
+// Only add content to highly confident face detections
+if (face.isReliable && face.confidence > 0.8) {
+  await _addContentToFace(face);
+}
+```
+
+### 5. Handle Multiple Faces
+
+```dart
+// Track multiple faces with unique content
+Map<String, String> faceContent = {};
+
+controller.facesStream.listen((faces) {
+  for (final face in faces) {
+    if (face.isTracked && !faceContent.containsKey(face.id)) {
+      // Add unique content to this face
+      final contentId = 'content_${face.id}';
+      faceContent[face.id] = contentId;
+      await _addContentToFace(face, contentId);
+    }
+  }
+});
+```
+
+### Example: Complete Face Tracking Setup
+
+```dart
+class FaceTrackingARView extends StatefulWidget {
+  @override
+  _FaceTrackingARViewState createState() => _FaceTrackingARViewState();
+}
+
+class _FaceTrackingARViewState extends State<FaceTrackingARView> {
+  late AugenController _controller;
+  List<ARFace> _trackedFaces = [];
+  bool _faceTrackingEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAR();
+  }
+
+  Future<void> _initializeAR() async {
+    _controller = AugenController();
+    
+    // Enable face tracking
+    await _controller.setFaceTrackingEnabled(true);
+    await _controller.setFaceTrackingConfig(
+      maxFaces: 3,
+      landmarkTypes: ['nose', 'leftEye', 'rightEye', 'mouth'],
+      trackingQuality: 'high',
+    );
+
+    // Listen to face updates
+    _controller.facesStream.listen((faces) {
+      if (!mounted) return;
+      setState(() {
+        _trackedFaces = faces;
+      });
+      
+      // Add content to newly tracked faces
+      for (final face in faces) {
+        if (face.isTracked && face.isReliable) {
+          _addContentToFace(face);
+        }
+      }
+    });
+  }
+
+  Future<void> _addContentToFace(ARFace face) async {
+    try {
+      // Create glasses model
+      final glassesNode = ARNode.fromModel(
+        id: 'glasses_${face.id}',
+        modelPath: 'assets/models/glasses.glb',
+        position: const Vector3(0, 0, 0.1),
+        rotation: const Quaternion(0, 0, 0, 1),
+        scale: const Vector3(0.1, 0.1, 0.1),
+      );
+
+      await _controller.addNodeToTrackedFace(
+        nodeId: 'glasses_${face.id}',
+        faceId: face.id,
+        node: glassesNode,
+      );
+    } catch (e) {
+      print('Failed to add content to face: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Face Tracking AR'),
+        actions: [
+          Switch(
+            value: _faceTrackingEnabled,
+            onChanged: (value) async {
+              await _controller.setFaceTrackingEnabled(value);
+              setState(() {
+                _faceTrackingEnabled = value;
+              });
+            },
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // AR View
+          AugenARView(controller: _controller),
+          
+          // Face tracking status
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Tracked Faces: ${_trackedFaces.length}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+}
+```
+
+---
+
+# 6. Animations
 
 Complete guide for model animations and skeletal animations in Augen AR.
 
