@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2025-01-14
+
+### Fixed
+- Fixed Dart formatting issues in core files
+- Improved code formatting consistency across the package
+- Updated example app formatting
+- Enhanced test file formatting
+
+### Technical Improvements
+- Applied `dart format` to all source files
+- Maintained 255 passing tests after formatting
+- Improved code readability and maintainability
+- Ensured consistent code style across the entire codebase
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
