@@ -56,7 +56,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.6.0
+  augen: ^0.9.0
 ```
 
 Run:
@@ -882,7 +882,7 @@ Have an idea for improvement? Let us know!
 - [x] Face tracking capabilities ✅ **v0.6.0**
 - [x] Cloud anchors for persistent AR ✅ **v0.7.0**
 - [x] Occlusion for realistic rendering ✅ **v0.8.0**
-- [ ] Physics simulation for AR objects
+- [x] Physics simulation for AR objects ✅ **v0.9.0**
 - [ ] Multi-user AR experiences
 - [ ] Real-time lighting and shadows
 - [ ] Environmental probes and reflections
