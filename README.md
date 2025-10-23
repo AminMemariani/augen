@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-230%20passing-brightgreen.svg)](test/)
+[![Tests](https://img.shields.io/badge/tests-280%20passing-brightgreen.svg)](test/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](Documentation.md#6-testing)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
@@ -16,6 +16,7 @@
 🖼️ **Image Tracking**: Track specific images and anchor content to them  
 👤 **Face Tracking**: Detect and track human faces with facial landmarks  
 ☁️ **Cloud Anchors**: Create persistent AR experiences that can be shared across sessions  
+👁️ **Occlusion**: Realistic rendering with depth, person, and plane occlusion  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
@@ -33,6 +34,7 @@
 - Image Tracking
 - Face Tracking
 - Cloud Anchors
+- Occlusion
 - Animations & Advanced Blending
 - Testing
 - Examples & Best Practices
@@ -430,6 +432,72 @@ Future<void> _shareCloudAnchor() async {
 // Join a shared session
 Future<void> _joinSession() async {
   await _controller!.joinCloudAnchorSession('session_123');
+}
+```
+
+### Occlusion
+
+```dart
+// Set up occlusion
+Future<void> _setupOcclusion() async {
+  // Check if occlusion is supported
+  final isSupported = await _controller!.isOcclusionSupported();
+  if (!isSupported) {
+    print('Occlusion not supported on this device');
+    return;
+  }
+
+  // Configure occlusion
+  await _controller!.setOcclusionConfig(
+    type: OcclusionType.depth,
+    enableDepthOcclusion: true,
+    enablePersonOcclusion: true,
+    enablePlaneOcclusion: true,
+  );
+
+  // Enable occlusion
+  await _controller!.setOcclusionEnabled(true);
+
+  // Listen for occlusion updates
+  _controller!.occlusionsStream.listen((occlusions) {
+    for (final occlusion in occlusions) {
+      if (occlusion.isActive && occlusion.isReliable) {
+        print('Active occlusion: ${occlusion.type.name}');
+      }
+    }
+  });
+
+  // Listen for status updates
+  _controller!.occlusionStatusStream.listen((status) {
+    if (status.isComplete) {
+      if (status.isSuccessful) {
+        print('Occlusion ready!');
+      } else {
+        print('Failed: ${status.errorMessage}');
+      }
+    }
+  });
+}
+
+// Create an occlusion
+Future<void> _createOcclusion() async {
+  final occlusionId = await _controller!.createOcclusion(
+    type: OcclusionType.depth,
+    position: Vector3(0, 0, -1),
+    rotation: Quaternion(0, 0, 0, 1),
+    scale: Vector3(1, 1, 1),
+  );
+  print('Occlusion created: $occlusionId');
+}
+
+// Get all active occlusions
+Future<void> _getOcclusions() async {
+  final occlusions = await _controller!.getOcclusions();
+  print('Active occlusions: ${occlusions.length}');
+  
+  for (final occlusion in occlusions) {
+    print('${occlusion.type.name} occlusion at ${occlusion.position}');
+  }
 }
 ```
 

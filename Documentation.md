@@ -49,7 +49,16 @@
    - [Sharing Cloud Anchors](#sharing-cloud-anchors)
    - [Best Practices](#best-practices-cloud-anchors)
 
-7. [Animations](#7-animations)
+7. [Occlusion](#7-occlusion)
+   - [Overview](#overview-occlusion)
+   - [Setting Up Occlusion](#setting-up-occlusion)
+   - [Creating Occlusions](#creating-occlusions)
+   - [Managing Occlusions](#managing-occlusions)
+   - [Monitoring Occlusion Status](#monitoring-occlusion-status)
+   - [Occlusion Types](#occlusion-types)
+   - [Best Practices](#best-practices-occlusion)
+
+8. [Animations](#8-animations)
    - [Basic Animations](#basic-animations)
    - [Advanced Animation Features](#advanced-animation-features)
    - [Animation Blending](#animation-blending)
@@ -58,7 +67,7 @@
    - [Blend Trees](#blend-trees)
    - [Layered Animations](#layered-animations)
 
-8. [Advanced Animation Blending - Complete Guide](#8-advanced-animation-blending---complete-guide)
+9. [Advanced Animation Blending - Complete Guide](#9-advanced-animation-blending---complete-guide)
    - [Overview](#overview-advanced)
    - [Animation Blending In-Depth](#animation-blending-in-depth)
    - [Crossfade Transitions In-Depth](#crossfade-transitions-in-depth)
@@ -2468,7 +2477,325 @@ class _CloudAnchorARViewState extends State<CloudAnchorARView> {
 }
 ```
 
-# 7. Animations
+# 7. Occlusion
+
+Realistic rendering with occlusion support for immersive AR experiences.
+
+## Overview
+
+Occlusion enables virtual objects to be properly hidden behind real-world objects, creating more realistic AR experiences. The Augen plugin supports multiple types of occlusion:
+
+- **Depth Occlusion**: Uses depth maps to determine what should be hidden
+- **Person Occlusion**: Hides virtual objects behind detected people
+- **Plane Occlusion**: Uses detected planes to create occlusion boundaries
+- **None**: Disables occlusion (virtual objects appear in front of everything)
+
+## Setting Up Occlusion
+
+### 1. Check Occlusion Support
+
+```dart
+// Check if occlusion is supported on the current device
+final isSupported = await controller.isOcclusionSupported();
+if (!isSupported) {
+  print('Occlusion not supported on this device');
+  return;
+}
+```
+
+### 2. Configure Occlusion
+
+```dart
+// Configure occlusion settings
+await controller.setOcclusionConfig(
+  type: OcclusionType.depth,
+  confidence: 0.8,
+  enablePersonOcclusion: true,
+  enablePlaneOcclusion: true,
+  enableDepthOcclusion: true,
+);
+```
+
+### 3. Enable Occlusion
+
+```dart
+// Enable occlusion
+await controller.setOcclusionEnabled(true);
+```
+
+## Creating Occlusions
+
+### 1. Create an Occlusion
+
+```dart
+// Create a depth-based occlusion
+final occlusionId = await controller.createOcclusion(
+  type: OcclusionType.depth,
+  position: const Vector3(0, 0, -1),
+  rotation: const Quaternion(0, 0, 0, 1),
+  scale: const Vector3(1, 1, 1),
+  metadata: {'purpose': 'wall_occlusion'},
+);
+```
+
+### 2. Update an Occlusion
+
+```dart
+// Update occlusion properties
+await controller.updateOcclusion(
+  occlusionId: occlusionId,
+  position: const Vector3(0, 0, -2),
+  scale: const Vector3(2, 2, 2),
+  metadata: {'updated': true},
+);
+```
+
+## Managing Occlusions
+
+### 1. Get All Occlusions
+
+```dart
+// Get all active occlusions
+final occlusions = await controller.getOcclusions();
+for (final occlusion in occlusions) {
+  print('Occlusion: ${occlusion.id}, Type: ${occlusion.type}');
+  print('Position: ${occlusion.position}');
+  print('Confidence: ${occlusion.confidence}');
+}
+```
+
+### 2. Get Specific Occlusion
+
+```dart
+// Get a specific occlusion
+final occlusion = await controller.getOcclusion('occlusion_123');
+if (occlusion != null) {
+  print('Found occlusion: ${occlusion.id}');
+  print('Is active: ${occlusion.isActive}');
+  print('Is reliable: ${occlusion.isReliable}');
+}
+```
+
+### 3. Remove an Occlusion
+
+```dart
+// Remove an occlusion
+await controller.removeOcclusion('occlusion_123');
+```
+
+## Monitoring Occlusion Status
+
+### 1. Listen to Occlusion Updates
+
+```dart
+// Listen to occlusion updates
+controller.occlusionsStream.listen((occlusions) {
+  print('Occlusions updated: ${occlusions.length}');
+  for (final occlusion in occlusions) {
+    print('Occlusion ${occlusion.id}: ${occlusion.type}');
+  }
+});
+```
+
+### 2. Listen to Status Updates
+
+```dart
+// Listen to occlusion status updates
+controller.occlusionStatusStream.listen((status) {
+  print('Occlusion ${status.occlusionId}: ${status.status}');
+  print('Progress: ${(status.progress * 100).toInt()}%');
+  
+  if (status.isComplete) {
+    print('Occlusion processing complete');
+  }
+  
+  if (status.isFailed) {
+    print('Occlusion failed: ${status.errorMessage}');
+  }
+});
+```
+
+## Occlusion Types
+
+### Depth Occlusion
+
+Uses depth maps to determine what should be hidden:
+
+```dart
+await controller.setOcclusionConfig(
+  type: OcclusionType.depth,
+  confidence: 0.7,
+  enableDepthOcclusion: true,
+);
+```
+
+### Person Occlusion
+
+Hides virtual objects behind detected people:
+
+```dart
+await controller.setOcclusionConfig(
+  type: OcclusionType.person,
+  confidence: 0.8,
+  enablePersonOcclusion: true,
+);
+```
+
+### Plane Occlusion
+
+Uses detected planes to create occlusion boundaries:
+
+```dart
+await controller.setOcclusionConfig(
+  type: OcclusionType.plane,
+  confidence: 0.6,
+  enablePlaneOcclusion: true,
+);
+```
+
+## Best Practices
+
+### 1. Performance Optimization
+
+```dart
+// Use appropriate confidence thresholds
+await controller.setOcclusionConfig(
+  confidence: 0.7, // Balance between accuracy and performance
+  enablePersonOcclusion: true,
+  enablePlaneOcclusion: false, // Disable if not needed
+  enableDepthOcclusion: true,
+);
+```
+
+### 2. Error Handling
+
+```dart
+try {
+  await controller.setOcclusionEnabled(true);
+} catch (e) {
+  print('Failed to enable occlusion: $e');
+  // Fallback to non-occluded rendering
+}
+```
+
+### 3. Device Compatibility
+
+```dart
+// Check capabilities before enabling
+final capabilities = await controller.getOcclusionCapabilities();
+print('Depth occlusion: ${capabilities['depthOcclusion']}');
+print('Person occlusion: ${capabilities['personOcclusion']}');
+print('Max occlusions: ${capabilities['maxOcclusions']}');
+```
+
+## Complete Example
+
+```dart
+class OcclusionARView extends StatefulWidget {
+  @override
+  _OcclusionARViewState createState() => _OcclusionARViewState();
+}
+
+class _OcclusionARViewState extends State<OcclusionARView> {
+  AugenController? _controller;
+  List<AROcclusion> _occlusions = [];
+  bool _occlusionEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupOcclusion();
+  }
+
+  Future<void> _setupOcclusion() async {
+    // Check support
+    final isSupported = await _controller!.isOcclusionSupported();
+    if (!isSupported) {
+      print('Occlusion not supported');
+      return;
+    }
+
+    // Configure occlusion
+    await _controller!.setOcclusionConfig(
+      type: OcclusionType.depth,
+      confidence: 0.8,
+      enablePersonOcclusion: true,
+      enablePlaneOcclusion: true,
+      enableDepthOcclusion: true,
+    );
+
+    // Enable occlusion
+    await _controller!.setOcclusionEnabled(true);
+    setState(() => _occlusionEnabled = true);
+
+    // Listen to updates
+    _controller!.occlusionsStream.listen((occlusions) {
+      setState(() => _occlusions = occlusions);
+    });
+  }
+
+  Future<void> _createOcclusion() async {
+    final occlusionId = await _controller!.createOcclusion(
+      type: OcclusionType.depth,
+      position: const Vector3(0, 0, -1),
+      rotation: const Quaternion(0, 0, 0, 1),
+      scale: const Vector3(1, 1, 1),
+    );
+    print('Created occlusion: $occlusionId');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Occlusion AR'),
+        actions: [
+          IconButton(
+            icon: Icon(_occlusionEnabled ? Icons.visibility : Icons.visibility_off),
+            onPressed: () async {
+              await _controller!.setOcclusionEnabled(!_occlusionEnabled);
+              setState(() => _occlusionEnabled = !_occlusionEnabled);
+            },
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          AugenView(
+            onViewCreated: (controller) {
+              _controller = controller;
+              _setupOcclusion();
+            },
+          ),
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Occlusions: ${_occlusions.length}'),
+                    Text('Enabled: $_occlusionEnabled'),
+                    ElevatedButton(
+                      onPressed: _createOcclusion,
+                      child: const Text('Create Occlusion'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+# 8. Animations
 
 Complete guide for model animations and skeletal animations in Augen AR.
 
@@ -2805,7 +3132,7 @@ print('Available bones: $bones');
 
 ---
 
-# 5. Advanced Animation Blending - Complete Guide
+# 9. Advanced Animation Blending - Complete Guide
 
 Complete guide for using advanced animation blending, transitions, state machines, and blend trees in Augen AR.
 

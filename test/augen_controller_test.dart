@@ -1714,5 +1714,243 @@ void main() {
         subscription.cancel();
       });
     });
+
+    group('Occlusion Methods', () {
+      test('setOcclusionEnabled sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'setOcclusionEnabled') {
+                capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+              }
+              return null;
+            });
+
+        await controller.setOcclusionEnabled(true);
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['enabled'], true);
+      });
+
+      test('isOcclusionEnabled returns correct value', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'isOcclusionEnabled') {
+                return true;
+              }
+              return null;
+            });
+
+        final enabled = await controller.isOcclusionEnabled();
+        expect(enabled, true);
+      });
+
+      test('setOcclusionConfig sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'setOcclusionConfig') {
+                capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+              }
+              return null;
+            });
+
+        await controller.setOcclusionConfig(
+          type: OcclusionType.depth,
+          confidence: 0.8,
+          enablePersonOcclusion: true,
+          enablePlaneOcclusion: false,
+          enableDepthOcclusion: true,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['type'], 'depth');
+        expect(capturedArgs!['confidence'], 0.8);
+        expect(capturedArgs!['enablePersonOcclusion'], true);
+        expect(capturedArgs!['enablePlaneOcclusion'], false);
+        expect(capturedArgs!['enableDepthOcclusion'], true);
+      });
+
+      test('getOcclusions returns parsed occlusions', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getOcclusions') {
+                return [
+                  {
+                    'id': 'occlusion_1',
+                    'type': 'depth',
+                    'isActive': true,
+                    'position': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                    'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                    'scale': {'x': 1.0, 'y': 1.0, 'z': 1.0},
+                    'confidence': 0.8,
+                    'createdAt': DateTime.now().millisecondsSinceEpoch,
+                    'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                    'metadata': {},
+                  },
+                ];
+              }
+              return null;
+            });
+
+        final occlusions = await controller.getOcclusions();
+        expect(occlusions.length, 1);
+        expect(occlusions.first.id, 'occlusion_1');
+        expect(occlusions.first.type, OcclusionType.depth);
+      });
+
+      test('getOcclusion returns parsed occlusion', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getOcclusion') {
+                return {
+                  'id': 'occlusion_1',
+                  'type': 'person',
+                  'isActive': true,
+                  'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
+                  'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                  'scale': {'x': 2.0, 'y': 2.0, 'z': 2.0},
+                  'confidence': 0.9,
+                  'createdAt': DateTime.now().millisecondsSinceEpoch,
+                  'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                  'metadata': {'test': 'value'},
+                };
+              }
+              return null;
+            });
+
+        final occlusion = await controller.getOcclusion('occlusion_1');
+        expect(occlusion, isNotNull);
+        expect(occlusion!.id, 'occlusion_1');
+        expect(occlusion.type, OcclusionType.person);
+        expect(occlusion.position, const Vector3(1, 2, 3));
+      });
+
+      test('createOcclusion sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'createOcclusion') {
+                capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+                return 'occlusion_123';
+              }
+              return null;
+            });
+
+        final occlusionId = await controller.createOcclusion(
+          type: OcclusionType.plane,
+          position: const Vector3(0, 0, -1),
+          rotation: const Quaternion(0, 0, 0, 1),
+          scale: const Vector3(1, 1, 1),
+          metadata: {'test': 'value'},
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['type'], 'plane');
+        expect(capturedArgs!['position'], isA<Map>());
+        expect(capturedArgs!['rotation'], isA<Map>());
+        expect(capturedArgs!['scale'], isA<Map>());
+        expect(capturedArgs!['metadata'], {'test': 'value'});
+        expect(occlusionId, 'occlusion_123');
+      });
+
+      test('updateOcclusion sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'updateOcclusion') {
+                capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+              }
+              return null;
+            });
+
+        await controller.updateOcclusion(
+          occlusionId: 'occlusion_1',
+          position: const Vector3(1, 2, 3),
+          rotation: const Quaternion(0, 0, 0, 1),
+          scale: const Vector3(2, 2, 2),
+          metadata: {'updated': true},
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['occlusionId'], 'occlusion_1');
+        expect(capturedArgs!['position'], isA<Map>());
+        expect(capturedArgs!['rotation'], isA<Map>());
+        expect(capturedArgs!['scale'], isA<Map>());
+        expect(capturedArgs!['metadata'], {'updated': true});
+      });
+
+      test('removeOcclusion sends correct parameters', () async {
+        Map? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'removeOcclusion') {
+                capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+              }
+              return null;
+            });
+
+        await controller.removeOcclusion('occlusion_1');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['occlusionId'], 'occlusion_1');
+      });
+
+      test('isOcclusionSupported returns correct value', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'isOcclusionSupported') {
+                return true;
+              }
+              return null;
+            });
+
+        final supported = await controller.isOcclusionSupported();
+        expect(supported, true);
+      });
+
+      test('getOcclusionCapabilities returns capabilities', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getOcclusionCapabilities') {
+                return {
+                  'depthOcclusion': true,
+                  'personOcclusion': true,
+                  'planeOcclusion': false,
+                  'maxOcclusions': 10,
+                };
+              }
+              return null;
+            });
+
+        final capabilities = await controller.getOcclusionCapabilities();
+        expect(capabilities['depthOcclusion'], true);
+        expect(capabilities['personOcclusion'], true);
+        expect(capabilities['planeOcclusion'], false);
+        expect(capabilities['maxOcclusions'], 10);
+      });
+    });
+
+    group('Occlusion Streams', () {
+      test('occlusionsStream can be listened to', () {
+        // Test that the stream can be created and listened to
+        final subscription = controller.occlusionsStream.listen((occlusions) {
+          // Stream is working
+        });
+
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('occlusionStatusStream can be listened to', () {
+        // Test that the stream can be created and listened to
+        final subscription = controller.occlusionStatusStream.listen((status) {
+          // Stream is working
+        });
+
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+    });
   });
 }

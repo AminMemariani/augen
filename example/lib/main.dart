@@ -39,11 +39,14 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   List<ARTrackedImage> _trackedImages = [];
   List<ARFace> _trackedFaces = [];
   List<ARCloudAnchor> _cloudAnchors = [];
+  List<AROcclusion> _occlusions = [];
   int _nodeCounter = 0;
   String _statusMessage = 'Initializing...';
   bool _imageTrackingEnabled = false;
   bool _faceTrackingEnabled = false;
   bool _cloudAnchorsSupported = false;
+  bool _occlusionSupported = false;
+  bool _occlusionEnabled = false;
   String? _currentSessionId;
   int _currentTabIndex = 0;
   late TabController _tabController;
@@ -61,6 +64,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   StreamSubscription<List<ARFace>>? _facesSubscription;
   StreamSubscription<List<ARCloudAnchor>>? _cloudAnchorsSubscription;
   StreamSubscription<CloudAnchorStatus>? _cloudAnchorStatusSubscription;
+  StreamSubscription<List<AROcclusion>>? _occlusionsSubscription;
+  StreamSubscription<OcclusionStatus>? _occlusionStatusSubscription;
   StreamSubscription<String>? _errorSubscription;
   StreamSubscription<augen.AnimationStatus>? _animationStatusSubscription;
   StreamSubscription<TransitionStatus>? _transitionStatusSubscription;
@@ -84,24 +89,6 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     );
   }
 
-  @override
-  void dispose() {
-    _planesSubscription?.cancel();
-    _imageTargetsSubscription?.cancel();
-    _trackedImagesSubscription?.cancel();
-    _facesSubscription?.cancel();
-    _cloudAnchorsSubscription?.cancel();
-    _cloudAnchorStatusSubscription?.cancel();
-    _errorSubscription?.cancel();
-    _animationStatusSubscription?.cancel();
-    _transitionStatusSubscription?.cancel();
-    _stateMachineStatusSubscription?.cancel();
-    _tabController.dispose();
-    _animationController.dispose();
-    _blendController.dispose();
-    _controller?.dispose();
-    super.dispose();
-  }
 
   void _onARViewCreated(AugenController controller) {
     _controller = controller;
@@ -145,6 +132,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
       // Check cloud anchor support
       await _checkCloudAnchorSupport();
+      
+      // Check occlusion support
+      await _checkOcclusionSupport();
     } catch (e) {
       setState(() {
         _statusMessage = 'Error: $e';
@@ -231,6 +221,33 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             }
           }
         });
+
+    // Occlusion streams
+    _occlusionsSubscription = _controller!.occlusionsStream.listen((
+      occlusions,
+    ) {
+      if (!mounted) return;
+      setState(() {
+        _occlusions = occlusions;
+      });
+    });
+
+    _occlusionStatusSubscription = _controller!.occlusionStatusStream.listen((
+      status,
+    ) {
+      if (!mounted) return;
+      if (status.isComplete) {
+        if (status.isSuccessful) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Occlusion ${status.occlusionId} ready!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Occlusion failed: ${status.errorMessage}')),
+          );
+        }
+      }
+    });
 
     // Error handling
     _errorSubscription = _controller!.errorStream.listen((error) {
@@ -577,6 +594,80 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     }
   }
 
+  // Occlusion Methods
+  Future<void> _checkOcclusionSupport() async {
+    if (_controller == null) return;
+
+    try {
+      _occlusionSupported = await _controller!.isOcclusionSupported();
+
+      if (!mounted) return;
+      setState(() {});
+
+      if (_occlusionSupported) {
+        await _controller!.setOcclusionConfig(
+          type: OcclusionType.depth,
+          enableDepthOcclusion: true,
+          enablePersonOcclusion: true,
+          enablePlaneOcclusion: true,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to check occlusion support: $e')),
+      );
+    }
+  }
+
+  Future<void> _toggleOcclusion() async {
+    if (_controller == null) return;
+
+    try {
+      _occlusionEnabled = !_occlusionEnabled;
+      await _controller!.setOcclusionEnabled(_occlusionEnabled);
+
+      if (!mounted) return;
+      setState(() {});
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Occlusion ${_occlusionEnabled ? 'enabled' : 'disabled'}',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to toggle occlusion: $e')));
+    }
+  }
+
+  Future<void> _createOcclusion() async {
+    if (_controller == null) return;
+
+    try {
+      final occlusionId = await _controller!.createOcclusion(
+        type: OcclusionType.depth,
+        position: const Vector3(0, 0, -1),
+        rotation: const Quaternion(0, 0, 0, 1),
+        scale: const Vector3(1, 1, 1),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Created occlusion: $occlusionId')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to create occlusion: $e')));
+    }
+  }
+
   // Animation Methods
   Future<void> _playAnimation(String animationName) async {
     if (_controller == null) return;
@@ -758,6 +849,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             Tab(icon: Icon(Icons.image_search), text: 'Image Tracking'),
             Tab(icon: Icon(Icons.face), text: 'Face Tracking'),
             Tab(icon: Icon(Icons.cloud), text: 'Cloud Anchors'),
+            Tab(icon: Icon(Icons.visibility_off), text: 'Occlusion'),
             Tab(icon: Icon(Icons.animation), text: 'Animations'),
             Tab(icon: Icon(Icons.dashboard), text: 'Demo'),
             Tab(icon: Icon(Icons.info), text: 'Status'),
@@ -770,6 +862,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           _buildImageTrackingView(),
           _buildFaceTrackingView(),
           _buildCloudAnchorView(),
+          _buildOcclusionView(),
           _buildAnimationView(),
           _buildDemoView(),
           _buildStatusView(),
@@ -1264,6 +1357,139 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildOcclusionView() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Occlusion',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+
+          // Occlusion support status
+          Card(
+            child: ListTile(
+              leading: Icon(
+                _occlusionSupported ? Icons.visibility_off : Icons.visibility,
+                color: _occlusionSupported ? Colors.green : Colors.red,
+              ),
+              title: const Text('Occlusion Support'),
+              subtitle: Text(
+                _occlusionSupported ? 'Supported' : 'Not Supported',
+              ),
+              trailing: ElevatedButton(
+                onPressed: _checkOcclusionSupport,
+                child: const Text('Check Support'),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Occlusion controls
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Occlusion Controls',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _occlusionSupported ? _toggleOcclusion : null,
+                          icon: Icon(_occlusionEnabled ? Icons.visibility_off : Icons.visibility),
+                          label: Text(_occlusionEnabled ? 'Disable Occlusion' : 'Enable Occlusion'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _occlusionSupported ? _createOcclusion : null,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Create Occlusion'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Active occlusions
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Active Occlusions (${_occlusions.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  if (_occlusions.isEmpty)
+                    const Text('No active occlusions')
+                  else
+                    ..._occlusions.map((occlusion) => ListTile(
+                      leading: Icon(
+                        occlusion.isActive ? Icons.visibility_off : Icons.visibility,
+                        color: occlusion.isActive ? Colors.green : Colors.grey,
+                      ),
+                      title: Text('${occlusion.type.name} Occlusion'),
+                      subtitle: Text(
+                        'ID: ${occlusion.id}\n'
+                        'Confidence: ${(occlusion.confidence * 100).toStringAsFixed(1)}%\n'
+                        'Position: (${occlusion.position.x.toStringAsFixed(2)}, ${occlusion.position.y.toStringAsFixed(2)}, ${occlusion.position.z.toStringAsFixed(2)})',
+                      ),
+                      trailing: Icon(
+                        occlusion.isReliable ? Icons.check_circle : Icons.warning,
+                        color: occlusion.isReliable ? Colors.green : Colors.orange,
+                      ),
+                    )),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Occlusion info
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Occlusion Types',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• Depth: Uses depth maps for realistic occlusion'),
+                  const Text('• Person: Uses person segmentation for human occlusion'),
+                  const Text('• Plane: Uses detected planes for surface occlusion'),
+                  const Text('• None: No occlusion - virtual objects appear in front'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnimationView() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -1602,6 +1828,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     'Cloud Anchors',
                     '${_cloudAnchors.length} anchors, ${_cloudAnchorsSupported ? 'Supported' : 'Not Supported'}',
                   ),
+                  _buildStatRow(
+                    'Occlusions',
+                    '${_occlusions.length} active, ${_occlusionSupported ? 'Supported' : 'Not Supported'}',
+                  ),
                 ],
               ),
             ),
@@ -1739,5 +1969,26 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         context,
       ).showSnackBar(SnackBar(content: Text('Hit test failed: $e')));
     }
+  }
+
+  @override
+  void dispose() {
+    _planesSubscription?.cancel();
+    _imageTargetsSubscription?.cancel();
+    _trackedImagesSubscription?.cancel();
+    _facesSubscription?.cancel();
+    _cloudAnchorsSubscription?.cancel();
+    _cloudAnchorStatusSubscription?.cancel();
+    _occlusionsSubscription?.cancel();
+    _occlusionStatusSubscription?.cancel();
+    _errorSubscription?.cancel();
+    _animationStatusSubscription?.cancel();
+    _transitionStatusSubscription?.cancel();
+    _stateMachineStatusSubscription?.cancel();
+    _tabController.dispose();
+    _animationController.dispose();
+    _blendController.dispose();
+    _controller?.dispose();
+    super.dispose();
   }
 }

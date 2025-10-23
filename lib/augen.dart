@@ -17,5 +17,6 @@ export 'src/models/ar_image_target.dart';
 export 'src/models/ar_tracked_image.dart';
 export 'src/models/ar_face.dart';
 export 'src/models/ar_cloud_anchor.dart';
+export 'src/models/ar_occlusion.dart';
 export 'src/models/vector3.dart';
 export 'src/models/quaternion.dart';

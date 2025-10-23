@@ -16,6 +16,7 @@ import 'models/ar_image_target.dart';
 import 'models/ar_tracked_image.dart';
 import 'models/ar_face.dart';
 import 'models/ar_cloud_anchor.dart';
+import 'models/ar_occlusion.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -44,6 +45,10 @@ class AugenController {
       StreamController<List<ARCloudAnchor>>.broadcast();
   final StreamController<CloudAnchorStatus> _cloudAnchorStatusController =
       StreamController<CloudAnchorStatus>.broadcast();
+  final StreamController<List<AROcclusion>> _occlusionsController =
+      StreamController<List<AROcclusion>>.broadcast();
+  final StreamController<OcclusionStatus> _occlusionStatusController =
+      StreamController<OcclusionStatus>.broadcast();
 
   bool _isDisposed = false;
 
@@ -90,6 +95,14 @@ class AugenController {
   /// Stream of cloud anchor status updates
   Stream<CloudAnchorStatus> get cloudAnchorStatusStream =>
       _cloudAnchorStatusController.stream;
+
+  /// Stream of occlusions
+  Stream<List<AROcclusion>> get occlusionsStream =>
+      _occlusionsController.stream;
+
+  /// Stream of occlusion status updates
+  Stream<OcclusionStatus> get occlusionStatusStream =>
+      _occlusionStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -348,6 +361,18 @@ class AugenController {
         final statusData = call.arguments as Map;
         final status = CloudAnchorStatus.fromMap(statusData);
         _cloudAnchorStatusController.add(status);
+        break;
+      case 'onOcclusionsUpdated':
+        final occlusionsData = call.arguments as List;
+        final occlusions = occlusionsData
+            .map((e) => AROcclusion.fromMap(e as Map<String, dynamic>))
+            .toList();
+        _occlusionsController.add(occlusions);
+        break;
+      case 'onOcclusionStatusUpdated':
+        final statusData = call.arguments as Map<String, dynamic>;
+        final status = OcclusionStatus.fromMap(statusData);
+        _occlusionStatusController.add(status);
         break;
     }
   }
@@ -1219,6 +1244,170 @@ class AugenController {
     }
   }
 
+  // ===== Occlusion Methods =====
+
+  /// Enable or disable occlusion
+  Future<void> setOcclusionEnabled(bool enabled) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setOcclusionEnabled', {'enabled': enabled});
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set occlusion enabled: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Check if occlusion is enabled
+  Future<bool> isOcclusionEnabled() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('isOcclusionEnabled');
+      return result as bool;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to check occlusion enabled: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Set occlusion configuration
+  Future<void> setOcclusionConfig({
+    required OcclusionType type,
+    double confidence = 0.7,
+    bool enablePersonOcclusion = true,
+    bool enablePlaneOcclusion = true,
+    bool enableDepthOcclusion = true,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setOcclusionConfig', {
+        'type': type.name,
+        'confidence': confidence,
+        'enablePersonOcclusion': enablePersonOcclusion,
+        'enablePlaneOcclusion': enablePlaneOcclusion,
+        'enableDepthOcclusion': enableDepthOcclusion,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set occlusion config: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all active occlusions
+  Future<List<AROcclusion>> getOcclusions() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getOcclusions');
+      final occlusionsData = result as List;
+      return occlusionsData
+          .map((e) => AROcclusion.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get occlusions: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get a specific occlusion by ID
+  Future<AROcclusion?> getOcclusion(String occlusionId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getOcclusion', {
+        'occlusionId': occlusionId,
+      });
+      if (result == null) return null;
+      return AROcclusion.fromMap(Map<String, dynamic>.from(result as Map));
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get occlusion: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Create a new occlusion
+  Future<String> createOcclusion({
+    required OcclusionType type,
+    required Vector3 position,
+    required Quaternion rotation,
+    required Vector3 scale,
+    Map<String, dynamic>? metadata,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('createOcclusion', {
+        'type': type.name,
+        'position': position.toMap(),
+        'rotation': rotation.toMap(),
+        'scale': scale.toMap(),
+        'metadata': metadata ?? {},
+      });
+      return result as String;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to create occlusion: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update an existing occlusion
+  Future<void> updateOcclusion({
+    required String occlusionId,
+    Vector3? position,
+    Quaternion? rotation,
+    Vector3? scale,
+    Map<String, dynamic>? metadata,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateOcclusion', {
+        'occlusionId': occlusionId,
+        if (position != null) 'position': position.toMap(),
+        if (rotation != null) 'rotation': rotation.toMap(),
+        if (scale != null) 'scale': scale.toMap(),
+        if (metadata != null) 'metadata': metadata,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update occlusion: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove an occlusion
+  Future<void> removeOcclusion(String occlusionId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('removeOcclusion', {
+        'occlusionId': occlusionId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to remove occlusion: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Check if occlusion is supported on the current device
+  Future<bool> isOcclusionSupported() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('isOcclusionSupported');
+      return result as bool;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to check occlusion support: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get occlusion capabilities
+  Future<Map<String, dynamic>> getOcclusionCapabilities() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getOcclusionCapabilities');
+      return Map<String, dynamic>.from(result as Map);
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to get occlusion capabilities: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -1234,6 +1423,8 @@ class AugenController {
     _facesController.close();
     _cloudAnchorsController.close();
     _cloudAnchorStatusController.close();
+    _occlusionsController.close();
+    _occlusionStatusController.close();
     _channel.setMethodCallHandler(null);
   }
 }

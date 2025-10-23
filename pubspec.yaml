@@ -1,6 +1,6 @@
 name: augen
 description: A Flutter plugin for building AR applications using ARCore on Android and RealityKit on iOS. Enables pure Dart AR development without native code.
-version: 0.7.1
+version: 0.8.0
 homepage: https://github.com/AminMemariani/augen
 repository: https://github.com/AminMemariani/augen
 issue_tracker: https://github.com/AminMemariani/augen/issues
