@@ -53,7 +53,8 @@ class AugenController {
       StreamController<OcclusionStatus>.broadcast();
   final StreamController<List<ARPhysicsBody>> _physicsBodiesController =
       StreamController<List<ARPhysicsBody>>.broadcast();
-  final StreamController<List<PhysicsConstraint>> _physicsConstraintsController =
+  final StreamController<List<PhysicsConstraint>>
+  _physicsConstraintsController =
       StreamController<List<PhysicsConstraint>>.broadcast();
   final StreamController<PhysicsStatus> _physicsStatusController =
       StreamController<PhysicsStatus>.broadcast();
@@ -61,11 +62,14 @@ class AugenController {
   // Multi-user stream controllers
   final StreamController<ARMultiUserSession> _multiUserSessionController =
       StreamController<ARMultiUserSession>.broadcast();
-  final StreamController<List<MultiUserParticipant>> _multiUserParticipantsController =
+  final StreamController<List<MultiUserParticipant>>
+  _multiUserParticipantsController =
       StreamController<List<MultiUserParticipant>>.broadcast();
-  final StreamController<List<MultiUserSharedObject>> _multiUserSharedObjectsController =
+  final StreamController<List<MultiUserSharedObject>>
+  _multiUserSharedObjectsController =
       StreamController<List<MultiUserSharedObject>>.broadcast();
-  final StreamController<MultiUserSessionStatus> _multiUserSessionStatusController =
+  final StreamController<MultiUserSessionStatus>
+  _multiUserSessionStatusController =
       StreamController<MultiUserSessionStatus>.broadcast();
 
   bool _isDisposed = false;
@@ -1724,7 +1728,9 @@ class AugenController {
       final result = await _channel.invokeMethod('getPhysicsBodies');
       final bodiesData = result as List;
       return bodiesData
-          .map((e) => ARPhysicsBody.fromMap(Map<String, dynamic>.from(e as Map)))
+          .map(
+            (e) => ARPhysicsBody.fromMap(Map<String, dynamic>.from(e as Map)),
+          )
           .toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get physics bodies: ${e.message}');
@@ -1739,7 +1745,10 @@ class AugenController {
       final result = await _channel.invokeMethod('getPhysicsConstraints');
       final constraintsData = result as List;
       return constraintsData
-          .map((e) => PhysicsConstraint.fromMap(Map<String, dynamic>.from(e as Map)))
+          .map(
+            (e) =>
+                PhysicsConstraint.fromMap(Map<String, dynamic>.from(e as Map)),
+          )
           .toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get physics constraints: ${e.message}');
@@ -1752,7 +1761,9 @@ class AugenController {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
       final result = await _channel.invokeMethod('getPhysicsWorldConfig');
-      return PhysicsWorldConfig.fromMap(Map<String, dynamic>.from(result as Map));
+      return PhysicsWorldConfig.fromMap(
+        Map<String, dynamic>.from(result as Map),
+      );
     } on PlatformException catch (e) {
       _errorController.add('Failed to get physics world config: ${e.message}');
       rethrow;
@@ -1765,7 +1776,9 @@ class AugenController {
     try {
       await _channel.invokeMethod('updatePhysicsWorldConfig', config.toMap());
     } on PlatformException catch (e) {
-      _errorController.add('Failed to update physics world config: ${e.message}');
+      _errorController.add(
+        'Failed to update physics world config: ${e.message}',
+      );
       rethrow;
     }
   }

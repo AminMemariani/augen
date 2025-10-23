@@ -96,7 +96,6 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     );
   }
 
-
   void _onARViewCreated(AugenController controller) {
     _controller = controller;
     _initializeAR();
@@ -139,10 +138,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
       // Check cloud anchor support
       await _checkCloudAnchorSupport();
-      
+
       // Check occlusion support
       await _checkOcclusionSupport();
-      
+
       // Check physics support
       await _checkPhysicsSupport();
     } catch (e) {
@@ -259,21 +258,26 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       }
     });
 
-    _physicsBodiesSubscription = _controller!.physicsBodiesStream.listen((bodies) {
+    _physicsBodiesSubscription = _controller!.physicsBodiesStream.listen((
+      bodies,
+    ) {
       if (!mounted) return;
       setState(() {
         _physicsBodies = bodies;
       });
     });
 
-    _physicsConstraintsSubscription = _controller!.physicsConstraintsStream.listen((constraints) {
-      if (!mounted) return;
-      setState(() {
-        _physicsConstraints = constraints;
-      });
-    });
+    _physicsConstraintsSubscription = _controller!.physicsConstraintsStream
+        .listen((constraints) {
+          if (!mounted) return;
+          setState(() {
+            _physicsConstraints = constraints;
+          });
+        });
 
-    _physicsStatusSubscription = _controller!.physicsStatusStream.listen((status) {
+    _physicsStatusSubscription = _controller!.physicsStatusStream.listen((
+      status,
+    ) {
       if (!mounted) return;
       if (status.isComplete) {
         if (status.isSuccessful) {
@@ -282,7 +286,11 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Physics simulation failed: ${status.errorMessage}')),
+            SnackBar(
+              content: Text(
+                'Physics simulation failed: ${status.errorMessage}',
+              ),
+            ),
           );
         }
       }
@@ -711,9 +719,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Created physics body: $bodyId')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Created physics body: $bodyId')));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -733,9 +741,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Applied force to ${body.id}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Applied force to ${body.id}')));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -1690,9 +1698,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                 color: _physicsSupported ? Colors.green : Colors.red,
               ),
               title: const Text('Physics Support'),
-              subtitle: Text(
-                _physicsSupported ? 'Supported' : 'Not Supported',
-              ),
+              subtitle: Text(_physicsSupported ? 'Supported' : 'Not Supported'),
               trailing: ElevatedButton(
                 onPressed: _checkPhysicsSupport,
                 child: const Text('Check Support'),
@@ -1719,14 +1725,22 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: _physicsSupported ? _togglePhysics : null,
-                          icon: Icon(_physicsEnabled ? Icons.pause : Icons.play_arrow),
-                          label: Text(_physicsEnabled ? 'Pause Physics' : 'Resume Physics'),
+                          icon: Icon(
+                            _physicsEnabled ? Icons.pause : Icons.play_arrow,
+                          ),
+                          label: Text(
+                            _physicsEnabled
+                                ? 'Pause Physics'
+                                : 'Resume Physics',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _physicsSupported ? _createPhysicsBody : null,
+                          onPressed: _physicsSupported
+                              ? _createPhysicsBody
+                              : null,
                           icon: const Icon(Icons.add),
                           label: const Text('Create Body'),
                         ),
@@ -1738,7 +1752,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _physicsSupported && _physicsBodies.isNotEmpty ? _applyForce : null,
+                          onPressed:
+                              _physicsSupported && _physicsBodies.isNotEmpty
+                              ? _applyForce
+                              : null,
                           icon: const Icon(Icons.speed),
                           label: const Text('Apply Force'),
                         ),
@@ -1767,21 +1784,25 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                   if (_physicsBodies.isEmpty)
                     const Text('No physics bodies')
                   else
-                    ..._physicsBodies.map((body) => ListTile(
-                      leading: Icon(
-                        body.isActive ? Icons.science : Icons.science_outlined,
-                        color: body.isActive ? Colors.green : Colors.grey,
+                    ..._physicsBodies.map(
+                      (body) => ListTile(
+                        leading: Icon(
+                          body.isActive
+                              ? Icons.science
+                              : Icons.science_outlined,
+                          color: body.isActive ? Colors.green : Colors.grey,
+                        ),
+                        title: Text('${body.type.name} Body'),
+                        subtitle: Text(
+                          'ID: ${body.id}\n'
+                          'Mass: ${body.mass.toStringAsFixed(2)}\n'
+                          'Position: (${body.position.x.toStringAsFixed(2)}, ${body.position.y.toStringAsFixed(2)}, ${body.position.z.toStringAsFixed(2)})',
+                        ),
+                        trailing: Text(
+                          'Velocity: ${sqrt(body.velocity.x * body.velocity.x + body.velocity.y * body.velocity.y + body.velocity.z * body.velocity.z).toStringAsFixed(2)}',
+                        ),
                       ),
-                      title: Text('${body.type.name} Body'),
-                      subtitle: Text(
-                        'ID: ${body.id}\n'
-                        'Mass: ${body.mass.toStringAsFixed(2)}\n'
-                        'Position: (${body.position.x.toStringAsFixed(2)}, ${body.position.y.toStringAsFixed(2)}, ${body.position.z.toStringAsFixed(2)})',
-                      ),
-                      trailing: Text(
-                        'Velocity: ${sqrt(body.velocity.x * body.velocity.x + body.velocity.y * body.velocity.y + body.velocity.z * body.velocity.z).toStringAsFixed(2)}',
-                      ),
-                    )),
+                    ),
                 ],
               ),
             ),
@@ -1804,18 +1825,22 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                   if (_physicsConstraints.isEmpty)
                     const Text('No physics constraints')
                   else
-                    ..._physicsConstraints.map((constraint) => ListTile(
-                      leading: Icon(
-                        constraint.isActive ? Icons.link : Icons.link_off,
-                        color: constraint.isActive ? Colors.green : Colors.grey,
+                    ..._physicsConstraints.map(
+                      (constraint) => ListTile(
+                        leading: Icon(
+                          constraint.isActive ? Icons.link : Icons.link_off,
+                          color: constraint.isActive
+                              ? Colors.green
+                              : Colors.grey,
+                        ),
+                        title: Text('${constraint.type.name} Constraint'),
+                        subtitle: Text(
+                          'ID: ${constraint.id}\n'
+                          'Body A: ${constraint.bodyAId}\n'
+                          'Body B: ${constraint.bodyBId}',
+                        ),
                       ),
-                      title: Text('${constraint.type.name} Constraint'),
-                      subtitle: Text(
-                        'ID: ${constraint.id}\n'
-                        'Body A: ${constraint.bodyAId}\n'
-                        'Body B: ${constraint.bodyBId}',
-                      ),
-                    )),
+                    ),
                 ],
               ),
             ),
@@ -1837,7 +1862,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                   const SizedBox(height: 8),
                   const Text('• Dynamic: Responds to forces and collisions'),
                   const Text('• Static: Fixed position, can collide'),
-                  const Text('• Kinematic: Moves but doesn\'t respond to forces'),
+                  const Text(
+                    '• Kinematic: Moves but doesn\'t respond to forces',
+                  ),
                 ],
               ),
             ),

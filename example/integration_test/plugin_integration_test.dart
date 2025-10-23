@@ -1208,7 +1208,8 @@ void main() {
         expect(createdController, isNotNull);
 
         // Test occlusion support
-        final occlusionSupported = await createdController.isOcclusionSupported();
+        final occlusionSupported = await createdController
+            .isOcclusionSupported();
         // ignore: avoid_print
         print('Occlusion supported: $occlusionSupported');
 
@@ -1263,7 +1264,8 @@ void main() {
           }
 
           // Test occlusion capabilities
-          final capabilities = await createdController.getOcclusionCapabilities();
+          final capabilities = await createdController
+              .getOcclusionCapabilities();
           // ignore: avoid_print
           print('Occlusion capabilities: $capabilities');
 
