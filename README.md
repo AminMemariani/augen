@@ -776,7 +776,7 @@ Have an idea for improvement? Let us know!
 - [x] Image tracking and recognition ✅ **v0.5.0**
 - [x] Face tracking capabilities ✅ **v0.6.0**
 - [x] Cloud anchors for persistent AR ✅ **v0.7.0**
-- [ ] Occlusion for realistic rendering
+- [x] Occlusion for realistic rendering ✅ **v0.8.0**
 - [ ] Physics simulation for AR objects
 - [ ] Multi-user AR experiences
 - [ ] Real-time lighting and shadows
