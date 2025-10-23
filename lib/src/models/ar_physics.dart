@@ -2,11 +2,7 @@ import 'vector3.dart';
 import 'quaternion.dart';
 
 /// Physics body types for AR objects
-enum PhysicsBodyType {
-  static,
-  dynamic,
-  kinematic,
-}
+enum PhysicsBodyType { static, dynamic, kinematic }
 
 /// Physics material properties
 class PhysicsMaterial {
@@ -57,12 +53,12 @@ class PhysicsMaterial {
 
   @override
   int get hashCode => Object.hash(
-        density,
-        friction,
-        restitution,
-        linearDamping,
-        angularDamping,
-      );
+    density,
+    friction,
+    restitution,
+    linearDamping,
+    angularDamping,
+  );
 
   @override
   String toString() {
@@ -144,9 +140,7 @@ class ARPhysicsBody {
       rotation: Quaternion.fromMap(
         Map<String, dynamic>.from(map['rotation'] as Map),
       ),
-      scale: Vector3.fromMap(
-        Map<String, dynamic>.from(map['scale'] as Map),
-      ),
+      scale: Vector3.fromMap(Map<String, dynamic>.from(map['scale'] as Map)),
       velocity: Vector3.fromMap(
         Map<String, dynamic>.from(map['velocity'] as Map),
       ),
@@ -156,7 +150,9 @@ class ARPhysicsBody {
       isActive: map['isActive'] as bool,
       mass: (map['mass'] as num).toDouble(),
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
-      lastUpdated: DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] as int),
+      lastUpdated: DateTime.fromMillisecondsSinceEpoch(
+        map['lastUpdated'] as int,
+      ),
       metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
     );
   }
@@ -176,28 +172,30 @@ class ARPhysicsBody {
         other.angularVelocity == angularVelocity &&
         other.isActive == isActive &&
         other.mass == mass &&
-        other.createdAt.millisecondsSinceEpoch == createdAt.millisecondsSinceEpoch &&
-        other.lastUpdated.millisecondsSinceEpoch == lastUpdated.millisecondsSinceEpoch &&
+        other.createdAt.millisecondsSinceEpoch ==
+            createdAt.millisecondsSinceEpoch &&
+        other.lastUpdated.millisecondsSinceEpoch ==
+            lastUpdated.millisecondsSinceEpoch &&
         _mapEquals(other.metadata, metadata);
   }
 
   @override
   int get hashCode => Object.hash(
-        id,
-        nodeId,
-        type,
-        material,
-        position,
-        rotation,
-        scale,
-        velocity,
-        angularVelocity,
-        isActive,
-        mass,
-        createdAt.millisecondsSinceEpoch,
-        lastUpdated.millisecondsSinceEpoch,
-        Object.hashAll(metadata.entries),
-      );
+    id,
+    nodeId,
+    type,
+    material,
+    position,
+    rotation,
+    scale,
+    velocity,
+    angularVelocity,
+    isActive,
+    mass,
+    createdAt.millisecondsSinceEpoch,
+    lastUpdated.millisecondsSinceEpoch,
+    Object.hashAll(metadata.entries),
+  );
 
   @override
   String toString() {
@@ -206,13 +204,7 @@ class ARPhysicsBody {
 }
 
 /// Physics constraint types
-enum PhysicsConstraintType {
-  fixed,
-  hinge,
-  ballSocket,
-  slider,
-  universal,
-}
+enum PhysicsConstraintType { fixed, hinge, ballSocket, slider, universal }
 
 /// Physics constraint between two bodies
 class PhysicsConstraint {
@@ -282,17 +274,15 @@ class PhysicsConstraint {
       anchorB: Vector3.fromMap(
         Map<String, dynamic>.from(map['anchorB'] as Map),
       ),
-      axisA: Vector3.fromMap(
-        Map<String, dynamic>.from(map['axisA'] as Map),
-      ),
-      axisB: Vector3.fromMap(
-        Map<String, dynamic>.from(map['axisB'] as Map),
-      ),
+      axisA: Vector3.fromMap(Map<String, dynamic>.from(map['axisA'] as Map)),
+      axisB: Vector3.fromMap(Map<String, dynamic>.from(map['axisB'] as Map)),
       lowerLimit: (map['lowerLimit'] as num).toDouble(),
       upperLimit: (map['upperLimit'] as num).toDouble(),
       isActive: map['isActive'] as bool,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
-      lastUpdated: DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] as int),
+      lastUpdated: DateTime.fromMillisecondsSinceEpoch(
+        map['lastUpdated'] as int,
+      ),
       metadata: Map<String, dynamic>.from(map['metadata'] as Map? ?? {}),
     );
   }
@@ -312,28 +302,30 @@ class PhysicsConstraint {
         other.lowerLimit == lowerLimit &&
         other.upperLimit == upperLimit &&
         other.isActive == isActive &&
-        other.createdAt.millisecondsSinceEpoch == createdAt.millisecondsSinceEpoch &&
-        other.lastUpdated.millisecondsSinceEpoch == lastUpdated.millisecondsSinceEpoch &&
+        other.createdAt.millisecondsSinceEpoch ==
+            createdAt.millisecondsSinceEpoch &&
+        other.lastUpdated.millisecondsSinceEpoch ==
+            lastUpdated.millisecondsSinceEpoch &&
         _mapEquals(other.metadata, metadata);
   }
 
   @override
   int get hashCode => Object.hash(
-        id,
-        bodyAId,
-        bodyBId,
-        type,
-        anchorA,
-        anchorB,
-        axisA,
-        axisB,
-        lowerLimit,
-        upperLimit,
-        isActive,
-        createdAt.millisecondsSinceEpoch,
-        lastUpdated.millisecondsSinceEpoch,
-        Object.hashAll(metadata.entries),
-      );
+    id,
+    bodyAId,
+    bodyBId,
+    type,
+    anchorA,
+    anchorB,
+    axisA,
+    axisB,
+    lowerLimit,
+    upperLimit,
+    isActive,
+    createdAt.millisecondsSinceEpoch,
+    lastUpdated.millisecondsSinceEpoch,
+    Object.hashAll(metadata.entries),
+  );
 
   @override
   String toString() {
@@ -385,7 +377,8 @@ class PhysicsWorldConfig {
       maxSubSteps: map['maxSubSteps'] as int,
       enableSleeping: map['enableSleeping'] as bool,
       enableContinuousCollision: map['enableContinuousCollision'] as bool,
-      contactBreakingThreshold: (map['contactBreakingThreshold'] as num).toDouble(),
+      contactBreakingThreshold: (map['contactBreakingThreshold'] as num)
+          .toDouble(),
       contactERP: (map['contactERP'] as num).toDouble(),
       contactCFM: (map['contactCFM'] as num).toDouble(),
     );
@@ -407,15 +400,15 @@ class PhysicsWorldConfig {
 
   @override
   int get hashCode => Object.hash(
-        gravity,
-        timeStep,
-        maxSubSteps,
-        enableSleeping,
-        enableContinuousCollision,
-        contactBreakingThreshold,
-        contactERP,
-        contactCFM,
-      );
+    gravity,
+    timeStep,
+    maxSubSteps,
+    enableSleeping,
+    enableContinuousCollision,
+    contactBreakingThreshold,
+    contactERP,
+    contactCFM,
+  );
 
   @override
   String toString() {
@@ -470,18 +463,19 @@ class PhysicsStatus {
         other.status == status &&
         other.progress == progress &&
         other.errorMessage == errorMessage &&
-        other.timestamp.millisecondsSinceEpoch == timestamp.millisecondsSinceEpoch &&
+        other.timestamp.millisecondsSinceEpoch ==
+            timestamp.millisecondsSinceEpoch &&
         _mapEquals(other.metadata, metadata);
   }
 
   @override
   int get hashCode => Object.hash(
-        status,
-        progress,
-        errorMessage,
-        timestamp.millisecondsSinceEpoch,
-        Object.hashAll(metadata.entries),
-      );
+    status,
+    progress,
+    errorMessage,
+    timestamp.millisecondsSinceEpoch,
+    Object.hashAll(metadata.entries),
+  );
 
   @override
   String toString() {

@@ -78,7 +78,8 @@ void main() {
 
   group('ARPhysicsBody', () {
     final now = DateTime.fromMillisecondsSinceEpoch(
-        DateTime.now().millisecondsSinceEpoch);
+      DateTime.now().millisecondsSinceEpoch,
+    );
     final testBody = ARPhysicsBody(
       id: 'body1',
       nodeId: 'node1',
@@ -228,7 +229,8 @@ void main() {
 
   group('PhysicsConstraint', () {
     final now = DateTime.fromMillisecondsSinceEpoch(
-        DateTime.now().millisecondsSinceEpoch);
+      DateTime.now().millisecondsSinceEpoch,
+    );
     final testConstraint = PhysicsConstraint(
       id: 'constraint1',
       bodyAId: 'bodyA',
@@ -316,7 +318,10 @@ void main() {
     });
 
     test('toString works correctly', () {
-      expect(testConstraint.toString(), contains('PhysicsConstraint(id: constraint1'));
+      expect(
+        testConstraint.toString(),
+        contains('PhysicsConstraint(id: constraint1'),
+      );
     });
   });
 
@@ -395,7 +400,8 @@ void main() {
 
   group('PhysicsStatus', () {
     final now = DateTime.fromMillisecondsSinceEpoch(
-        DateTime.now().millisecondsSinceEpoch);
+      DateTime.now().millisecondsSinceEpoch,
+    );
     final testStatus = PhysicsStatus(
       status: 'simulating',
       progress: 0.5,
@@ -462,7 +468,10 @@ void main() {
     });
 
     test('toString works correctly', () {
-      expect(testStatus.toString(), contains('PhysicsStatus(status: simulating'));
+      expect(
+        testStatus.toString(),
+        contains('PhysicsStatus(status: simulating'),
+      );
     });
   });
 }
