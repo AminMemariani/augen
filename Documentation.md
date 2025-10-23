@@ -71,7 +71,19 @@
    - [Best Practices](#best-practices-1)
    - [Complete Example](#complete-example-1)
 
-9. [Animations](#9-animations)
+9. [Multi-User AR](#9-multi-user-ar)
+   - [Overview](#overview-multi-user)
+   - [Setting Up Multi-User Sessions](#setting-up-multi-user-sessions)
+   - [Creating Sessions](#creating-sessions)
+   - [Joining Sessions](#joining-sessions)
+   - [Managing Participants](#managing-participants)
+   - [Sharing Objects](#sharing-objects)
+   - [Monitoring Multi-User Status](#monitoring-multi-user-status)
+   - [Session Capabilities](#session-capabilities)
+   - [Best Practices](#best-practices-multi-user)
+   - [Complete Example](#complete-example-multi-user)
+
+10. [Animations](#10-animations)
    - [Basic Animations](#basic-animations)
    - [Advanced Animation Features](#advanced-animation-features)
    - [Animation Blending](#animation-blending)
@@ -80,7 +92,7 @@
    - [Blend Trees](#blend-trees)
    - [Layered Animations](#layered-animations)
 
-9. [Advanced Animation Blending - Complete Guide](#9-advanced-animation-blending---complete-guide)
+11. [Advanced Animation Blending - Complete Guide](#11-advanced-animation-blending---complete-guide)
    - [Overview](#overview-advanced)
    - [Animation Blending In-Depth](#animation-blending-in-depth)
    - [Crossfade Transitions In-Depth](#crossfade-transitions-in-depth)
@@ -92,7 +104,7 @@
    - [Performance Tips](#performance-tips)
    - [Troubleshooting](#troubleshooting)
 
-9. [Advanced Animation Features Summary](#9-advanced-animation-features-summary)
+12. [Advanced Animation Features Summary](#12-advanced-animation-features-summary)
    - [Implementation Overview](#implementation-overview)
    - [New Features](#new-features)
    - [Files Created](#files-created)
@@ -5703,6 +5715,319 @@ The example app demonstrates:
 10. **Advanced Animation System**: Industry-standard animation features
 11. **Fully Tested**: 177 passing tests with 100% coverage
 12. **Professional Grade**: Comparable to game engine animation systems
+
+## 9. Multi-User AR
+
+### Overview
+
+Multi-user AR enables shared AR experiences where multiple users can interact with the same AR content in real-time. This feature allows for collaborative AR applications, shared virtual spaces, and synchronized AR experiences across multiple devices.
+
+### Setting Up Multi-User Sessions
+
+#### Check Multi-User Support
+
+```dart
+final supported = await controller.isMultiUserSupported();
+if (supported) {
+  // Multi-user AR is available
+}
+```
+
+#### Create a Multi-User Session
+
+```dart
+final sessionId = await controller.createMultiUserSession(
+  name: 'My AR Session',
+  maxParticipants: 8,
+  isPrivate: false,
+  password: null, // Optional password
+  capabilities: [
+    MultiUserCapability.spatialSharing,
+    MultiUserCapability.objectSynchronization,
+    MultiUserCapability.realTimeCollaboration,
+  ],
+);
+```
+
+#### Join an Existing Session
+
+```dart
+await controller.joinMultiUserSession(
+  sessionId: 'session123',
+  displayName: 'User Name',
+  password: 'optional_password',
+);
+```
+
+### Managing Participants
+
+#### Get All Participants
+
+```dart
+final participants = await controller.getMultiUserParticipants();
+for (final participant in participants) {
+  print('${participant.displayName} - ${participant.role}');
+}
+```
+
+#### Set Participant Role
+
+```dart
+await controller.setParticipantRole(
+  participantId: 'participant123',
+  role: MultiUserRole.host,
+);
+```
+
+#### Update Participant Display Name
+
+```dart
+await controller.updateParticipantDisplayName(
+  participantId: 'participant123',
+  displayName: 'New Display Name',
+);
+```
+
+#### Kick a Participant
+
+```dart
+await controller.kickParticipant('participant123');
+```
+
+### Sharing Objects
+
+#### Share an Object
+
+```dart
+final sharedObjectId = await controller.shareObject(
+  nodeId: 'my_node',
+  isLocked: false,
+  isVisible: true,
+);
+```
+
+#### Update Shared Object
+
+```dart
+await controller.updateSharedObject(
+  sharedObjectId: sharedObjectId,
+  position: Vector3(1, 2, 3),
+  rotation: Quaternion(0, 0, 0, 1),
+  scale: Vector3(1, 1, 1),
+  isLocked: true,
+  isVisible: false,
+);
+```
+
+#### Get All Shared Objects
+
+```dart
+final sharedObjects = await controller.getMultiUserSharedObjects();
+for (final obj in sharedObjects) {
+  print('Shared object: ${obj.id} by ${obj.ownerId}');
+}
+```
+
+#### Unshare an Object
+
+```dart
+await controller.unshareObject(sharedObjectId);
+```
+
+### Monitoring Multi-User Status
+
+#### Listen to Session Updates
+
+```dart
+controller.multiUserSessionStream.listen((session) {
+  print('Session: ${session.name} - ${session.participantCount} participants');
+});
+```
+
+#### Listen to Participant Updates
+
+```dart
+controller.multiUserParticipantsStream.listen((participants) {
+  print('${participants.length} participants in session');
+});
+```
+
+#### Listen to Shared Object Updates
+
+```dart
+controller.multiUserSharedObjectsStream.listen((objects) {
+  print('${objects.length} shared objects');
+});
+```
+
+#### Listen to Session Status
+
+```dart
+controller.multiUserSessionStatusStream.listen((status) {
+  print('Status: ${status.status} - ${status.progress * 100}%');
+});
+```
+
+### Session Capabilities
+
+#### Available Capabilities
+
+- **spatialSharing**: Share spatial understanding between devices
+- **objectSynchronization**: Synchronize 3D objects across devices
+- **realTimeCollaboration**: Real-time collaborative features
+- **voiceChat**: Voice communication support
+- **gestureSharing**: Share gesture recognition
+- **avatarDisplay**: Display user avatars
+
+### Best Practices
+
+#### Performance Optimization
+
+```dart
+// Limit the number of shared objects
+const maxSharedObjects = 50;
+
+// Use appropriate update frequencies
+const updateInterval = Duration(milliseconds: 100);
+```
+
+#### Error Handling
+
+```dart
+try {
+  await controller.joinMultiUserSession(sessionId: 'session123');
+} catch (e) {
+  print('Failed to join session: $e');
+  // Handle error appropriately
+}
+```
+
+#### Session Management
+
+```dart
+// Always leave sessions when done
+await controller.leaveMultiUserSession();
+
+// Clean up shared objects
+final objects = await controller.getMultiUserSharedObjects();
+for (final obj in objects) {
+  if (obj.isOwnedBy(currentUserId)) {
+    await controller.unshareObject(obj.id);
+  }
+}
+```
+
+### Complete Example
+
+```dart
+class MultiUserARView extends StatefulWidget {
+  @override
+  _MultiUserARViewState createState() => _MultiUserARViewState();
+}
+
+class _MultiUserARViewState extends State<MultiUserARView> {
+  AugenController? _controller;
+  ARMultiUserSession? _session;
+  List<MultiUserParticipant> _participants = [];
+  List<MultiUserSharedObject> _sharedObjects = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeMultiUser();
+  }
+
+  Future<void> _initializeMultiUser() async {
+    if (_controller == null) return;
+
+    try {
+      // Check support
+      final supported = await _controller!.isMultiUserSupported();
+      if (!supported) {
+        print('Multi-user AR not supported');
+        return;
+      }
+
+      // Create session
+      final sessionId = await _controller!.createMultiUserSession(
+        name: 'Collaborative AR Session',
+        maxParticipants: 4,
+        isPrivate: false,
+        capabilities: [
+          MultiUserCapability.spatialSharing,
+          MultiUserCapability.objectSynchronization,
+          MultiUserCapability.realTimeCollaboration,
+        ],
+      );
+
+      print('Created session: $sessionId');
+
+      // Listen to updates
+      _controller!.multiUserSessionStream.listen((session) {
+        setState(() {
+          _session = session;
+        });
+      });
+
+      _controller!.multiUserParticipantsStream.listen((participants) {
+        setState(() {
+          _participants = participants;
+        });
+      });
+
+      _controller!.multiUserSharedObjectsStream.listen((objects) {
+        setState(() {
+          _sharedObjects = objects;
+        });
+      });
+
+    } catch (e) {
+      print('Failed to initialize multi-user: $e');
+    }
+  }
+
+  Future<void> _shareObject() async {
+    if (_controller == null) return;
+
+    try {
+      final sharedObjectId = await _controller!.shareObject(
+        nodeId: 'my_object',
+        isLocked: false,
+        isVisible: true,
+      );
+      print('Shared object: $sharedObjectId');
+    } catch (e) {
+      print('Failed to share object: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Multi-User AR')),
+      body: Column(
+        children: [
+          if (_session != null) ...[
+            Text('Session: ${_session!.name}'),
+            Text('Participants: ${_participants.length}'),
+            Text('Shared Objects: ${_sharedObjects.length}'),
+          ],
+          ElevatedButton(
+            onPressed: _shareObject,
+            child: Text('Share Object'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller?.leaveMultiUserSession();
+    super.dispose();
+  }
+}
+```
 
 ## Next Steps for Users
 

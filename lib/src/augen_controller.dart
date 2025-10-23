@@ -18,6 +18,7 @@ import 'models/ar_face.dart';
 import 'models/ar_cloud_anchor.dart';
 import 'models/ar_occlusion.dart';
 import 'models/ar_physics.dart';
+import 'models/ar_multi_user.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -56,6 +57,16 @@ class AugenController {
       StreamController<List<PhysicsConstraint>>.broadcast();
   final StreamController<PhysicsStatus> _physicsStatusController =
       StreamController<PhysicsStatus>.broadcast();
+
+  // Multi-user stream controllers
+  final StreamController<ARMultiUserSession> _multiUserSessionController =
+      StreamController<ARMultiUserSession>.broadcast();
+  final StreamController<List<MultiUserParticipant>> _multiUserParticipantsController =
+      StreamController<List<MultiUserParticipant>>.broadcast();
+  final StreamController<List<MultiUserSharedObject>> _multiUserSharedObjectsController =
+      StreamController<List<MultiUserSharedObject>>.broadcast();
+  final StreamController<MultiUserSessionStatus> _multiUserSessionStatusController =
+      StreamController<MultiUserSessionStatus>.broadcast();
 
   bool _isDisposed = false;
 
@@ -122,6 +133,16 @@ class AugenController {
   /// Stream of physics status updates
   Stream<PhysicsStatus> get physicsStatusStream =>
       _physicsStatusController.stream;
+
+  // Multi-user streams
+  Stream<ARMultiUserSession> get multiUserSessionStream =>
+      _multiUserSessionController.stream;
+  Stream<List<MultiUserParticipant>> get multiUserParticipantsStream =>
+      _multiUserParticipantsController.stream;
+  Stream<List<MultiUserSharedObject>> get multiUserSharedObjectsStream =>
+      _multiUserSharedObjectsController.stream;
+  Stream<MultiUserSessionStatus> get multiUserSessionStatusStream =>
+      _multiUserSessionStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -411,6 +432,32 @@ class AugenController {
         final statusData = call.arguments as Map<String, dynamic>;
         final status = PhysicsStatus.fromMap(statusData);
         _physicsStatusController.add(status);
+        break;
+      case 'onMultiUserSessionUpdated':
+        final sessionData = call.arguments as Map<String, dynamic>;
+        final session = ARMultiUserSession.fromMap(sessionData);
+        _multiUserSessionController.add(session);
+        break;
+      case 'onMultiUserParticipantsUpdated':
+        final participantsData = call.arguments as List;
+        final participants = participantsData
+            .map((e) => MultiUserParticipant.fromMap(e as Map<String, dynamic>))
+            .toList();
+        _multiUserParticipantsController.add(participants);
+        break;
+      case 'onMultiUserSharedObjectsUpdated':
+        final objectsData = call.arguments as List;
+        final objects = objectsData
+            .map(
+              (e) => MultiUserSharedObject.fromMap(e as Map<String, dynamic>),
+            )
+            .toList();
+        _multiUserSharedObjectsController.add(objects);
+        break;
+      case 'onMultiUserSessionStatusUpdated':
+        final statusData = call.arguments as Map<String, dynamic>;
+        final status = MultiUserSessionStatus.fromMap(statusData);
+        _multiUserSessionStatusController.add(status);
         break;
     }
   }
@@ -1723,6 +1770,242 @@ class AugenController {
     }
   }
 
+  // ===== Multi-User Methods =====
+
+  /// Check if multi-user AR is supported
+  Future<bool> isMultiUserSupported() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('isMultiUserSupported');
+      return result as bool;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to check multi-user support: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Create a new multi-user session
+  Future<String> createMultiUserSession({
+    required String name,
+    int maxParticipants = 8,
+    bool isPrivate = false,
+    String? password,
+    List<MultiUserCapability> capabilities = const [
+      MultiUserCapability.spatialSharing,
+      MultiUserCapability.objectSynchronization,
+      MultiUserCapability.realTimeCollaboration,
+    ],
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('createMultiUserSession', {
+        'name': name,
+        'maxParticipants': maxParticipants,
+        'isPrivate': isPrivate,
+        'password': password,
+        'capabilities': capabilities.map((c) => c.name).toList(),
+      });
+      return result as String;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to create multi-user session: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Join an existing multi-user session
+  Future<void> joinMultiUserSession({
+    required String sessionId,
+    String? password,
+    String displayName = 'User',
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('joinMultiUserSession', {
+        'sessionId': sessionId,
+        'password': password,
+        'displayName': displayName,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to join multi-user session: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Leave the current multi-user session
+  Future<void> leaveMultiUserSession() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('leaveMultiUserSession');
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to leave multi-user session: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get current multi-user session
+  Future<ARMultiUserSession?> getMultiUserSession() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getMultiUserSession');
+      if (result == null) return null;
+      return ARMultiUserSession.fromMap(
+        Map<String, dynamic>.from(result as Map),
+      );
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get multi-user session: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all participants in the current session
+  Future<List<MultiUserParticipant>> getMultiUserParticipants() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getMultiUserParticipants');
+      final participantsData = result as List;
+      return participantsData
+          .map(
+            (e) => MultiUserParticipant.fromMap(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList();
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to get multi-user participants: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Share an object with other participants
+  Future<String> shareObject({
+    required String nodeId,
+    bool isLocked = false,
+    bool isVisible = true,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('shareObject', {
+        'nodeId': nodeId,
+        'isLocked': isLocked,
+        'isVisible': isVisible,
+      });
+      return result as String;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to share object: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Unshare an object (remove from shared objects)
+  Future<void> unshareObject(String sharedObjectId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('unshareObject', {
+        'sharedObjectId': sharedObjectId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to unshare object: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update a shared object's properties
+  Future<void> updateSharedObject({
+    required String sharedObjectId,
+    Vector3? position,
+    Quaternion? rotation,
+    Vector3? scale,
+    bool? isLocked,
+    bool? isVisible,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateSharedObject', {
+        'sharedObjectId': sharedObjectId,
+        'position': position?.toMap(),
+        'rotation': rotation?.toMap(),
+        'scale': scale?.toMap(),
+        'isLocked': isLocked,
+        'isVisible': isVisible,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update shared object: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all shared objects in the current session
+  Future<List<MultiUserSharedObject>> getMultiUserSharedObjects() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getMultiUserSharedObjects');
+      final objectsData = result as List;
+      return objectsData
+          .map(
+            (e) => MultiUserSharedObject.fromMap(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList();
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to get multi-user shared objects: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Set participant role
+  Future<void> setParticipantRole({
+    required String participantId,
+    required MultiUserRole role,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setParticipantRole', {
+        'participantId': participantId,
+        'role': role.name,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set participant role: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Kick a participant from the session
+  Future<void> kickParticipant(String participantId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('kickParticipant', {
+        'participantId': participantId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to kick participant: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update participant display name
+  Future<void> updateParticipantDisplayName({
+    required String participantId,
+    required String displayName,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateParticipantDisplayName', {
+        'participantId': participantId,
+        'displayName': displayName,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update participant display name: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -1743,6 +2026,10 @@ class AugenController {
     _physicsBodiesController.close();
     _physicsConstraintsController.close();
     _physicsStatusController.close();
+    _multiUserSessionController.close();
+    _multiUserParticipantsController.close();
+    _multiUserSharedObjectsController.close();
+    _multiUserSessionStatusController.close();
     _channel.setMethodCallHandler(null);
   }
 }

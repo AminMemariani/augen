@@ -2,6 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] - 2025-01-16
+
+### Added
+- 👥 **Multi-User AR Experiences** - Complete shared AR system
+  - Real-time collaborative AR sessions with multiple participants
+  - Session management with create, join, leave operations
+  - Participant management with roles (host, participant, observer) and permissions
+  - Object synchronization across all participants in a session
+  - Real-time participant position and rotation tracking
+  - Session capabilities (spatial sharing, object sync, real-time collaboration, voice chat, gesture sharing, avatar display)
+  - Private sessions with password protection
+  - Configurable maximum participants per session
+
+### New Features
+- **ARMultiUserSession Model**: Complete session data structure with participants, capabilities, and state
+- **MultiUserParticipant Model**: Participant information with position, rotation, role, and status
+- **MultiUserSharedObject Model**: Synchronized object data across all session participants
+- **MultiUserSessionStatus Model**: Real-time status updates for multi-user operations
+- **MultiUserConnectionState Enum**: Connection states (disconnected, connecting, connected, reconnecting, failed)
+- **MultiUserRole Enum**: Participant roles (host, participant, observer)
+- **MultiUserCapability Enum**: Session capabilities for different multi-user features
+
+### Enhanced Controller
+- **Multi-User Methods**: Complete multi-user API with 10+ new methods
+  - `isMultiUserSupported()` - Check multi-user support
+  - `createMultiUserSession()` - Create new shared AR session
+  - `joinMultiUserSession()` - Join existing session
+  - `leaveMultiUserSession()` - Leave current session
+  - `getMultiUserSession()` - Get current session info
+  - `getMultiUserParticipants()` - Get all participants
+  - `shareObject()` - Share AR object with all participants
+  - `unshareObject()` - Remove shared object
+  - `updateSharedObject()` - Update shared object properties
+  - `getMultiUserSharedObjects()` - Get all shared objects
+  - `setParticipantRole()` - Change participant role
+  - `kickParticipant()` - Remove participant from session
+  - `updateParticipantDisplayName()` - Update participant name
+
+### New Streams
+- **multiUserSessionStream**: Real-time session updates
+- **multiUserParticipantsStream**: Real-time participant updates
+- **multiUserSharedObjectsStream**: Real-time shared object updates
+- **multiUserSessionStatusStream**: Real-time multi-user status updates
+
+### Enhanced Documentation
+- **Multi-User AR Section**: Complete guide in Documentation.md
+  - Session setup and configuration
+  - Creating and joining sessions
+  - Managing participants and roles
+  - Sharing and synchronizing objects
+  - Monitoring session status
+  - Best practices and examples
+
+### Testing
+- **37 New Unit Tests**: Comprehensive test coverage for all multi-user features
+- **Total Tests**: 368 passing tests (increased from 331)
+- **Test Coverage**: 100% coverage maintained
+- **Multi-User Integration Tests**: Ready for device testing
+
+### Documentation Updates
+- Added Multi-User AR section to complete documentation
+- Updated README.md with multi-user features
+- Added multi-user examples and best practices
+- Updated API reference with all new methods
+
 ## [0.9.0] - 2025-01-15
 
 ### Added

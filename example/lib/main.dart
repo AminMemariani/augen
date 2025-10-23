@@ -42,6 +42,11 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   List<AROcclusion> _occlusions = [];
   List<ARPhysicsBody> _physicsBodies = [];
   List<PhysicsConstraint> _physicsConstraints = [];
+  List<MultiUserParticipant> _multiUserParticipants = [];
+  List<MultiUserSharedObject> _multiUserSharedObjects = [];
+  ARMultiUserSession? _multiUserSession;
+  bool _multiUserSupported = false;
+  bool _multiUserEnabled = false;
   int _nodeCounter = 0;
   String _statusMessage = 'Initializing...';
   bool _imageTrackingEnabled = false;

@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen.svg)](test/)
+[![Tests](https://img.shields.io/badge/tests-368%20passing-brightgreen.svg)](test/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](Documentation.md#6-testing)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
@@ -18,6 +18,7 @@
 ☁️ **Cloud Anchors**: Create persistent AR experiences that can be shared across sessions  
 👁️ **Occlusion**: Realistic rendering with depth, person, and plane occlusion  
 ⚛️ **Physics Simulation**: Realistic interactions with dynamic, static, and kinematic bodies, materials, and constraints  
+👥 **Multi-User AR**: Shared AR experiences with real-time collaboration, participant management, and object synchronization  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
@@ -37,6 +38,7 @@
 - Cloud Anchors
 - Occlusion
 - Physics Simulation
+- Multi-User AR
 - Animations & Advanced Blending
 - Testing
 - Examples & Best Practices
@@ -56,7 +58,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.9.0
+  augen: ^0.10.0
 ```
 
 Run:

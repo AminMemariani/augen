@@ -19,5 +19,6 @@ export 'src/models/ar_face.dart';
 export 'src/models/ar_cloud_anchor.dart';
 export 'src/models/ar_occlusion.dart';
 export 'src/models/ar_physics.dart';
+export 'src/models/ar_multi_user.dart';
 export 'src/models/vector3.dart';
 export 'src/models/quaternion.dart';

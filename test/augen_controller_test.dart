@@ -2350,5 +2350,167 @@ void main() {
         subscription.cancel();
       });
     });
+
+    group('Multi-User Methods', () {
+      test('isMultiUserSupported sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'isMultiUserSupported') {
+                return true;
+              }
+              return null;
+            });
+
+        final result = await controller.isMultiUserSupported();
+        expect(result, true);
+      });
+
+      test('createMultiUserSession sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'createMultiUserSession') {
+                capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+                return 'session123';
+              }
+              return null;
+            });
+
+        final sessionId = await controller.createMultiUserSession(
+          name: 'Test Session',
+          maxParticipants: 4,
+          isPrivate: true,
+          password: 'secret',
+        );
+
+        expect(sessionId, 'session123');
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['name'], 'Test Session');
+        expect(capturedArgs!['maxParticipants'], 4);
+        expect(capturedArgs!['isPrivate'], true);
+        expect(capturedArgs!['password'], 'secret');
+      });
+
+      test('joinMultiUserSession sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'joinMultiUserSession') {
+                capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+              }
+              return null;
+            });
+
+        await controller.joinMultiUserSession(
+          sessionId: 'session123',
+          displayName: 'Test User',
+          password: 'secret',
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['sessionId'], 'session123');
+        expect(capturedArgs!['displayName'], 'Test User');
+        expect(capturedArgs!['password'], 'secret');
+      });
+
+      test('leaveMultiUserSession calls correct method', () async {
+        String? calledMethod;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              calledMethod = methodCall.method;
+              return null;
+            });
+
+        await controller.leaveMultiUserSession();
+        expect(calledMethod, 'leaveMultiUserSession');
+      });
+
+      test('shareObject sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'shareObject') {
+                capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+                return 'sharedObject123';
+              }
+              return null;
+            });
+
+        final objectId = await controller.shareObject(
+          nodeId: 'node1',
+          isLocked: true,
+          isVisible: true,
+        );
+
+        expect(objectId, 'sharedObject123');
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'node1');
+        expect(capturedArgs!['isLocked'], true);
+        expect(capturedArgs!['isVisible'], true);
+      });
+
+      test('getMultiUserParticipants returns parsed participants', () async {
+        final now = DateTime.now();
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              if (methodCall.method == 'getMultiUserParticipants') {
+                return [
+                  {
+                    'id': 'participant1',
+                    'displayName': 'User 1',
+                    'role': 'participant',
+                    'position': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                    'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                    'isActive': true,
+                    'isHost': false,
+                    'joinedAt': now.millisecondsSinceEpoch,
+                    'lastSeen': now.millisecondsSinceEpoch,
+                    'metadata': {},
+                  },
+                ];
+              }
+              return null;
+            });
+
+        final participants = await controller.getMultiUserParticipants();
+        expect(participants.length, 1);
+        expect(participants[0].id, 'participant1');
+        expect(participants[0].displayName, 'User 1');
+      });
+    });
+
+    group('Multi-User Streams', () {
+      test('multiUserSessionStream can be listened to', () {
+        final subscription = controller.multiUserSessionStream.listen(
+          (session) {},
+        );
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('multiUserParticipantsStream can be listened to', () {
+        final subscription = controller.multiUserParticipantsStream.listen(
+          (participants) {},
+        );
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('multiUserSharedObjectsStream can be listened to', () {
+        final subscription = controller.multiUserSharedObjectsStream.listen(
+          (objects) {},
+        );
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('multiUserSessionStatusStream can be listened to', () {
+        final subscription = controller.multiUserSessionStatusStream.listen(
+          (status) {},
+        );
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+    });
   });
 }
