@@ -58,7 +58,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.10.0
+  augen: ^0.10.1
 ```
 
 Run:
@@ -875,6 +875,21 @@ Have an idea for improvement? Let us know!
 
 **Your contributions help make Augen better for everyone!** ⭐ Star the repo if you find it useful!
 
+## Recent Updates
+
+### v0.10.1 - Code Quality & Formatting (Latest)
+- 🔧 **Code Formatting** - Applied Dart formatter to all files for consistent code style
+- 🧹 **Code Cleanup** - Removed unused variables and fixed BuildContext usage across async gaps
+- ✅ **Zero Linting Issues** - All code now follows Dart formatting standards
+- 🚀 **Production Ready** - Codebase is fully formatted and lint-free
+
+### v0.10.0 - Multi-User AR Experiences
+- 👥 **Multi-User AR** - Complete shared AR system with real-time collaboration
+- 🔄 **Session Management** - Create, join, and leave collaborative AR sessions
+- 👤 **Participant Management** - Role-based permissions and real-time tracking
+- 🔗 **Object Synchronization** - Share AR objects across all participants
+- 🎯 **Advanced Capabilities** - Spatial sharing, voice chat, gesture sharing, and more
+
 ## Roadmap
 
 - [x] Custom 3D model loading (GLTF, GLB, OBJ, USDZ) ✅ **v0.2.0**
@@ -885,7 +900,7 @@ Have an idea for improvement? Let us know!
 - [x] Cloud anchors for persistent AR ✅ **v0.7.0**
 - [x] Occlusion for realistic rendering ✅ **v0.8.0**
 - [x] Physics simulation for AR objects ✅ **v0.9.0**
-- [ ] Multi-user AR experiences
+- [x] Multi-user AR experiences ✅ **v0.10.0**
 - [ ] Real-time lighting and shadows
 - [ ] Environmental probes and reflections
 

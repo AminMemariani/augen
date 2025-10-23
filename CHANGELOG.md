@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.1] - 2025-01-16
+
+### Fixed
+- 🔧 **Code Formatting** - Applied Dart formatter to all files
+- 🧹 **Code Cleanup** - Removed unused variables and fixed BuildContext usage
+- 📝 **Documentation** - Updated README with latest features and improvements
+
+### Improvements
+- ✅ **Zero Linting Issues** - All code now follows Dart formatting standards
+- ✅ **Clean Codebase** - Removed unused multi-user variables from example app
+- ✅ **Better Error Handling** - Fixed BuildContext usage across async gaps
+- ✅ **Production Ready** - Code is now fully formatted and lint-free
+
 ## [0.10.0] - 2025-01-16
 
 ### Added
