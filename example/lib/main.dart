@@ -158,10 +158,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     // Plane detection
     _planesSubscription = _controller!.planesStream.listen((planes) {
       if (!mounted) return;
-        setState(() {
-          _detectedPlanes = planes;
-        });
+      setState(() {
+        _detectedPlanes = planes;
       });
+    });
 
     // Image targets
     _imageTargetsSubscription = _controller!.imageTargetsStream.listen((
@@ -291,10 +291,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     // Error handling
     _errorSubscription = _controller!.errorStream.listen((error) {
       if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('AR Error: $error')));
-      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('AR Error: $error')));
+    });
 
     // Animation status
     _animationStatusSubscription = _controller!.animationStatusStream.listen((
@@ -1025,57 +1025,57 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
   Widget _buildARView() {
     return Stack(
-        children: [
-          // AR View
-          AugenView(
-            onViewCreated: _onARViewCreated,
-            config: const ARSessionConfig(
-              planeDetection: true,
-              lightEstimation: true,
-              depthData: false,
-              autoFocus: true,
-            ),
+      children: [
+        // AR View
+        AugenView(
+          onViewCreated: _onARViewCreated,
+          config: const ARSessionConfig(
+            planeDetection: true,
+            lightEstimation: true,
+            depthData: false,
+            autoFocus: true,
           ),
+        ),
 
-          // Status overlay
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.7),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
+        // Status overlay
+        Positioned(
+          top: 16,
+          left: 16,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _statusMessage,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                if (_detectedPlanes.isNotEmpty) ...[
+                  const SizedBox(height: 8),
                   Text(
-                    _statusMessage,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    'Detected planes: ${_detectedPlanes.length}',
+                    style: const TextStyle(
+                      color: Colors.greenAccent,
+                      fontSize: 12,
+                    ),
                   ),
-                  if (_detectedPlanes.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'Detected planes: ${_detectedPlanes.length}',
-                      style: const TextStyle(
-                        color: Colors.greenAccent,
-                        fontSize: 12,
-                      ),
+                ],
+                if (_nodeCounter > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Objects placed: $_nodeCounter',
+                    style: const TextStyle(
+                      color: Colors.blueAccent,
+                      fontSize: 12,
                     ),
-                  ],
-                  if (_nodeCounter > 0) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Objects placed: $_nodeCounter',
-                      style: const TextStyle(
-                        color: Colors.blueAccent,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
                 if (_imageTrackingEnabled) ...[
                   const SizedBox(height: 4),
                   Text(
@@ -1097,35 +1097,35 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                   ),
                 ],
               ],
-              ),
             ),
           ),
+        ),
 
-          // Help text
-          if (_isInitialized)
-            const Positioned(
-              bottom: 120,
-              left: 16,
-              right: 16,
-              child: Center(
-                child: Text(
-                  'Tap the + button to place an object',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(0, 1),
-                        blurRadius: 3.0,
-                        color: Colors.black,
-                      ),
-                    ],
-                  ),
+        // Help text
+        if (_isInitialized)
+          const Positioned(
+            bottom: 120,
+            left: 16,
+            right: 16,
+            child: Center(
+              child: Text(
+                'Tap the + button to place an object',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 1),
+                      blurRadius: 3.0,
+                      color: Colors.black,
+                    ),
+                  ],
                 ),
               ),
             ),
-        ],
+          ),
+      ],
     );
   }
 
@@ -1231,7 +1231,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        children: [
           Text(
             'Face Tracking',
             style: Theme.of(context).textTheme.headlineSmall,
@@ -2212,12 +2212,12 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             runSpacing: 8,
             children: [
               ElevatedButton.icon(
-                  onPressed: _addObjectAtScreenCenter,
+                onPressed: _addObjectAtScreenCenter,
                 icon: const Icon(Icons.add),
                 label: const Text('Add Object'),
-                ),
+              ),
               ElevatedButton.icon(
-                  onPressed: _addAnchor,
+                onPressed: _addAnchor,
                 icon: const Icon(Icons.place),
                 label: const Text('Add Anchor'),
               ),
@@ -2227,7 +2227,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                 label: const Text('Add Target'),
               ),
               ElevatedButton.icon(
-                  onPressed: _resetSession,
+                onPressed: _resetSession,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Reset'),
                 style: ElevatedButton.styleFrom(
