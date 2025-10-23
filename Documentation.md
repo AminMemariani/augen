@@ -41,7 +41,15 @@
    - [Anchoring Content to Faces](#anchoring-content-to-faces)
    - [Best Practices](#best-practices-face-tracking)
 
-6. [Animations](#6-animations)
+6. [Cloud Anchors](#6-cloud-anchors)
+   - [Overview](#overview-cloud-anchors)
+   - [Setting Up Cloud Anchors](#setting-up-cloud-anchors)
+   - [Creating Cloud Anchors](#creating-cloud-anchors)
+   - [Resolving Cloud Anchors](#resolving-cloud-anchors)
+   - [Sharing Cloud Anchors](#sharing-cloud-anchors)
+   - [Best Practices](#best-practices-cloud-anchors)
+
+7. [Animations](#7-animations)
    - [Basic Animations](#basic-animations)
    - [Advanced Animation Features](#advanced-animation-features)
    - [Animation Blending](#animation-blending)
@@ -50,7 +58,7 @@
    - [Blend Trees](#blend-trees)
    - [Layered Animations](#layered-animations)
 
-7. [Advanced Animation Blending - Complete Guide](#7-advanced-animation-blending---complete-guide)
+8. [Advanced Animation Blending - Complete Guide](#8-advanced-animation-blending---complete-guide)
    - [Overview](#overview-advanced)
    - [Animation Blending In-Depth](#animation-blending-in-depth)
    - [Crossfade Transitions In-Depth](#crossfade-transitions-in-depth)
@@ -62,25 +70,25 @@
    - [Performance Tips](#performance-tips)
    - [Troubleshooting](#troubleshooting)
 
-7. [Advanced Animation Features Summary](#7-advanced-animation-features-summary)
+9. [Advanced Animation Features Summary](#9-advanced-animation-features-summary)
    - [Implementation Overview](#implementation-overview)
    - [New Features](#new-features)
    - [Files Created](#files-created)
    - [Key Capabilities](#key-capabilities)
    - [Platform Implementation Notes](#platform-implementation-notes)
 
-8. [Testing](#8-testing)
+10. [Testing](#10-testing)
    - [Test Summary](#test-summary)
    - [Test Coverage](#test-coverage)
    - [Running Tests](#running-tests)
 
-9. [Project Information](#9-project-information)
+11. [Project Information](#11-project-information)
    - [Features](#features)
    - [Architecture](#architecture)
    - [Roadmap](#roadmap)
    - [Contributing](#contributing)
 
-10. [Project Summary & Architecture](#10-project-summary--architecture)
+12. [Project Summary & Architecture](#12-project-summary--architecture)
     - [Project Overview](#project-overview)
     - [Project Structure](#project-structure)
     - [Core Features Implemented](#core-features-implemented)
@@ -2068,7 +2076,399 @@ class _FaceTrackingARViewState extends State<FaceTrackingARView> {
 
 ---
 
-# 6. Animations
+# 6. Cloud Anchors
+
+Cloud anchors enable persistent AR experiences that can be shared across sessions and between multiple users. This allows AR content to remain in the same real-world location even after the app is closed and reopened.
+
+## Overview
+
+Cloud anchors work by:
+
+1. **Creating Cloud Anchors**: Convert local anchors to cloud anchors that are stored in the cloud
+2. **Resolving Cloud Anchors**: Download and restore cloud anchors from the cloud
+3. **Sharing**: Share cloud anchor sessions with other users for collaborative AR
+4. **Persistence**: Content remains in the same location across app sessions
+
+### Key Features
+
+- **Persistent AR**: Content stays in the same real-world location
+- **Multi-User**: Share AR experiences with other users
+- **Cross-Platform**: Works on both Android and iOS
+- **Reliable**: High accuracy positioning and tracking
+- **Scalable**: Support for multiple cloud anchors per session
+
+## Setting Up Cloud Anchors
+
+### 1. Check Cloud Anchor Support
+
+```dart
+// Check if cloud anchors are supported on this device
+final isSupported = await controller.isCloudAnchorsSupported();
+if (!isSupported) {
+  print('Cloud anchors not supported on this device');
+  return;
+}
+```
+
+### 2. Configure Cloud Anchors
+
+```dart
+// Configure cloud anchor settings
+await controller.setCloudAnchorConfig(
+  maxCloudAnchors: 10,           // Maximum number of cloud anchors
+  timeout: Duration(seconds: 30),  // Timeout for operations
+  enableSharing: true,            // Enable sharing with other users
+);
+```
+
+## Creating Cloud Anchors
+
+### 1. Create a Local Anchor First
+
+```dart
+// Create a local anchor at a specific position
+final localAnchor = ARAnchor(
+  id: 'local_anchor_1',
+  position: Vector3(0, 0, -1),
+  rotation: Quaternion(0, 0, 0, 1),
+);
+
+await controller.addAnchor(localAnchor);
+```
+
+### 2. Convert to Cloud Anchor
+
+```dart
+// Convert the local anchor to a cloud anchor
+final cloudAnchorId = await controller.createCloudAnchor(localAnchor.id);
+print('Cloud anchor created: $cloudAnchorId');
+```
+
+### 3. Monitor Cloud Anchor Status
+
+```dart
+// Listen for cloud anchor status updates
+controller.cloudAnchorStatusStream.listen((status) {
+  print('Cloud anchor ${status.cloudAnchorId}: ${status.state}');
+  print('Progress: ${(status.progress * 100).toInt()}%');
+  
+  if (status.isComplete) {
+    if (status.isSuccessful) {
+      print('Cloud anchor created successfully!');
+    } else {
+      print('Cloud anchor creation failed: ${status.errorMessage}');
+    }
+  }
+});
+```
+
+## Resolving Cloud Anchors
+
+### 1. Resolve a Cloud Anchor
+
+```dart
+// Resolve a cloud anchor by its ID
+await controller.resolveCloudAnchor('cloud_anchor_123');
+```
+
+### 2. Get All Cloud Anchors
+
+```dart
+// Get all cloud anchors in the current session
+final cloudAnchors = await controller.getCloudAnchors();
+for (final anchor in cloudAnchors) {
+  print('Cloud anchor: ${anchor.id}');
+  print('State: ${anchor.state}');
+  print('Position: ${anchor.position}');
+  print('Confidence: ${anchor.confidence}');
+}
+```
+
+### 3. Listen for Cloud Anchor Updates
+
+```dart
+// Listen for cloud anchor updates
+controller.cloudAnchorsStream.listen((anchors) {
+  for (final anchor in anchors) {
+    if (anchor.isActive && anchor.isReliable) {
+      // Cloud anchor is ready for use
+      print('Active cloud anchor: ${anchor.id}');
+    }
+  }
+});
+```
+
+## Sharing Cloud Anchors
+
+### 1. Share a Cloud Anchor Session
+
+```dart
+// Share a cloud anchor session with other users
+final sessionId = await controller.shareCloudAnchor('cloud_anchor_123');
+print('Share this session ID with other users: $sessionId');
+```
+
+### 2. Join a Shared Session
+
+```dart
+// Join a shared cloud anchor session
+await controller.joinCloudAnchorSession('session_123');
+```
+
+### 3. Leave a Session
+
+```dart
+// Leave the current cloud anchor session
+await controller.leaveCloudAnchorSession();
+```
+
+## Cloud Anchor States
+
+Cloud anchors have different states during their lifecycle:
+
+```dart
+enum CloudAnchorState {
+  creating,    // Being created/uploaded
+  created,    // Successfully created
+  resolving,  // Being resolved/downloaded
+  resolved,   // Successfully resolved
+  failed,     // Operation failed
+  expired,    // No longer available
+}
+```
+
+### State Properties
+
+```dart
+// Check cloud anchor state
+if (cloudAnchor.isActive) {
+  // Cloud anchor is ready for use
+}
+
+if (cloudAnchor.isFailed) {
+  // Cloud anchor operation failed
+}
+
+if (cloudAnchor.isProcessing) {
+  // Cloud anchor is being processed
+}
+```
+
+## Best Practices
+
+### 1. **Use Appropriate Timeouts**
+```dart
+// Set reasonable timeouts for cloud anchor operations
+await controller.setCloudAnchorConfig(
+  timeout: Duration(seconds: 30),  // 30 seconds is usually sufficient
+);
+```
+
+### 2. **Monitor Status Updates**
+```dart
+// Always monitor status updates for user feedback
+controller.cloudAnchorStatusStream.listen((status) {
+  if (status.isComplete) {
+    if (status.isSuccessful) {
+      showSuccessMessage('Cloud anchor ready!');
+    } else {
+      showErrorMessage('Failed: ${status.errorMessage}');
+    }
+  } else {
+    showProgressMessage('Progress: ${(status.progress * 100).toInt()}%');
+  }
+});
+```
+
+### 3. **Handle Errors Gracefully**
+```dart
+try {
+  final cloudAnchorId = await controller.createCloudAnchor(localAnchorId);
+  // Success
+} catch (e) {
+  print('Failed to create cloud anchor: $e');
+  // Handle error appropriately
+}
+```
+
+### 4. **Limit Cloud Anchor Count**
+```dart
+// Don't create too many cloud anchors at once
+await controller.setCloudAnchorConfig(
+  maxCloudAnchors: 10,  // Reasonable limit
+);
+```
+
+### 5. **Clean Up Unused Anchors**
+```dart
+// Delete cloud anchors that are no longer needed
+await controller.deleteCloudAnchor('unused_anchor_id');
+```
+
+## Example: Complete Cloud Anchor Setup
+
+```dart
+class CloudAnchorARView extends StatefulWidget {
+  @override
+  _CloudAnchorARViewState createState() => _CloudAnchorARViewState();
+}
+
+class _CloudAnchorARViewState extends State<CloudAnchorARView> {
+  AugenController? _controller;
+  List<ARCloudAnchor> _cloudAnchors = [];
+  String? _currentSessionId;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupCloudAnchors();
+  }
+
+  Future<void> _setupCloudAnchors() async {
+    // Check if cloud anchors are supported
+    final isSupported = await _controller!.isCloudAnchorsSupported();
+    if (!isSupported) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cloud anchors not supported')),
+      );
+      return;
+    }
+
+    // Configure cloud anchors
+    await _controller!.setCloudAnchorConfig(
+      maxCloudAnchors: 5,
+      timeout: Duration(seconds: 30),
+      enableSharing: true,
+    );
+
+    // Listen for cloud anchor updates
+    _controller!.cloudAnchorsStream.listen((anchors) {
+      setState(() {
+        _cloudAnchors = anchors;
+      });
+    });
+
+    // Listen for status updates
+    _controller!.cloudAnchorStatusStream.listen((status) {
+      if (status.isComplete) {
+        if (status.isSuccessful) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Cloud anchor ready!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed: ${status.errorMessage}')),
+          );
+        }
+      }
+    });
+  }
+
+  Future<void> _createCloudAnchor() async {
+    try {
+      // Create a local anchor first
+      final localAnchor = ARAnchor(
+        id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+        position: Vector3(0, 0, -1),
+        rotation: Quaternion(0, 0, 0, 1),
+      );
+
+      await _controller!.addAnchor(localAnchor);
+
+      // Convert to cloud anchor
+      final cloudAnchorId = await _controller!.createCloudAnchor(localAnchor.id);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Creating cloud anchor: $cloudAnchorId')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create cloud anchor: $e')),
+      );
+    }
+  }
+
+  Future<void> _shareSession() async {
+    if (_cloudAnchors.isNotEmpty) {
+      try {
+        final sessionId = await _controller!.shareCloudAnchor(_cloudAnchors.first.id);
+        setState(() {
+          _currentSessionId = sessionId;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Session ID: $sessionId')),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to share: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Cloud Anchors AR'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.cloud_upload),
+            onPressed: _createCloudAnchor,
+          ),
+          IconButton(
+            icon: Icon(Icons.share),
+            onPressed: _shareSession,
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          AugenARView(
+            onARViewCreated: (controller) {
+              _controller = controller;
+            },
+          ),
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Cloud Anchors: ${_cloudAnchors.length}'),
+                    if (_currentSessionId != null)
+                      Text('Session: $_currentSessionId'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton(
+                          onPressed: _createCloudAnchor,
+                          child: Text('Create'),
+                        ),
+                        ElevatedButton(
+                          onPressed: _shareSession,
+                          child: Text('Share'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+# 7. Animations
 
 Complete guide for model animations and skeletal animations in Augen AR.
 

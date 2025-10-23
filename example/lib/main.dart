@@ -38,10 +38,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   List<ARImageTarget> _imageTargets = [];
   List<ARTrackedImage> _trackedImages = [];
   List<ARFace> _trackedFaces = [];
+  List<ARCloudAnchor> _cloudAnchors = [];
   int _nodeCounter = 0;
   String _statusMessage = 'Initializing...';
   bool _imageTrackingEnabled = false;
   bool _faceTrackingEnabled = false;
+  bool _cloudAnchorsSupported = false;
+  String? _currentSessionId;
   int _currentTabIndex = 0;
   late TabController _tabController;
 
@@ -56,6 +59,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   StreamSubscription<List<ARImageTarget>>? _imageTargetsSubscription;
   StreamSubscription<List<ARTrackedImage>>? _trackedImagesSubscription;
   StreamSubscription<List<ARFace>>? _facesSubscription;
+  StreamSubscription<List<ARCloudAnchor>>? _cloudAnchorsSubscription;
+  StreamSubscription<CloudAnchorStatus>? _cloudAnchorStatusSubscription;
   StreamSubscription<String>? _errorSubscription;
   StreamSubscription<augen.AnimationStatus>? _animationStatusSubscription;
   StreamSubscription<TransitionStatus>? _transitionStatusSubscription;
@@ -85,6 +90,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     _imageTargetsSubscription?.cancel();
     _trackedImagesSubscription?.cancel();
     _facesSubscription?.cancel();
+    _cloudAnchorsSubscription?.cancel();
+    _cloudAnchorStatusSubscription?.cancel();
     _errorSubscription?.cancel();
     _animationStatusSubscription?.cancel();
     _transitionStatusSubscription?.cancel();
@@ -135,6 +142,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
       // Add sample image targets
       await _addSampleImageTargets();
+
+      // Check cloud anchor support
+      await _checkCloudAnchorSupport();
     } catch (e) {
       setState(() {
         _statusMessage = 'Error: $e';
@@ -189,6 +199,28 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       for (final face in faces) {
         if (face.isTracked && face.isReliable) {
           _addContentToTrackedFace(face);
+        }
+      }
+    });
+
+    _cloudAnchorsSubscription = _controller!.cloudAnchorsStream.listen((anchors) {
+      if (!mounted) return;
+      setState(() {
+        _cloudAnchors = anchors;
+      });
+    });
+
+    _cloudAnchorStatusSubscription = _controller!.cloudAnchorStatusStream.listen((status) {
+      if (!mounted) return;
+      if (status.isComplete) {
+        if (status.isSuccessful) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Cloud anchor ${status.cloudAnchorId} ready!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Cloud anchor failed: ${status.errorMessage}')),
+          );
         }
       }
     });
@@ -327,6 +359,132 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add content to face: $e')),
       );
+    }
+  }
+
+  // Cloud Anchor Methods
+  Future<void> _checkCloudAnchorSupport() async {
+    if (_controller == null) return;
+
+    try {
+      _cloudAnchorsSupported = await _controller!.isCloudAnchorsSupported();
+      
+      if (!mounted) return;
+      setState(() {});
+
+      if (_cloudAnchorsSupported) {
+        await _controller!.setCloudAnchorConfig(
+          maxCloudAnchors: 10,
+          timeout: const Duration(seconds: 30),
+          enableSharing: true,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to check cloud anchor support: $e')),
+      );
+    }
+  }
+
+  Future<void> _createCloudAnchor() async {
+    if (_controller == null || !_cloudAnchorsSupported) return;
+
+    try {
+      // Create a local anchor first
+      final localAnchor = ARAnchor(
+        id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+        position: const Vector3(0, 0, -1),
+        rotation: const Quaternion(0, 0, 0, 1),
+      );
+
+      await _controller!.addAnchor(localAnchor);
+
+      // Convert to cloud anchor
+      final cloudAnchorId = await _controller!.createCloudAnchor(localAnchor.id);
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Creating cloud anchor: $cloudAnchorId')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create cloud anchor: $e')),
+      );
+    }
+  }
+
+  Future<void> _shareCloudAnchor() async {
+    if (_controller == null || _cloudAnchors.isEmpty) return;
+
+    try {
+      final sessionId = await _controller!.shareCloudAnchor(_cloudAnchors.first.id);
+      
+      if (!mounted) return;
+      setState(() {
+        _currentSessionId = sessionId;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Session ID: $sessionId')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to share cloud anchor: $e')),
+      );
+    }
+  }
+
+  Future<void> _joinCloudAnchorSession() async {
+    if (_controller == null) return;
+
+    // Show dialog to enter session ID
+    final sessionId = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Join Cloud Anchor Session'),
+        content: TextField(
+          decoration: const InputDecoration(
+            labelText: 'Session ID',
+            hintText: 'Enter session ID to join',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final textController = TextEditingController();
+              Navigator.pop(context, textController.text);
+            },
+            child: const Text('Join'),
+          ),
+        ],
+      ),
+    );
+
+    if (sessionId != null && sessionId.isNotEmpty) {
+      try {
+        await _controller!.joinCloudAnchorSession(sessionId);
+        
+        if (!mounted) return;
+        setState(() {
+          _currentSessionId = sessionId;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Joined session: $sessionId')),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to join session: $e')),
+        );
+      }
     }
   }
 
@@ -590,6 +748,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             Tab(icon: Icon(Icons.view_in_ar), text: 'AR View'),
             Tab(icon: Icon(Icons.image_search), text: 'Image Tracking'),
             Tab(icon: Icon(Icons.face), text: 'Face Tracking'),
+            Tab(icon: Icon(Icons.cloud), text: 'Cloud Anchors'),
             Tab(icon: Icon(Icons.animation), text: 'Animations'),
             Tab(icon: Icon(Icons.dashboard), text: 'Demo'),
             Tab(icon: Icon(Icons.info), text: 'Status'),
@@ -601,6 +760,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           _buildARView(),
           _buildImageTrackingView(),
           _buildFaceTrackingView(),
+          _buildCloudAnchorView(),
           _buildAnimationView(),
           _buildDemoView(),
           _buildStatusView(),
@@ -881,6 +1041,197 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildCloudAnchorView() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Cloud Anchors',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+
+          // Cloud anchor support status
+          Card(
+            child: ListTile(
+              leading: Icon(
+                _cloudAnchorsSupported ? Icons.cloud_done : Icons.cloud_off,
+                color: _cloudAnchorsSupported ? Colors.green : Colors.red,
+              ),
+              title: const Text('Cloud Anchor Support'),
+              subtitle: Text(_cloudAnchorsSupported ? 'Supported' : 'Not Supported'),
+              trailing: ElevatedButton(
+                onPressed: _checkCloudAnchorSupport,
+                child: const Text('Check Support'),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Cloud anchor actions
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Cloud Anchor Actions',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _cloudAnchorsSupported ? _createCloudAnchor : null,
+                          icon: const Icon(Icons.cloud_upload),
+                          label: const Text('Create Cloud Anchor'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _cloudAnchors.isNotEmpty ? _shareCloudAnchor : null,
+                          icon: const Icon(Icons.share),
+                          label: const Text('Share Session'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _joinCloudAnchorSession,
+                          icon: const Icon(Icons.group_add),
+                          label: const Text('Join Session'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _currentSessionId != null
+                              ? () async {
+                                  try {
+                                    await _controller?.leaveCloudAnchorSession();
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _currentSessionId = null;
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Left session')),
+                                    );
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Failed to leave session: $e')),
+                                    );
+                                  }
+                                }
+                              : null,
+                          icon: const Icon(Icons.exit_to_app),
+                          label: const Text('Leave Session'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Cloud anchors list
+          Text(
+            'Cloud Anchors (${_cloudAnchors.length})',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _cloudAnchors.isEmpty
+                ? const Center(
+                    child: Text('No cloud anchors yet'),
+                  )
+                : ListView.builder(
+                    itemCount: _cloudAnchors.length,
+                    itemBuilder: (context, index) {
+                      final anchor = _cloudAnchors[index];
+                      return Card(
+                        child: ListTile(
+                          leading: Icon(
+                            anchor.isActive ? Icons.cloud_done : Icons.cloud_off,
+                            color: anchor.isActive ? Colors.green : Colors.orange,
+                          ),
+                          title: Text('Cloud Anchor ${anchor.id}'),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('State: ${anchor.state.name}'),
+                              Text('Confidence: ${(anchor.confidence * 100).toInt()}%'),
+                              Text('Position: ${anchor.position}'),
+                            ],
+                          ),
+                          trailing: PopupMenuButton(
+                            itemBuilder: (context) => [
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                            onSelected: (value) async {
+                              if (value == 'delete') {
+                                try {
+                                  await _controller?.deleteCloudAnchor(anchor.id);
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Cloud anchor deleted')),
+                                  );
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Failed to delete: $e')),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+
+          // Session info
+          if (_currentSessionId != null) ...[
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Current Session',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Session ID: $_currentSessionId'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnimationView() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -1109,6 +1460,12 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                   () => _toggleFaceTracking(),
                 ),
                 _buildDemoCard(
+                  'Cloud Anchors',
+                  'Create persistent AR experiences that can be shared',
+                  Icons.cloud,
+                  () => _createCloudAnchor(),
+                ),
+                _buildDemoCard(
                   'Animations',
                   'Play, blend, and transition between animations',
                   Icons.animation,
@@ -1206,9 +1563,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     _imageTrackingEnabled ? 'Enabled' : 'Disabled',
                   ),
                   _buildStatRow(
-                    'Face Tracking',
-                    _faceTrackingEnabled ? 'Enabled' : 'Disabled',
-                  ),
+                  'Face Tracking',
+                  _faceTrackingEnabled ? 'Enabled' : 'Disabled',
+                ),
+                _buildStatRow(
+                  'Cloud Anchors',
+                  '${_cloudAnchors.length} anchors, ${_cloudAnchorsSupported ? 'Supported' : 'Not Supported'}',
+                ),
                 ],
               ),
             ),

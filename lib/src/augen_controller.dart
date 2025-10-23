@@ -15,6 +15,7 @@ import 'models/animation_blend_tree.dart';
 import 'models/ar_image_target.dart';
 import 'models/ar_tracked_image.dart';
 import 'models/ar_face.dart';
+import 'models/ar_cloud_anchor.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -39,6 +40,10 @@ class AugenController {
       StreamController<List<ARTrackedImage>>.broadcast();
   final StreamController<List<ARFace>> _facesController =
       StreamController<List<ARFace>>.broadcast();
+  final StreamController<List<ARCloudAnchor>> _cloudAnchorsController =
+      StreamController<List<ARCloudAnchor>>.broadcast();
+  final StreamController<CloudAnchorStatus> _cloudAnchorStatusController =
+      StreamController<CloudAnchorStatus>.broadcast();
 
   bool _isDisposed = false;
 
@@ -77,6 +82,12 @@ class AugenController {
 
   /// Stream of tracked faces
   Stream<List<ARFace>> get facesStream => _facesController.stream;
+
+  /// Stream of cloud anchors
+  Stream<List<ARCloudAnchor>> get cloudAnchorsStream => _cloudAnchorsController.stream;
+
+  /// Stream of cloud anchor status updates
+  Stream<CloudAnchorStatus> get cloudAnchorStatusStream => _cloudAnchorStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -323,6 +334,18 @@ class AugenController {
         final facesData = call.arguments as List;
         final faces = facesData.map((e) => ARFace.fromMap(e as Map)).toList();
         _facesController.add(faces);
+        break;
+      case 'onCloudAnchorsUpdated':
+        final anchorsData = call.arguments as List;
+        final anchors = anchorsData
+            .map((e) => ARCloudAnchor.fromMap(e as Map))
+            .toList();
+        _cloudAnchorsController.add(anchors);
+        break;
+      case 'onCloudAnchorStatusUpdated':
+        final statusData = call.arguments as Map;
+        final status = CloudAnchorStatus.fromMap(statusData);
+        _cloudAnchorStatusController.add(status);
         break;
     }
   }
@@ -1051,6 +1074,147 @@ class AugenController {
     }
   }
 
+  // ===== Cloud Anchor Methods =====
+
+  /// Create a cloud anchor from a local anchor
+  Future<String> createCloudAnchor(String localAnchorId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('createCloudAnchor', {
+        'localAnchorId': localAnchorId,
+      });
+      return result as String;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to create cloud anchor: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Resolve a cloud anchor by its ID
+  Future<void> resolveCloudAnchor(String cloudAnchorId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('resolveCloudAnchor', {
+        'cloudAnchorId': cloudAnchorId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to resolve cloud anchor: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all cloud anchors
+  Future<List<ARCloudAnchor>> getCloudAnchors() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getCloudAnchors');
+      final anchorsData = result as List;
+      return anchorsData
+          .map((e) => ARCloudAnchor.fromMap(e as Map))
+          .toList();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get cloud anchors: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get a specific cloud anchor by ID
+  Future<ARCloudAnchor?> getCloudAnchor(String cloudAnchorId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getCloudAnchor', {
+        'cloudAnchorId': cloudAnchorId,
+      });
+      if (result == null) return null;
+      return ARCloudAnchor.fromMap(result as Map);
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get cloud anchor: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Delete a cloud anchor
+  Future<void> deleteCloudAnchor(String cloudAnchorId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('deleteCloudAnchor', {
+        'cloudAnchorId': cloudAnchorId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to delete cloud anchor: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Check if cloud anchors are supported
+  Future<bool> isCloudAnchorsSupported() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('isCloudAnchorsSupported');
+      return result as bool;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to check cloud anchors support: ${e.message}');
+      return false;
+    }
+  }
+
+  /// Set cloud anchor configuration
+  Future<void> setCloudAnchorConfig({
+    int maxCloudAnchors = 10,
+    Duration timeout = const Duration(seconds: 30),
+    bool enableSharing = true,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setCloudAnchorConfig', {
+        'maxCloudAnchors': maxCloudAnchors,
+        'timeoutMs': timeout.inMilliseconds,
+        'enableSharing': enableSharing,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set cloud anchor config: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Share a cloud anchor with other users
+  Future<String> shareCloudAnchor(String cloudAnchorId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('shareCloudAnchor', {
+        'cloudAnchorId': cloudAnchorId,
+      });
+      return result as String;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to share cloud anchor: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Join a shared cloud anchor session
+  Future<void> joinCloudAnchorSession(String sessionId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('joinCloudAnchorSession', {
+        'sessionId': sessionId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to join cloud anchor session: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Leave the current cloud anchor session
+  Future<void> leaveCloudAnchorSession() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('leaveCloudAnchorSession');
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to leave cloud anchor session: ${e.message}');
+      rethrow;
+    }
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -1064,6 +1228,8 @@ class AugenController {
     _imageTargetsController.close();
     _trackedImagesController.close();
     _facesController.close();
+    _cloudAnchorsController.close();
+    _cloudAnchorStatusController.close();
     _channel.setMethodCallHandler(null);
   }
 }

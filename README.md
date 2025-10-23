@@ -15,6 +15,7 @@
 🔍 **Plane Detection**: Automatically detect horizontal and vertical surfaces  
 🖼️ **Image Tracking**: Track specific images and anchor content to them  
 👤 **Face Tracking**: Detect and track human faces with facial landmarks  
+☁️ **Cloud Anchors**: Create persistent AR experiences that can be shared across sessions  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
@@ -31,6 +32,7 @@
 - Custom 3D Models
 - Image Tracking
 - Face Tracking
+- Cloud Anchors
 - Animations & Advanced Blending
 - Testing
 - Examples & Best Practices
@@ -363,6 +365,74 @@ final anchor = await _controller!.addAnchor(
 await _controller!.removeAnchor(anchor!.id);
 ```
 
+### Cloud Anchors
+
+```dart
+// Set up cloud anchors
+Future<void> _setupCloudAnchors() async {
+  // Check if cloud anchors are supported
+  final isSupported = await _controller!.isCloudAnchorsSupported();
+  if (!isSupported) {
+    print('Cloud anchors not supported on this device');
+    return;
+  }
+
+  // Configure cloud anchors
+  await _controller!.setCloudAnchorConfig(
+    maxCloudAnchors: 10,
+    timeout: Duration(seconds: 30),
+    enableSharing: true,
+  );
+
+  // Listen for cloud anchor updates
+  _controller!.cloudAnchorsStream.listen((anchors) {
+    for (final anchor in anchors) {
+      if (anchor.isActive && anchor.isReliable) {
+        print('Active cloud anchor: ${anchor.id}');
+      }
+    }
+  });
+
+  // Listen for status updates
+  _controller!.cloudAnchorStatusStream.listen((status) {
+    if (status.isComplete) {
+      if (status.isSuccessful) {
+        print('Cloud anchor ready!');
+      } else {
+        print('Failed: ${status.errorMessage}');
+      }
+    }
+  });
+}
+
+// Create a cloud anchor
+Future<void> _createCloudAnchor() async {
+  // Create a local anchor first
+  final localAnchor = ARAnchor(
+    id: 'local_anchor_1',
+    position: Vector3(0, 0, -1),
+    rotation: Quaternion(0, 0, 0, 1),
+  );
+
+  await _controller!.addAnchor(localAnchor);
+
+  // Convert to cloud anchor
+  final cloudAnchorId = await _controller!.createCloudAnchor(localAnchor.id);
+  print('Cloud anchor created: $cloudAnchorId');
+}
+
+// Share a cloud anchor session
+Future<void> _shareCloudAnchor() async {
+  final sessionId = await _controller!.shareCloudAnchor('cloud_anchor_123');
+  print('Share this session ID: $sessionId');
+}
+
+// Join a shared session
+Future<void> _joinSession() async {
+  await _controller!.joinCloudAnchorSession('session_123');
+}
+```
+
 ## API Reference
 
 ### AugenView
@@ -402,6 +472,8 @@ Controller for managing the AR session.
 - `Stream<List<ARImageTarget>> imageTargetsStream` - Stream of image targets
 - `Stream<List<ARTrackedImage>> trackedImagesStream` - Stream of tracked images
 - `Stream<List<ARFace>> facesStream` - Stream of tracked faces
+- `Stream<List<ARCloudAnchor>> cloudAnchorsStream` - Stream of cloud anchors
+- `Stream<CloudAnchorStatus> cloudAnchorStatusStream` - Stream of cloud anchor status updates
 - `Stream<String> errorStream` - Stream of errors
 
 ### ARSessionConfig
@@ -541,10 +613,11 @@ The project maintains 100% coverage of the public API:
 - ✅ 40 model tests (Vector3, Quaternion, ARNode, ARPlane, ARAnchor, ARHitResult, ARSessionConfig, ModelFormat)
 - ✅ 16 animation tests (ARAnimation, AnimationStatus, AnimationState, AnimationLoopMode)
 - ✅ 14 face tracking tests (ARFace, FaceLandmark, FaceTrackingState)
+- ✅ 13 cloud anchor tests (ARCloudAnchor, CloudAnchorState, CloudAnchorStatus)
 - ✅ 30 controller tests (all AugenController methods, streams, and animation controls)
 - ✅ 11 integration tests (full AR workflows)
 
-**Total: 230 passing tests** with full coverage of all features including advanced animation blending and face tracking!
+**Total: 243 passing tests** with full coverage of all features including advanced animation blending, face tracking, and cloud anchors!
 
 See [Documentation.md - Testing](Documentation.md#6-testing) for detailed coverage information.
 
@@ -634,7 +707,7 @@ Have an idea for improvement? Let us know!
 - [x] Advanced animation blending and transitions ✅ **v0.4.0**
 - [x] Image tracking and recognition ✅ **v0.5.0**
 - [x] Face tracking capabilities ✅ **v0.6.0**
-- [ ] Cloud anchors for persistent AR
+- [x] Cloud anchors for persistent AR ✅ **v0.7.0**
 - [ ] Occlusion for realistic rendering
 - [ ] Physics simulation for AR objects
 - [ ] Multi-user AR experiences

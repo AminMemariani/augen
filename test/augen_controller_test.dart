@@ -42,7 +42,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'initialize') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -95,7 +95,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'addNode') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -112,7 +112,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'removeNode') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -134,7 +134,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'updateNode') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -219,7 +219,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'removeAnchor') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -469,7 +469,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'playAnimation') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -493,7 +493,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'pauseAnimation') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -510,7 +510,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'stopAnimation') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -527,7 +527,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'resumeAnimation') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -544,7 +544,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'seekAnimation') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -584,7 +584,7 @@ void main() {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
             if (methodCall.method == 'setAnimationSpeed') {
-              capturedArgs = methodCall.arguments as Map?;
+              capturedArgs = methodCall.arguments as Map<String, dynamic>?;
             }
             return null;
           });
@@ -641,7 +641,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'playBlendSet') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -667,7 +667,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'stopBlendSet') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -687,7 +687,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'updateBlendWeights') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -709,7 +709,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'startCrossfadeTransition') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -736,7 +736,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'startStateMachine') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -771,7 +771,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'updateStateMachineParameters') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -793,7 +793,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'startBlendTree') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -825,7 +825,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'playAdditiveAnimation') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -851,7 +851,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'setAnimationLayerWeight') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -926,7 +926,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'startCrossfadeTransition') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -952,7 +952,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'playBlendSet') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1055,7 +1055,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'addImageTarget') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1082,7 +1082,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'removeImageTarget') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1163,7 +1163,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'setImageTrackingEnabled') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1193,7 +1193,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'addNodeToTrackedImage') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1221,7 +1221,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'removeNodeFromTrackedImage') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1317,7 +1317,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'setFaceTrackingEnabled') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1381,7 +1381,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'addNodeToTrackedFace') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1411,7 +1411,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'removeNodeFromTrackedFace') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1459,7 +1459,7 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
               if (methodCall.method == 'setFaceTrackingConfig') {
-                capturedArgs = methodCall.arguments as Map?;
+                capturedArgs = methodCall.arguments as Map<String, dynamic>?;
               }
               return null;
             });
@@ -1483,6 +1483,226 @@ void main() {
       test('facesStream can be listened to', () {
         // Test that the stream can be created and listened to
         final subscription = controller.facesStream.listen((faces) {
+          // Stream is working
+        });
+
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+    });
+
+    group('Cloud Anchor Methods', () {
+      test('createCloudAnchor sends correct parameters', () async {
+        Map<String, dynamic>? capturedArgs;
+        
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'createCloudAnchor') {
+            capturedArgs = methodCall.arguments as Map<String, dynamic>?;
+            return 'cloud_anchor_123';
+          }
+          return null;
+        });
+
+        final cloudAnchorId = await controller.createCloudAnchor('local_anchor_1');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['localAnchorId'], 'local_anchor_1');
+        expect(cloudAnchorId, 'cloud_anchor_123');
+      });
+
+      test('resolveCloudAnchor sends correct parameters', () async {
+        Map<String, dynamic>? capturedArgs;
+        
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'resolveCloudAnchor') {
+            capturedArgs = methodCall.arguments as Map<String, dynamic>?;
+          }
+          return null;
+        });
+
+        await controller.resolveCloudAnchor('cloud_anchor_123');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['cloudAnchorId'], 'cloud_anchor_123');
+      });
+
+      test('getCloudAnchors returns parsed anchors', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'getCloudAnchors') {
+            return [
+              {
+                'id': 'anchor_1',
+                'localAnchorId': 'local_1',
+                'state': 'created',
+                'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
+                'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                'scale': {'x': 1.0, 'y': 1.0, 'z': 1.0},
+                'confidence': 0.9,
+                'createdAt': DateTime.now().millisecondsSinceEpoch,
+                'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                'isTracked': true,
+                'isReliable': true,
+              }
+            ];
+          }
+          return null;
+        });
+
+        final anchors = await controller.getCloudAnchors();
+
+        expect(anchors, isA<List<ARCloudAnchor>>());
+        expect(anchors.length, 1);
+        expect(anchors.first.id, 'anchor_1');
+        expect(anchors.first.state, CloudAnchorState.created);
+      });
+
+      test('getCloudAnchor returns parsed anchor', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'getCloudAnchor') {
+            return {
+              'id': 'anchor_1',
+              'localAnchorId': 'local_1',
+              'state': 'created',
+              'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
+              'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+              'scale': {'x': 1.0, 'y': 1.0, 'z': 1.0},
+              'confidence': 0.9,
+              'createdAt': DateTime.now().millisecondsSinceEpoch,
+              'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+              'isTracked': true,
+              'isReliable': true,
+            };
+          }
+          return null;
+        });
+
+        final anchor = await controller.getCloudAnchor('anchor_1');
+
+        expect(anchor, isA<ARCloudAnchor>());
+        expect(anchor!.id, 'anchor_1');
+        expect(anchor.state, CloudAnchorState.created);
+      });
+
+      test('deleteCloudAnchor sends correct parameters', () async {
+        Map<String, dynamic>? capturedArgs;
+        
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'deleteCloudAnchor') {
+            capturedArgs = methodCall.arguments as Map<String, dynamic>?;
+          }
+          return null;
+        });
+
+        await controller.deleteCloudAnchor('cloud_anchor_123');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['cloudAnchorId'], 'cloud_anchor_123');
+      });
+
+      test('isCloudAnchorsSupported returns correct value', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'isCloudAnchorsSupported') {
+            return true;
+          }
+          return null;
+        });
+
+        final isSupported = await controller.isCloudAnchorsSupported();
+
+        expect(isSupported, true);
+      });
+
+      test('setCloudAnchorConfig sends correct parameters', () async {
+        Map<String, dynamic>? capturedArgs;
+        
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'setCloudAnchorConfig') {
+            capturedArgs = methodCall.arguments as Map<String, dynamic>?;
+          }
+          return null;
+        });
+
+        await controller.setCloudAnchorConfig(
+          maxCloudAnchors: 5,
+          timeout: const Duration(seconds: 60),
+          enableSharing: false,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['maxCloudAnchors'], 5);
+        expect(capturedArgs!['timeoutMs'], 60000);
+        expect(capturedArgs!['enableSharing'], false);
+      });
+
+      test('shareCloudAnchor returns session ID', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'shareCloudAnchor') {
+            return 'session_123';
+          }
+          return null;
+        });
+
+        final sessionId = await controller.shareCloudAnchor('cloud_anchor_123');
+
+        expect(sessionId, 'session_123');
+      });
+
+      test('joinCloudAnchorSession sends correct parameters', () async {
+        Map<String, dynamic>? capturedArgs;
+        
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'joinCloudAnchorSession') {
+            capturedArgs = methodCall.arguments as Map<String, dynamic>?;
+          }
+          return null;
+        });
+
+        await controller.joinCloudAnchorSession('session_123');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['sessionId'], 'session_123');
+      });
+
+      test('leaveCloudAnchorSession calls correct method', () async {
+        bool methodCalled = false;
+        
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'leaveCloudAnchorSession') {
+            methodCalled = true;
+          }
+          return null;
+        });
+
+        await controller.leaveCloudAnchorSession();
+
+        expect(methodCalled, true);
+      });
+    });
+
+    group('Cloud Anchor Streams', () {
+      test('cloudAnchorsStream can be listened to', () {
+        // Test that the stream can be created and listened to
+        final subscription = controller.cloudAnchorsStream.listen((anchors) {
+          // Stream is working
+        });
+
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('cloudAnchorStatusStream can be listened to', () {
+        // Test that the stream can be created and listened to
+        final subscription = controller.cloudAnchorStatusStream.listen((status) {
           // Stream is working
         });
 

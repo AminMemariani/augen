@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-01-14
+
+### Added
+- ☁️ **Cloud Anchors for Persistent AR** - Complete cloud anchor system
+  - Create persistent AR experiences that survive app restarts
+  - Share AR experiences between multiple users
+  - Cross-platform cloud anchor support (ARCore/ARKit)
+  - Real-time cloud anchor status monitoring
+  - Session-based cloud anchor sharing
+  - Automatic cloud anchor resolution and tracking
+
+#### New Cloud Anchor Models
+- `ARCloudAnchor` - Represents cloud anchors with position, rotation, scale, and state
+- `CloudAnchorState` - Enum for cloud anchor states (creating, created, resolving, resolved, failed, expired)
+- `CloudAnchorStatus` - Real-time status updates for cloud anchor operations
+
+#### New Cloud Anchor Methods
+- `createCloudAnchor(String localAnchorId)` - Convert local anchor to cloud anchor
+- `resolveCloudAnchor(String cloudAnchorId)` - Resolve cloud anchor by ID
+- `getCloudAnchors()` - Get all cloud anchors in current session
+- `getCloudAnchor(String cloudAnchorId)` - Get specific cloud anchor by ID
+- `deleteCloudAnchor(String cloudAnchorId)` - Delete cloud anchor
+- `isCloudAnchorsSupported()` - Check if cloud anchors are supported
+- `setCloudAnchorConfig()` - Configure cloud anchor settings
+- `shareCloudAnchor(String cloudAnchorId)` - Share cloud anchor session
+- `joinCloudAnchorSession(String sessionId)` - Join shared session
+- `leaveCloudAnchorSession()` - Leave current session
+
+#### New Cloud Anchor Streams
+- `cloudAnchorsStream` - Stream of cloud anchor updates
+- `cloudAnchorStatusStream` - Stream of cloud anchor status updates
+
+#### Enhanced Example App
+- Added Cloud Anchors tab with full cloud anchor management
+- Cloud anchor support detection and configuration
+- Create, share, and join cloud anchor sessions
+- Real-time cloud anchor status monitoring
+- Cloud anchor list with state information
+- Session management UI
+
+#### Updated Documentation
+- Added comprehensive Cloud Anchors section to Documentation.md
+- Complete cloud anchor setup and usage guide
+- Best practices for cloud anchor implementation
+- Example code for all cloud anchor features
+- Updated README.md with cloud anchor features and examples
+
+#### Testing
+- Added 13 new cloud anchor unit tests
+- Comprehensive testing of all cloud anchor models and methods
+- Updated integration tests to include cloud anchor workflows
+- Total test count: 243 passing tests
+
+### Technical Details
+- Cloud anchors enable persistent AR experiences across app sessions
+- Multi-user AR support through session sharing
+- Real-time status monitoring for cloud anchor operations
+- Cross-platform compatibility with ARCore and ARKit
+- Automatic cloud anchor resolution and tracking
+- Session-based sharing for collaborative AR experiences
+
 ## [0.6.0] - 2025-01-14
 
 ### Added
