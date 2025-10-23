@@ -58,7 +58,20 @@
    - [Occlusion Types](#occlusion-types)
    - [Best Practices](#best-practices-occlusion)
 
-8. [Animations](#8-animations)
+8. [Physics Simulation](#8-physics-simulation)
+   - [Overview](#overview-1)
+   - [Setting Up Physics](#setting-up-physics)
+   - [Creating Physics Bodies](#creating-physics-bodies)
+   - [Physics Constraints](#physics-constraints)
+   - [Managing Physics Bodies](#managing-physics-bodies)
+   - [Monitoring Physics Status](#monitoring-physics-status)
+   - [Physics Body Types](#physics-body-types)
+   - [Physics Materials](#physics-materials)
+   - [Physics World Configuration](#physics-world-configuration)
+   - [Best Practices](#best-practices-1)
+   - [Complete Example](#complete-example-1)
+
+9. [Animations](#9-animations)
    - [Basic Animations](#basic-animations)
    - [Advanced Animation Features](#advanced-animation-features)
    - [Animation Blending](#animation-blending)
@@ -2795,7 +2808,507 @@ class _OcclusionARViewState extends State<OcclusionARView> {
 }
 ```
 
-# 8. Animations
+# 8. Physics Simulation
+
+## Overview
+
+Physics simulation enables realistic physical interactions between AR objects and the real world. The Augen plugin supports comprehensive physics simulation with:
+
+- **Physics Bodies**: Dynamic, static, and kinematic objects with realistic physics properties
+- **Physics Materials**: Configurable material properties like density, friction, and restitution
+- **Physics Constraints**: Joints and constraints between physics bodies
+- **Physics World**: Configurable physics world with gravity, time steps, and collision detection
+
+## Setting Up Physics
+
+### 1. Check Physics Support
+
+```dart
+final isSupported = await controller.isPhysicsSupported();
+if (!isSupported) {
+  print('Physics simulation not supported on this device');
+  return;
+}
+```
+
+### 2. Initialize Physics World
+
+```dart
+const physicsConfig = PhysicsWorldConfig(
+  gravity: Vector3(0, -9.81, 0),
+  timeStep: 1.0 / 60.0,
+  maxSubSteps: 10,
+  enableSleeping: true,
+  enableContinuousCollision: true,
+);
+
+await controller.initializePhysics(physicsConfig);
+```
+
+### 3. Start Physics Simulation
+
+```dart
+await controller.startPhysics();
+```
+
+## Creating Physics Bodies
+
+### 1. Create a Physics Body
+
+```dart
+const material = PhysicsMaterial(
+  density: 1.0,
+  friction: 0.5,
+  restitution: 0.3,
+  linearDamping: 0.1,
+  angularDamping: 0.1,
+);
+
+final bodyId = await controller.createPhysicsBody(
+  nodeId: 'node_123',
+  type: PhysicsBodyType.dynamic,
+  material: material,
+  position: const Vector3(0, 2, -1),
+  rotation: const Quaternion(0, 0, 0, 1),
+  scale: const Vector3(1, 1, 1),
+  mass: 1.0,
+);
+```
+
+### 2. Apply Forces and Impulses
+
+```dart
+// Apply a force
+await controller.applyForce(
+  bodyId: bodyId,
+  force: const Vector3(0, 0, -5),
+  point: const Vector3(0, 0, 0),
+);
+
+// Apply an impulse
+await controller.applyImpulse(
+  bodyId: bodyId,
+  impulse: const Vector3(0, 10, 0),
+);
+```
+
+### 3. Set Velocity
+
+```dart
+await controller.setVelocity(
+  bodyId: bodyId,
+  velocity: const Vector3(1, 0, 0),
+);
+
+await controller.setAngularVelocity(
+  bodyId: bodyId,
+  angularVelocity: const Vector3(0, 1, 0),
+);
+```
+
+## Physics Constraints
+
+### 1. Create a Hinge Constraint
+
+```dart
+final constraintId = await controller.createPhysicsConstraint(
+  bodyAId: 'body_1',
+  bodyBId: 'body_2',
+  type: PhysicsConstraintType.hinge,
+  anchorA: const Vector3(0, 0, 0),
+  anchorB: const Vector3(1, 0, 0),
+  axisA: const Vector3(0, 1, 0),
+  axisB: const Vector3(0, 1, 0),
+  lowerLimit: -1.57, // -90 degrees
+  upperLimit: 1.57,  // 90 degrees
+);
+```
+
+### 2. Create a Ball Socket Constraint
+
+```dart
+final constraintId = await controller.createPhysicsConstraint(
+  bodyAId: 'body_1',
+  bodyBId: 'body_2',
+  type: PhysicsConstraintType.ballSocket,
+  anchorA: const Vector3(0, 0, 0),
+  anchorB: const Vector3(1, 0, 0),
+);
+```
+
+## Managing Physics Bodies
+
+### 1. Get All Physics Bodies
+
+```dart
+final bodies = await controller.getPhysicsBodies();
+for (final body in bodies) {
+  print('Body: ${body.id}, Type: ${body.type}');
+  print('Position: ${body.position}');
+  print('Velocity: ${body.velocity}');
+}
+```
+
+### 2. Get All Physics Constraints
+
+```dart
+final constraints = await controller.getPhysicsConstraints();
+for (final constraint in constraints) {
+  print('Constraint: ${constraint.id}, Type: ${constraint.type}');
+  print('Body A: ${constraint.bodyAId}, Body B: ${constraint.bodyBId}');
+}
+```
+
+### 3. Remove Physics Bodies and Constraints
+
+```dart
+await controller.removePhysicsBody('body_123');
+await controller.removePhysicsConstraint('constraint_123');
+```
+
+## Monitoring Physics Status
+
+### 1. Listen to Physics Bodies Updates
+
+```dart
+controller.physicsBodiesStream.listen((bodies) {
+  print('Physics bodies updated: ${bodies.length}');
+  for (final body in bodies) {
+    print('Body ${body.id}: ${body.position}');
+  }
+});
+```
+
+### 2. Listen to Physics Constraints Updates
+
+```dart
+controller.physicsConstraintsStream.listen((constraints) {
+  print('Physics constraints updated: ${constraints.length}');
+  for (final constraint in constraints) {
+    print('Constraint ${constraint.id}: ${constraint.type}');
+  }
+});
+```
+
+### 3. Listen to Physics Status Updates
+
+```dart
+controller.physicsStatusStream.listen((status) {
+  print('Physics status: ${status.status}');
+  print('Progress: ${(status.progress * 100).toInt()}%');
+  
+  if (status.isComplete) {
+    print('Physics simulation complete');
+  }
+  
+  if (status.isFailed) {
+    print('Physics simulation failed: ${status.errorMessage}');
+  }
+});
+```
+
+## Physics Body Types
+
+### Dynamic Bodies
+
+Bodies that respond to forces and collisions:
+
+```dart
+final bodyId = await controller.createPhysicsBody(
+  nodeId: 'dynamic_node',
+  type: PhysicsBodyType.dynamic,
+  material: const PhysicsMaterial(density: 1.0),
+  mass: 1.0,
+);
+```
+
+### Static Bodies
+
+Bodies that don't move but can collide:
+
+```dart
+final bodyId = await controller.createPhysicsBody(
+  nodeId: 'static_node',
+  type: PhysicsBodyType.static,
+  material: const PhysicsMaterial(density: 0.0),
+);
+```
+
+### Kinematic Bodies
+
+Bodies that move but don't respond to forces:
+
+```dart
+final bodyId = await controller.createPhysicsBody(
+  nodeId: 'kinematic_node',
+  type: PhysicsBodyType.kinematic,
+  material: const PhysicsMaterial(density: 0.0),
+);
+```
+
+## Physics Materials
+
+### Material Properties
+
+```dart
+const material = PhysicsMaterial(
+  density: 2.0,        // Mass per unit volume
+  friction: 0.8,       // Surface friction (0-1)
+  restitution: 0.5,    // Bounciness (0-1)
+  linearDamping: 0.1,  // Air resistance
+  angularDamping: 0.1, // Rotational resistance
+);
+```
+
+### Common Material Presets
+
+```dart
+// Rubber ball
+const rubber = PhysicsMaterial(
+  density: 1.0,
+  friction: 0.8,
+  restitution: 0.9,
+  linearDamping: 0.1,
+  angularDamping: 0.1,
+);
+
+// Steel
+const steel = PhysicsMaterial(
+  density: 7.8,
+  friction: 0.6,
+  restitution: 0.1,
+  linearDamping: 0.0,
+  angularDamping: 0.0,
+);
+
+// Ice
+const ice = PhysicsMaterial(
+  density: 0.9,
+  friction: 0.1,
+  restitution: 0.2,
+  linearDamping: 0.0,
+  angularDamping: 0.0,
+);
+```
+
+## Physics World Configuration
+
+### Basic Configuration
+
+```dart
+const config = PhysicsWorldConfig(
+  gravity: Vector3(0, -9.81, 0),  // Earth gravity
+  timeStep: 1.0 / 60.0,           // 60 FPS
+  maxSubSteps: 10,                 // Max substeps per frame
+  enableSleeping: true,            // Allow bodies to sleep
+  enableContinuousCollision: true, // Better collision detection
+);
+```
+
+### Advanced Configuration
+
+```dart
+const config = PhysicsWorldConfig(
+  gravity: Vector3(0, -9.81, 0),
+  timeStep: 1.0 / 120.0,          // 120 FPS for high precision
+  maxSubSteps: 20,                 // More substeps for accuracy
+  enableSleeping: false,           // Keep all bodies active
+  enableContinuousCollision: true,
+  contactBreakingThreshold: 0.0,    // Contact persistence
+  contactERP: 0.2,                 // Error reduction parameter
+  contactCFM: 0.0,                 // Constraint force mixing
+);
+```
+
+## Best Practices
+
+### Performance Optimization
+
+```dart
+// Use appropriate time steps
+const config = PhysicsWorldConfig(
+  timeStep: 1.0 / 60.0,  // Balance between accuracy and performance
+  maxSubSteps: 10,        // Prevent excessive computation
+);
+
+// Enable sleeping for inactive bodies
+const config = PhysicsWorldConfig(
+  enableSleeping: true,   // Improves performance
+);
+```
+
+### Error Handling
+
+```dart
+try {
+  await controller.startPhysics();
+} catch (e) {
+  print('Failed to start physics: $e');
+  // Fallback to non-physics rendering
+}
+```
+
+### Device Compatibility
+
+```dart
+// Check physics support before enabling
+final isSupported = await controller.isPhysicsSupported();
+if (!isSupported) {
+  print('Physics not supported on this device');
+  return;
+}
+
+// Use appropriate physics settings for device capabilities
+final capabilities = await controller.getPhysicsWorldConfig();
+print('Max bodies: ${capabilities.maxSubSteps}');
+```
+
+## Complete Example
+
+```dart
+class PhysicsARView extends StatefulWidget {
+  @override
+  _PhysicsARViewState createState() => _PhysicsARViewState();
+}
+
+class _PhysicsARViewState extends State<PhysicsARView> {
+  AugenController? _controller;
+  List<ARPhysicsBody> _bodies = [];
+  List<PhysicsConstraint> _constraints = [];
+  bool _physicsEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupPhysics();
+  }
+
+  Future<void> _setupPhysics() async {
+    // Check support
+    final isSupported = await _controller!.isPhysicsSupported();
+    if (!isSupported) {
+      print('Physics not supported');
+      return;
+    }
+
+    // Configure physics world
+    const config = PhysicsWorldConfig(
+      gravity: Vector3(0, -9.81, 0),
+      timeStep: 1.0 / 60.0,
+      maxSubSteps: 10,
+      enableSleeping: true,
+      enableContinuousCollision: true,
+    );
+
+    await _controller!.initializePhysics(config);
+    await _controller!.startPhysics();
+    _physicsEnabled = true;
+
+    // Listen to updates
+    _controller!.physicsBodiesStream.listen((bodies) {
+      setState(() {
+        _bodies = bodies;
+      });
+    });
+
+    _controller!.physicsConstraintsStream.listen((constraints) {
+      setState(() {
+        _constraints = constraints;
+      });
+    });
+  }
+
+  Future<void> _createPhysicsBody() async {
+    const material = PhysicsMaterial(
+      density: 1.0,
+      friction: 0.5,
+      restitution: 0.3,
+    );
+
+    final bodyId = await _controller!.createPhysicsBody(
+      nodeId: 'physics_node_${DateTime.now().millisecondsSinceEpoch}',
+      type: PhysicsBodyType.dynamic,
+      material: material,
+      position: const Vector3(0, 2, -1),
+      mass: 1.0,
+    );
+
+    print('Created physics body: $bodyId');
+  }
+
+  Future<void> _applyForce() async {
+    if (_bodies.isNotEmpty) {
+      final body = _bodies.first;
+      await _controller!.applyForce(
+        bodyId: body.id,
+        force: const Vector3(0, 0, -5),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Physics AR'),
+        actions: [
+          IconButton(
+            icon: Icon(_physicsEnabled ? Icons.pause : Icons.play_arrow),
+            onPressed: () async {
+              if (_physicsEnabled) {
+                await _controller!.pausePhysics();
+                _physicsEnabled = false;
+              } else {
+                await _controller!.resumePhysics();
+                _physicsEnabled = true;
+              }
+              setState(() {});
+            },
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          AugenView(
+            onViewCreated: (controller) {
+              _controller = controller;
+              _setupPhysics();
+            },
+          ),
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Physics Bodies: ${_bodies.length}'),
+                Text('Constraints: ${_constraints.length}'),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: _createPhysicsBody,
+                      child: const Text('Create Body'),
+                    ),
+                    ElevatedButton(
+                      onPressed: _applyForce,
+                      child: const Text('Apply Force'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+```
+
+# 9. Animations
 
 Complete guide for model animations and skeletal animations in Augen AR.
 

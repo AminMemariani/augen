@@ -1952,5 +1952,403 @@ void main() {
         subscription.cancel();
       });
     });
+
+    group('Physics Methods', () {
+      test('isPhysicsSupported sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'isPhysicsSupported') {
+            return true;
+          }
+          return null;
+        });
+
+        final result = await controller.isPhysicsSupported();
+        expect(result, true);
+      });
+
+      test('initializePhysics sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'initializePhysics') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+          }
+          return null;
+        });
+
+        const config = PhysicsWorldConfig(
+          gravity: Vector3(0, -9.81, 0),
+          timeStep: 1.0 / 60.0,
+        );
+        await controller.initializePhysics(config);
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['gravity'], isNotNull);
+        expect(capturedArgs!['timeStep'], 1.0 / 60.0);
+      });
+
+      test('startPhysics calls correct method', () async {
+        String? calledMethod;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'startPhysics') {
+            calledMethod = methodCall.method;
+          }
+          return null;
+        });
+
+        await controller.startPhysics();
+        expect(calledMethod, 'startPhysics');
+      });
+
+      test('stopPhysics calls correct method', () async {
+        String? calledMethod;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'stopPhysics') {
+            calledMethod = methodCall.method;
+          }
+          return null;
+        });
+
+        await controller.stopPhysics();
+        expect(calledMethod, 'stopPhysics');
+      });
+
+      test('pausePhysics calls correct method', () async {
+        String? calledMethod;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'pausePhysics') {
+            calledMethod = methodCall.method;
+          }
+          return null;
+        });
+
+        await controller.pausePhysics();
+        expect(calledMethod, 'pausePhysics');
+      });
+
+      test('resumePhysics calls correct method', () async {
+        String? calledMethod;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'resumePhysics') {
+            calledMethod = methodCall.method;
+          }
+          return null;
+        });
+
+        await controller.resumePhysics();
+        expect(calledMethod, 'resumePhysics');
+      });
+
+      test('createPhysicsBody sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'createPhysicsBody') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+            return 'body_id_123';
+          }
+          return null;
+        });
+
+        const material = PhysicsMaterial(
+          density: 1.0,
+          friction: 0.5,
+          restitution: 0.0,
+        );
+        final bodyId = await controller.createPhysicsBody(
+          nodeId: 'node1',
+          type: PhysicsBodyType.dynamic,
+          material: material,
+          position: const Vector3(0, 0, 0),
+          mass: 1.0,
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['nodeId'], 'node1');
+        expect(capturedArgs!['type'], 'dynamic');
+        expect(capturedArgs!['mass'], 1.0);
+        expect(bodyId, 'body_id_123');
+      });
+
+      test('removePhysicsBody sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'removePhysicsBody') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+          }
+          return null;
+        });
+
+        await controller.removePhysicsBody('body1');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['bodyId'], 'body1');
+      });
+
+      test('applyForce sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'applyForce') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+          }
+          return null;
+        });
+
+        await controller.applyForce(
+          bodyId: 'body1',
+          force: const Vector3(1, 0, 0),
+          point: const Vector3(0, 1, 0),
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['bodyId'], 'body1');
+        expect(capturedArgs!['force'], isNotNull);
+        expect(capturedArgs!['point'], isNotNull);
+      });
+
+      test('applyImpulse sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'applyImpulse') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+          }
+          return null;
+        });
+
+        await controller.applyImpulse(
+          bodyId: 'body1',
+          impulse: const Vector3(1, 0, 0),
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['bodyId'], 'body1');
+        expect(capturedArgs!['impulse'], isNotNull);
+      });
+
+      test('setVelocity sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'setVelocity') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+          }
+          return null;
+        });
+
+        await controller.setVelocity(
+          bodyId: 'body1',
+          velocity: const Vector3(1, 0, 0),
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['bodyId'], 'body1');
+        expect(capturedArgs!['velocity'], isNotNull);
+      });
+
+      test('setAngularVelocity sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'setAngularVelocity') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+          }
+          return null;
+        });
+
+        await controller.setAngularVelocity(
+          bodyId: 'body1',
+          angularVelocity: const Vector3(0, 1, 0),
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['bodyId'], 'body1');
+        expect(capturedArgs!['angularVelocity'], isNotNull);
+      });
+
+      test('createPhysicsConstraint sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'createPhysicsConstraint') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+            return 'constraint_id_123';
+          }
+          return null;
+        });
+
+        final constraintId = await controller.createPhysicsConstraint(
+          bodyAId: 'bodyA',
+          bodyBId: 'bodyB',
+          type: PhysicsConstraintType.hinge,
+          anchorA: const Vector3(0, 0, 0),
+          anchorB: const Vector3(1, 0, 0),
+        );
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['bodyAId'], 'bodyA');
+        expect(capturedArgs!['bodyBId'], 'bodyB');
+        expect(capturedArgs!['type'], 'hinge');
+        expect(constraintId, 'constraint_id_123');
+      });
+
+      test('removePhysicsConstraint sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'removePhysicsConstraint') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+          }
+          return null;
+        });
+
+        await controller.removePhysicsConstraint('constraint1');
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['constraintId'], 'constraint1');
+      });
+
+      test('getPhysicsBodies returns parsed bodies', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'getPhysicsBodies') {
+            return [
+              {
+                'id': 'body_1',
+                'nodeId': 'node_1',
+                'type': 'dynamic',
+                'material': {
+                  'density': 1.0,
+                  'friction': 0.5,
+                  'restitution': 0.0,
+                  'linearDamping': 0.0,
+                  'angularDamping': 0.0,
+                },
+                'position': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                'scale': {'x': 1.0, 'y': 1.0, 'z': 1.0},
+                'velocity': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                'angularVelocity': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                'isActive': true,
+                'mass': 1.0,
+                'createdAt': DateTime.now().millisecondsSinceEpoch,
+                'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                'metadata': {},
+              },
+            ];
+          }
+          return null;
+        });
+
+        final bodies = await controller.getPhysicsBodies();
+        expect(bodies.length, 1);
+        expect(bodies.first.id, 'body_1');
+        expect(bodies.first.type, PhysicsBodyType.dynamic);
+      });
+
+      test('getPhysicsConstraints returns parsed constraints', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'getPhysicsConstraints') {
+            return [
+              {
+                'id': 'constraint_1',
+                'bodyAId': 'bodyA',
+                'bodyBId': 'bodyB',
+                'type': 'hinge',
+                'anchorA': {'x': 0.0, 'y': 0.0, 'z': 0.0},
+                'anchorB': {'x': 1.0, 'y': 0.0, 'z': 0.0},
+                'axisA': {'x': 0.0, 'y': 1.0, 'z': 0.0},
+                'axisB': {'x': 0.0, 'y': 1.0, 'z': 0.0},
+                'lowerLimit': -1.0,
+                'upperLimit': 1.0,
+                'isActive': true,
+                'createdAt': DateTime.now().millisecondsSinceEpoch,
+                'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                'metadata': {},
+              },
+            ];
+          }
+          return null;
+        });
+
+        final constraints = await controller.getPhysicsConstraints();
+        expect(constraints.length, 1);
+        expect(constraints.first.id, 'constraint_1');
+        expect(constraints.first.type, PhysicsConstraintType.hinge);
+      });
+
+      test('getPhysicsWorldConfig returns parsed config', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'getPhysicsWorldConfig') {
+            return {
+              'gravity': {'x': 0.0, 'y': -9.81, 'z': 0.0},
+              'timeStep': 1.0 / 60.0,
+              'maxSubSteps': 10,
+              'enableSleeping': true,
+              'enableContinuousCollision': true,
+              'contactBreakingThreshold': 0.0,
+              'contactERP': 0.2,
+              'contactCFM': 0.0,
+            };
+          }
+          return null;
+        });
+
+        final config = await controller.getPhysicsWorldConfig();
+        expect(config.gravity, const Vector3(0, -9.81, 0));
+        expect(config.timeStep, 1.0 / 60.0);
+        expect(config.maxSubSteps, 10);
+      });
+
+      test('updatePhysicsWorldConfig sends correct parameters', () async {
+        Map<Object?, Object?>? capturedArgs;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'updatePhysicsWorldConfig') {
+            capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
+          }
+          return null;
+        });
+
+        const config = PhysicsWorldConfig(
+          gravity: Vector3(0, -9.81, 0),
+          timeStep: 1.0 / 60.0,
+        );
+        await controller.updatePhysicsWorldConfig(config);
+
+        expect(capturedArgs, isNotNull);
+        expect(capturedArgs!['gravity'], isNotNull);
+        expect(capturedArgs!['timeStep'], 1.0 / 60.0);
+      });
+    });
+
+    group('Physics Streams', () {
+      test('physicsBodiesStream can be listened to', () {
+        final subscription = controller.physicsBodiesStream.listen((bodies) {});
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('physicsConstraintsStream can be listened to', () {
+        final subscription = controller.physicsConstraintsStream.listen((constraints) {});
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('physicsStatusStream can be listened to', () {
+        final subscription = controller.physicsStatusStream.listen((status) {});
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+    });
   });
 }

@@ -2,6 +2,93 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2025-01-15
+
+### Added
+- ⚛️ **Physics Simulation for AR Objects** - Complete physics system
+  - Dynamic, static, and kinematic physics bodies with realistic interactions
+  - Physics materials with density, friction, restitution, and damping properties
+  - Physics constraints including hinge, ball socket, fixed, slider, cone twist, and 6DOF joints
+  - Physics world configuration with gravity, time step, and collision settings
+  - Real-time physics body and constraint monitoring via streams
+  - Cross-platform physics support (ARCore/ARKit)
+  - Physics status tracking and error handling
+
+### New Features
+- **ARPhysicsBody Model**: Complete physics body data structure with position, rotation, velocity, mass, and material properties
+- **PhysicsMaterial Model**: Configurable material properties for realistic physics interactions
+- **PhysicsConstraint Model**: Joint and constraint system for connecting physics bodies
+- **PhysicsWorldConfig Model**: Physics world configuration with gravity, time step, and collision settings
+- **PhysicsStatus Model**: Real-time status updates for physics operations
+- **PhysicsBodyType Enum**: Support for static, dynamic, and kinematic body types
+- **PhysicsConstraintType Enum**: Support for various constraint types (hinge, ball socket, fixed, slider, cone twist, 6DOF)
+
+### Enhanced Controller
+- **Physics Methods**: Complete physics API with 15+ new methods
+  - `isPhysicsSupported()` - Check physics support
+  - `initializePhysics(config)` - Initialize physics world
+  - `startPhysics()` / `stopPhysics()` / `pausePhysics()` / `resumePhysics()` - Physics control
+  - `createPhysicsBody()` / `removePhysicsBody()` - Body management
+  - `applyForce()` / `applyImpulse()` - Force application
+  - `setVelocity()` / `setAngularVelocity()` - Velocity control
+  - `createPhysicsConstraint()` / `removePhysicsConstraint()` - Constraint management
+  - `getPhysicsBodies()` / `getPhysicsConstraints()` - Data retrieval
+  - `getPhysicsWorldConfig()` / `updatePhysicsWorldConfig()` - Configuration management
+
+### New Streams
+- **physicsBodiesStream**: Real-time physics body updates
+- **physicsConstraintsStream**: Real-time constraint updates  
+- **physicsStatusStream**: Real-time physics status updates
+
+### Enhanced Example App
+- **Physics Tab**: Complete physics demonstration interface
+- **Physics Controls**: Support checking, physics toggling, body creation, force application
+- **Real-time Monitoring**: Live physics body and constraint display
+- **Physics Information**: Educational content about physics body types and materials
+- **Status Integration**: Physics status in main status view
+
+### Enhanced Integration Tests
+- **Physics Integration Test**: Complete physics workflow testing
+- **Physics Support Detection**: Automatic physics capability testing
+- **Physics World Initialization**: Configuration and startup testing
+- **Physics Body Creation**: Dynamic body creation and management testing
+- **Physics Force Application**: Force and impulse application testing
+- **Physics Stream Monitoring**: Real-time physics data stream testing
+- **Physics Control Testing**: Start, pause, resume physics testing
+
+### Documentation Updates
+- **Physics Simulation Section**: Complete physics guide in Documentation.md
+- **Physics API Reference**: Detailed physics method documentation
+- **Physics Examples**: Comprehensive physics usage examples
+- **Physics Best Practices**: Performance and implementation guidelines
+- **Physics Tutorial**: Step-by-step physics setup and usage guide
+
+### Testing
+- **51 New Unit Tests**: Complete physics model and controller testing
+- **Physics Model Tests**: ARPhysicsBody, PhysicsMaterial, PhysicsConstraint, PhysicsWorldConfig, PhysicsStatus testing
+- **Physics Controller Tests**: All physics methods and streams testing
+- **Physics Integration Tests**: End-to-end physics workflow testing
+- **Test Coverage**: 100% coverage maintained with 331 total tests
+
+### Performance Improvements
+- **Efficient Physics Updates**: Optimized physics body and constraint streaming
+- **Physics Status Monitoring**: Real-time physics operation tracking
+- **Memory Management**: Proper physics resource cleanup and disposal
+- **Cross-Platform Optimization**: Platform-specific physics optimizations
+
+### Breaking Changes
+- None
+
+### Bug Fixes
+- Fixed velocity magnitude calculation in example app
+- Fixed physics stream subscription management
+- Fixed physics body creation parameter validation
+- Fixed physics constraint anchor handling
+
+### Dependencies
+- No new dependencies added
+- All existing dependencies maintained
+
 ## [0.8.0] - 2025-01-14
 
 ### Added

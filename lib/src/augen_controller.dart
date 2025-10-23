@@ -17,6 +17,7 @@ import 'models/ar_tracked_image.dart';
 import 'models/ar_face.dart';
 import 'models/ar_cloud_anchor.dart';
 import 'models/ar_occlusion.dart';
+import 'models/ar_physics.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -49,6 +50,12 @@ class AugenController {
       StreamController<List<AROcclusion>>.broadcast();
   final StreamController<OcclusionStatus> _occlusionStatusController =
       StreamController<OcclusionStatus>.broadcast();
+  final StreamController<List<ARPhysicsBody>> _physicsBodiesController =
+      StreamController<List<ARPhysicsBody>>.broadcast();
+  final StreamController<List<PhysicsConstraint>> _physicsConstraintsController =
+      StreamController<List<PhysicsConstraint>>.broadcast();
+  final StreamController<PhysicsStatus> _physicsStatusController =
+      StreamController<PhysicsStatus>.broadcast();
 
   bool _isDisposed = false;
 
@@ -103,6 +110,18 @@ class AugenController {
   /// Stream of occlusion status updates
   Stream<OcclusionStatus> get occlusionStatusStream =>
       _occlusionStatusController.stream;
+
+  /// Stream of physics bodies updates
+  Stream<List<ARPhysicsBody>> get physicsBodiesStream =>
+      _physicsBodiesController.stream;
+
+  /// Stream of physics constraints updates
+  Stream<List<PhysicsConstraint>> get physicsConstraintsStream =>
+      _physicsConstraintsController.stream;
+
+  /// Stream of physics status updates
+  Stream<PhysicsStatus> get physicsStatusStream =>
+      _physicsStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -373,6 +392,25 @@ class AugenController {
         final statusData = call.arguments as Map<String, dynamic>;
         final status = OcclusionStatus.fromMap(statusData);
         _occlusionStatusController.add(status);
+        break;
+      case 'onPhysicsBodiesUpdated':
+        final bodiesData = call.arguments as List;
+        final bodies = bodiesData
+            .map((e) => ARPhysicsBody.fromMap(e as Map<String, dynamic>))
+            .toList();
+        _physicsBodiesController.add(bodies);
+        break;
+      case 'onPhysicsConstraintsUpdated':
+        final constraintsData = call.arguments as List;
+        final constraints = constraintsData
+            .map((e) => PhysicsConstraint.fromMap(e as Map<String, dynamic>))
+            .toList();
+        _physicsConstraintsController.add(constraints);
+        break;
+      case 'onPhysicsStatusUpdated':
+        final statusData = call.arguments as Map<String, dynamic>;
+        final status = PhysicsStatus.fromMap(statusData);
+        _physicsStatusController.add(status);
         break;
     }
   }
@@ -1408,6 +1446,283 @@ class AugenController {
     }
   }
 
+  // ===== Physics Methods =====
+  /// Check if physics simulation is supported
+  Future<bool> isPhysicsSupported() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('isPhysicsSupported');
+      return result as bool;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to check physics support: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Initialize physics world with configuration
+  Future<void> initializePhysics(PhysicsWorldConfig config) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('initializePhysics', config.toMap());
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to initialize physics: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Start physics simulation
+  Future<void> startPhysics() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('startPhysics');
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to start physics: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Stop physics simulation
+  Future<void> stopPhysics() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('stopPhysics');
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to stop physics: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Pause physics simulation
+  Future<void> pausePhysics() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('pausePhysics');
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to pause physics: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Resume physics simulation
+  Future<void> resumePhysics() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('resumePhysics');
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to resume physics: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Create a physics body for a node
+  Future<String> createPhysicsBody({
+    required String nodeId,
+    required PhysicsBodyType type,
+    required PhysicsMaterial material,
+    Vector3? position,
+    Quaternion? rotation,
+    Vector3? scale,
+    double? mass,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('createPhysicsBody', {
+        'nodeId': nodeId,
+        'type': type.name,
+        'material': material.toMap(),
+        if (position != null) 'position': position.toMap(),
+        if (rotation != null) 'rotation': rotation.toMap(),
+        if (scale != null) 'scale': scale.toMap(),
+        if (mass != null) 'mass': mass,
+      });
+      return result as String;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to create physics body: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove a physics body
+  Future<void> removePhysicsBody(String bodyId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('removePhysicsBody', {'bodyId': bodyId});
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to remove physics body: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Apply force to a physics body
+  Future<void> applyForce({
+    required String bodyId,
+    required Vector3 force,
+    Vector3? point,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('applyForce', {
+        'bodyId': bodyId,
+        'force': force.toMap(),
+        if (point != null) 'point': point.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to apply force: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Apply impulse to a physics body
+  Future<void> applyImpulse({
+    required String bodyId,
+    required Vector3 impulse,
+    Vector3? point,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('applyImpulse', {
+        'bodyId': bodyId,
+        'impulse': impulse.toMap(),
+        if (point != null) 'point': point.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to apply impulse: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Set velocity of a physics body
+  Future<void> setVelocity({
+    required String bodyId,
+    required Vector3 velocity,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setVelocity', {
+        'bodyId': bodyId,
+        'velocity': velocity.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set velocity: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Set angular velocity of a physics body
+  Future<void> setAngularVelocity({
+    required String bodyId,
+    required Vector3 angularVelocity,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setAngularVelocity', {
+        'bodyId': bodyId,
+        'angularVelocity': angularVelocity.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set angular velocity: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Create a physics constraint between two bodies
+  Future<String> createPhysicsConstraint({
+    required String bodyAId,
+    required String bodyBId,
+    required PhysicsConstraintType type,
+    Vector3? anchorA,
+    Vector3? anchorB,
+    Vector3? axisA,
+    Vector3? axisB,
+    double? lowerLimit,
+    double? upperLimit,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('createPhysicsConstraint', {
+        'bodyAId': bodyAId,
+        'bodyBId': bodyBId,
+        'type': type.name,
+        if (anchorA != null) 'anchorA': anchorA.toMap(),
+        if (anchorB != null) 'anchorB': anchorB.toMap(),
+        if (axisA != null) 'axisA': axisA.toMap(),
+        if (axisB != null) 'axisB': axisB.toMap(),
+        if (lowerLimit != null) 'lowerLimit': lowerLimit,
+        if (upperLimit != null) 'upperLimit': upperLimit,
+      });
+      return result as String;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to create physics constraint: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove a physics constraint
+  Future<void> removePhysicsConstraint(String constraintId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('removePhysicsConstraint', {
+        'constraintId': constraintId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to remove physics constraint: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all physics bodies
+  Future<List<ARPhysicsBody>> getPhysicsBodies() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getPhysicsBodies');
+      final bodiesData = result as List;
+      return bodiesData
+          .map((e) => ARPhysicsBody.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get physics bodies: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all physics constraints
+  Future<List<PhysicsConstraint>> getPhysicsConstraints() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getPhysicsConstraints');
+      final constraintsData = result as List;
+      return constraintsData
+          .map((e) => PhysicsConstraint.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get physics constraints: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get physics world configuration
+  Future<PhysicsWorldConfig> getPhysicsWorldConfig() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getPhysicsWorldConfig');
+      return PhysicsWorldConfig.fromMap(Map<String, dynamic>.from(result as Map));
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get physics world config: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update physics world configuration
+  Future<void> updatePhysicsWorldConfig(PhysicsWorldConfig config) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updatePhysicsWorldConfig', config.toMap());
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update physics world config: ${e.message}');
+      rethrow;
+    }
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -1425,6 +1740,9 @@ class AugenController {
     _cloudAnchorStatusController.close();
     _occlusionsController.close();
     _occlusionStatusController.close();
+    _physicsBodiesController.close();
+    _physicsConstraintsController.close();
+    _physicsStatusController.close();
     _channel.setMethodCallHandler(null);
   }
 }

@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/pub/v/augen.svg)](https://pub.dev/packages/augen)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-280%20passing-brightgreen.svg)](test/)
+[![Tests](https://img.shields.io/badge/tests-331%20passing-brightgreen.svg)](test/)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](Documentation.md#6-testing)
 
 **Augen** is a comprehensive Flutter plugin that enables pure Dart AR (Augmented Reality) development for both Android and iOS platforms. Build AR applications without writing any native code!
@@ -17,6 +17,7 @@
 👤 **Face Tracking**: Detect and track human faces with facial landmarks  
 ☁️ **Cloud Anchors**: Create persistent AR experiences that can be shared across sessions  
 👁️ **Occlusion**: Realistic rendering with depth, person, and plane occlusion  
+⚛️ **Physics Simulation**: Realistic interactions with dynamic, static, and kinematic bodies, materials, and constraints  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
@@ -35,6 +36,7 @@
 - Face Tracking
 - Cloud Anchors
 - Occlusion
+- Physics Simulation
 - Animations & Advanced Blending
 - Testing
 - Examples & Best Practices
@@ -499,6 +501,109 @@ Future<void> _getOcclusions() async {
     print('${occlusion.type.name} occlusion at ${occlusion.position}');
   }
 }
+```
+
+### Physics Simulation
+
+Create realistic physics interactions with dynamic, static, and kinematic bodies.
+
+#### Setting Up Physics
+
+```dart
+// Check if physics is supported
+final supported = await controller.isPhysicsSupported();
+if (supported) {
+  // Initialize physics world
+  const config = PhysicsWorldConfig(
+    gravity: Vector3(0, -9.81, 0),
+    timeStep: 1.0 / 60.0,
+    maxSubSteps: 10,
+    enableSleeping: true,
+    enableContinuousCollision: true,
+  );
+  
+  await controller.initializePhysics(config);
+  await controller.startPhysics();
+}
+```
+
+#### Creating Physics Bodies
+
+```dart
+// Create a dynamic physics body
+const material = PhysicsMaterial(
+  density: 1.0,
+  friction: 0.5,
+  restitution: 0.3,
+  linearDamping: 0.1,
+  angularDamping: 0.1,
+);
+
+final bodyId = await controller.createPhysicsBody(
+  nodeId: 'physics_node',
+  type: PhysicsBodyType.dynamic,
+  material: material,
+  position: Vector3(0, 2, -1),
+  mass: 1.0,
+);
+```
+
+#### Applying Forces and Impulses
+
+```dart
+// Apply continuous force
+await controller.applyForce(
+  bodyId: bodyId,
+  force: Vector3(0, 0, -5),
+);
+
+// Apply impulse (instantaneous force)
+await controller.applyImpulse(
+  bodyId: bodyId,
+  impulse: Vector3(0, 10, 0),
+);
+
+// Set velocity directly
+await controller.setVelocity(
+  bodyId: bodyId,
+  velocity: Vector3(0, 0, -2),
+);
+```
+
+#### Physics Constraints
+
+```dart
+// Create a hinge constraint between two bodies
+final constraintId = await controller.createPhysicsConstraint(
+  bodyAId: 'body1',
+  bodyBId: 'body2',
+  type: PhysicsConstraintType.hinge,
+  anchorA: Vector3(0, 0, 0),
+  anchorB: Vector3(1, 0, 0),
+  axisA: Vector3(0, 1, 0),
+  axisB: Vector3(0, 1, 0),
+);
+```
+
+#### Monitoring Physics
+
+```dart
+// Listen to physics updates
+controller.physicsBodiesStream.listen((bodies) {
+  for (final body in bodies) {
+    print('${body.type.name} body at ${body.position}');
+  }
+});
+
+controller.physicsConstraintsStream.listen((constraints) {
+  for (final constraint in constraints) {
+    print('${constraint.type.name} constraint active: ${constraint.isActive}');
+  }
+});
+
+controller.physicsStatusStream.listen((status) {
+  print('Physics status: ${status.status} (${(status.progress * 100).toInt()}%)');
+});
 ```
 
 ## API Reference

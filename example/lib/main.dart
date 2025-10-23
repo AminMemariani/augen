@@ -40,6 +40,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   List<ARFace> _trackedFaces = [];
   List<ARCloudAnchor> _cloudAnchors = [];
   List<AROcclusion> _occlusions = [];
+  List<ARPhysicsBody> _physicsBodies = [];
+  List<PhysicsConstraint> _physicsConstraints = [];
   int _nodeCounter = 0;
   String _statusMessage = 'Initializing...';
   bool _imageTrackingEnabled = false;
@@ -47,6 +49,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   bool _cloudAnchorsSupported = false;
   bool _occlusionSupported = false;
   bool _occlusionEnabled = false;
+  bool _physicsSupported = false;
+  bool _physicsEnabled = false;
   String? _currentSessionId;
   int _currentTabIndex = 0;
   late TabController _tabController;
@@ -66,6 +70,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   StreamSubscription<CloudAnchorStatus>? _cloudAnchorStatusSubscription;
   StreamSubscription<List<AROcclusion>>? _occlusionsSubscription;
   StreamSubscription<OcclusionStatus>? _occlusionStatusSubscription;
+  StreamSubscription<List<ARPhysicsBody>>? _physicsBodiesSubscription;
+  StreamSubscription<List<PhysicsConstraint>>? _physicsConstraintsSubscription;
+  StreamSubscription<PhysicsStatus>? _physicsStatusSubscription;
   StreamSubscription<String>? _errorSubscription;
   StreamSubscription<augen.AnimationStatus>? _animationStatusSubscription;
   StreamSubscription<TransitionStatus>? _transitionStatusSubscription;
@@ -135,6 +142,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       
       // Check occlusion support
       await _checkOcclusionSupport();
+      
+      // Check physics support
+      await _checkPhysicsSupport();
     } catch (e) {
       setState(() {
         _statusMessage = 'Error: $e';
@@ -244,6 +254,35 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Occlusion failed: ${status.errorMessage}')),
+          );
+        }
+      }
+    });
+
+    _physicsBodiesSubscription = _controller!.physicsBodiesStream.listen((bodies) {
+      if (!mounted) return;
+      setState(() {
+        _physicsBodies = bodies;
+      });
+    });
+
+    _physicsConstraintsSubscription = _controller!.physicsConstraintsStream.listen((constraints) {
+      if (!mounted) return;
+      setState(() {
+        _physicsConstraints = constraints;
+      });
+    });
+
+    _physicsStatusSubscription = _controller!.physicsStatusStream.listen((status) {
+      if (!mounted) return;
+      if (status.isComplete) {
+        if (status.isSuccessful) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Physics simulation complete!')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Physics simulation failed: ${status.errorMessage}')),
           );
         }
       }
@@ -594,6 +633,117 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     }
   }
 
+  // Physics Methods
+  Future<void> _checkPhysicsSupport() async {
+    if (_controller == null) return;
+
+    try {
+      _physicsSupported = await _controller!.isPhysicsSupported();
+
+      if (!mounted) return;
+      setState(() {});
+
+      if (_physicsSupported) {
+        // Initialize physics world
+        const config = PhysicsWorldConfig(
+          gravity: Vector3(0, -9.81, 0),
+          timeStep: 1.0 / 60.0,
+          maxSubSteps: 10,
+          enableSleeping: true,
+          enableContinuousCollision: true,
+        );
+
+        await _controller!.initializePhysics(config);
+        await _controller!.startPhysics();
+        _physicsEnabled = true;
+
+        if (!mounted) return;
+        setState(() {});
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Physics support check failed: $e';
+      });
+    }
+  }
+
+  Future<void> _togglePhysics() async {
+    if (_controller == null || !_physicsSupported) return;
+
+    try {
+      if (_physicsEnabled) {
+        await _controller!.pausePhysics();
+        _physicsEnabled = false;
+      } else {
+        await _controller!.resumePhysics();
+        _physicsEnabled = true;
+      }
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Failed to toggle physics: $e';
+      });
+    }
+  }
+
+  Future<void> _createPhysicsBody() async {
+    if (_controller == null || !_physicsSupported) return;
+
+    try {
+      const material = PhysicsMaterial(
+        density: 1.0,
+        friction: 0.5,
+        restitution: 0.3,
+        linearDamping: 0.1,
+        angularDamping: 0.1,
+      );
+
+      final bodyId = await _controller!.createPhysicsBody(
+        nodeId: 'physics_node_${DateTime.now().millisecondsSinceEpoch}',
+        type: PhysicsBodyType.dynamic,
+        material: material,
+        position: const Vector3(0, 2, -1),
+        mass: 1.0,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Created physics body: $bodyId')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Failed to create physics body: $e';
+      });
+    }
+  }
+
+  Future<void> _applyForce() async {
+    if (_controller == null || _physicsBodies.isEmpty) return;
+
+    try {
+      final body = _physicsBodies.first;
+      await _controller!.applyForce(
+        bodyId: body.id,
+        force: const Vector3(0, 0, -5),
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Applied force to ${body.id}')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Failed to apply force: $e';
+      });
+    }
+  }
+
   // Occlusion Methods
   Future<void> _checkOcclusionSupport() async {
     if (_controller == null) return;
@@ -850,6 +1000,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             Tab(icon: Icon(Icons.face), text: 'Face Tracking'),
             Tab(icon: Icon(Icons.cloud), text: 'Cloud Anchors'),
             Tab(icon: Icon(Icons.visibility_off), text: 'Occlusion'),
+            Tab(icon: Icon(Icons.science), text: 'Physics'),
             Tab(icon: Icon(Icons.animation), text: 'Animations'),
             Tab(icon: Icon(Icons.dashboard), text: 'Demo'),
             Tab(icon: Icon(Icons.info), text: 'Status'),
@@ -863,6 +1014,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           _buildFaceTrackingView(),
           _buildCloudAnchorView(),
           _buildOcclusionView(),
+          _buildPhysicsView(),
           _buildAnimationView(),
           _buildDemoView(),
           _buildStatusView(),
@@ -1517,6 +1669,183 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildPhysicsView() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Physics Simulation',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+
+          // Physics support status
+          Card(
+            child: ListTile(
+              leading: Icon(
+                _physicsSupported ? Icons.science : Icons.science_outlined,
+                color: _physicsSupported ? Colors.green : Colors.red,
+              ),
+              title: const Text('Physics Support'),
+              subtitle: Text(
+                _physicsSupported ? 'Supported' : 'Not Supported',
+              ),
+              trailing: ElevatedButton(
+                onPressed: _checkPhysicsSupport,
+                child: const Text('Check Support'),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Physics controls
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Physics Controls',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _physicsSupported ? _togglePhysics : null,
+                          icon: Icon(_physicsEnabled ? Icons.pause : Icons.play_arrow),
+                          label: Text(_physicsEnabled ? 'Pause Physics' : 'Resume Physics'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _physicsSupported ? _createPhysicsBody : null,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Create Body'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _physicsSupported && _physicsBodies.isNotEmpty ? _applyForce : null,
+                          icon: const Icon(Icons.speed),
+                          label: const Text('Apply Force'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Active physics bodies
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Physics Bodies (${_physicsBodies.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  if (_physicsBodies.isEmpty)
+                    const Text('No physics bodies')
+                  else
+                    ..._physicsBodies.map((body) => ListTile(
+                      leading: Icon(
+                        body.isActive ? Icons.science : Icons.science_outlined,
+                        color: body.isActive ? Colors.green : Colors.grey,
+                      ),
+                      title: Text('${body.type.name} Body'),
+                      subtitle: Text(
+                        'ID: ${body.id}\n'
+                        'Mass: ${body.mass.toStringAsFixed(2)}\n'
+                        'Position: (${body.position.x.toStringAsFixed(2)}, ${body.position.y.toStringAsFixed(2)}, ${body.position.z.toStringAsFixed(2)})',
+                      ),
+                      trailing: Text(
+                        'Velocity: ${sqrt(body.velocity.x * body.velocity.x + body.velocity.y * body.velocity.y + body.velocity.z * body.velocity.z).toStringAsFixed(2)}',
+                      ),
+                    )),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Physics constraints
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Physics Constraints (${_physicsConstraints.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  if (_physicsConstraints.isEmpty)
+                    const Text('No physics constraints')
+                  else
+                    ..._physicsConstraints.map((constraint) => ListTile(
+                      leading: Icon(
+                        constraint.isActive ? Icons.link : Icons.link_off,
+                        color: constraint.isActive ? Colors.green : Colors.grey,
+                      ),
+                      title: Text('${constraint.type.name} Constraint'),
+                      subtitle: Text(
+                        'ID: ${constraint.id}\n'
+                        'Body A: ${constraint.bodyAId}\n'
+                        'Body B: ${constraint.bodyBId}',
+                      ),
+                    )),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Physics info
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Physics Body Types',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('• Dynamic: Responds to forces and collisions'),
+                  const Text('• Static: Fixed position, can collide'),
+                  const Text('• Kinematic: Moves but doesn\'t respond to forces'),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAnimationView() {
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -1859,6 +2188,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     'Occlusions',
                     '${_occlusions.length} active, ${_occlusionSupported ? 'Supported' : 'Not Supported'}',
                   ),
+                  _buildStatRow(
+                    'Physics',
+                    '${_physicsBodies.length} bodies, ${_physicsSupported ? 'Supported' : 'Not Supported'}',
+                  ),
                 ],
               ),
             ),
@@ -2008,6 +2341,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     _cloudAnchorStatusSubscription?.cancel();
     _occlusionsSubscription?.cancel();
     _occlusionStatusSubscription?.cancel();
+    _physicsBodiesSubscription?.cancel();
+    _physicsConstraintsSubscription?.cancel();
+    _physicsStatusSubscription?.cancel();
     _errorSubscription?.cancel();
     _animationStatusSubscription?.cancel();
     _transitionStatusSubscription?.cancel();
