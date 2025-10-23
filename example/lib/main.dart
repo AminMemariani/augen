@@ -392,21 +392,21 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
     try {
       // Create a local anchor first
-      final localAnchor = ARAnchor(
-        id: 'local_${DateTime.now().millisecondsSinceEpoch}',
-        position: const Vector3(0, 0, -1),
-        rotation: const Quaternion(0, 0, 0, 1),
-      );
+      // Create a local anchor at a specific position
+      const anchorPosition = Vector3(0, 0, -1);
+      final localAnchor = await _controller!.addAnchor(anchorPosition);
 
-      await _controller!.addAnchor(localAnchor);
+      if (localAnchor != null) {
+        // Convert to cloud anchor
+        final cloudAnchorId = await _controller!.createCloudAnchor(
+          localAnchor.id,
+        );
 
-      // Convert to cloud anchor
-      final cloudAnchorId = await _controller!.createCloudAnchor(localAnchor.id);
-      
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Creating cloud anchor: $cloudAnchorId')),
-      );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Creating cloud anchor: $cloudAnchorId')),
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

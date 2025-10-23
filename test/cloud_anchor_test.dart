@@ -58,7 +58,7 @@ void main() {
 
     test('computed properties work correctly', () {
       final now = DateTime.now();
-      
+
       // Active states
       final createdAnchor = ARCloudAnchor(
         id: 'anchor_1',
@@ -127,9 +127,11 @@ void main() {
     });
 
     test('converts to and from map', () {
-      final now = DateTime.fromMillisecondsSinceEpoch(DateTime.now().millisecondsSinceEpoch);
+      final now = DateTime.fromMillisecondsSinceEpoch(
+        DateTime.now().millisecondsSinceEpoch,
+      );
       final expiresAt = now.add(const Duration(hours: 24));
-      
+
       final cloudAnchor = ARCloudAnchor(
         id: 'cloud_anchor_1',
         localAnchorId: 'local_anchor_1',
@@ -155,16 +157,25 @@ void main() {
       expect(restored.rotation, cloudAnchor.rotation);
       expect(restored.scale, cloudAnchor.scale);
       expect(restored.confidence, cloudAnchor.confidence);
-      expect(restored.createdAt.millisecondsSinceEpoch, cloudAnchor.createdAt.millisecondsSinceEpoch);
-      expect(restored.lastUpdated.millisecondsSinceEpoch, cloudAnchor.lastUpdated.millisecondsSinceEpoch);
-      expect(restored.expiresAt?.millisecondsSinceEpoch, cloudAnchor.expiresAt?.millisecondsSinceEpoch);
+      expect(
+        restored.createdAt.millisecondsSinceEpoch,
+        cloudAnchor.createdAt.millisecondsSinceEpoch,
+      );
+      expect(
+        restored.lastUpdated.millisecondsSinceEpoch,
+        cloudAnchor.lastUpdated.millisecondsSinceEpoch,
+      );
+      expect(
+        restored.expiresAt?.millisecondsSinceEpoch,
+        cloudAnchor.expiresAt?.millisecondsSinceEpoch,
+      );
       expect(restored.isTracked, cloudAnchor.isTracked);
       expect(restored.isReliable, cloudAnchor.isReliable);
     });
 
     test('parses cloud anchor states correctly', () {
       final now = DateTime.now();
-      
+
       final testCases = [
         ('creating', CloudAnchorState.creating),
         ('created', CloudAnchorState.created),
@@ -279,7 +290,7 @@ void main() {
 
     test('computed properties work correctly', () {
       final now = DateTime.now();
-      
+
       // Complete states
       final createdStatus = CloudAnchorStatus(
         cloudAnchorId: 'anchor_1',
@@ -329,7 +340,9 @@ void main() {
     });
 
     test('converts to and from map', () {
-      final now = DateTime.fromMillisecondsSinceEpoch(DateTime.now().millisecondsSinceEpoch);
+      final now = DateTime.fromMillisecondsSinceEpoch(
+        DateTime.now().millisecondsSinceEpoch,
+      );
       final status = CloudAnchorStatus(
         cloudAnchorId: 'test_anchor',
         state: CloudAnchorState.creating,
@@ -345,7 +358,10 @@ void main() {
       expect(restored.state, status.state);
       expect(restored.progress, status.progress);
       expect(restored.errorMessage, status.errorMessage);
-      expect(restored.timestamp.millisecondsSinceEpoch, status.timestamp.millisecondsSinceEpoch);
+      expect(
+        restored.timestamp.millisecondsSinceEpoch,
+        status.timestamp.millisecondsSinceEpoch,
+      );
     });
 
     test('equality works correctly', () {

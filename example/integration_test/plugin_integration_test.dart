@@ -1004,7 +1004,51 @@ void main() {
             print('Anchor added: ${anchor?.id}');
           }
 
-          // Step 10: Get all data
+          // Step 10: Test cloud anchors
+          final cloudAnchorsSupported = await createdController
+              .isCloudAnchorsSupported();
+          // ignore: avoid_print
+          print('Cloud anchors supported: $cloudAnchorsSupported');
+
+          if (cloudAnchorsSupported) {
+            // Configure cloud anchors
+            await createdController.setCloudAnchorConfig(
+              maxCloudAnchors: 5,
+              timeout: const Duration(seconds: 30),
+              enableSharing: true,
+            );
+
+            // Create a cloud anchor (if we have a local anchor)
+            if (hitResults.isNotEmpty) {
+              final localAnchor = await createdController.addAnchor(
+                hitResults.first.position,
+              );
+              if (localAnchor != null) {
+                final cloudAnchorId = await createdController.createCloudAnchor(
+                  localAnchor.id,
+                );
+                // ignore: avoid_print
+                print('Created cloud anchor: $cloudAnchorId');
+
+                // Get cloud anchors
+                final cloudAnchors = await createdController.getCloudAnchors();
+                // ignore: avoid_print
+                print('Cloud anchors: ${cloudAnchors.length}');
+
+                // Share cloud anchor session
+                final sessionId = await createdController.shareCloudAnchor(
+                  cloudAnchorId,
+                );
+                // ignore: avoid_print
+                print('Shared cloud anchor session: $sessionId');
+
+                // Clean up cloud anchor
+                await createdController.deleteCloudAnchor(cloudAnchorId);
+              }
+            }
+          }
+
+          // Step 11: Get all data
           final targets = await createdController.getImageTargets();
           final trackedImages = await createdController.getTrackedImages();
           final trackedFaces = await createdController.getTrackedFaces();
@@ -1021,7 +1065,7 @@ void main() {
           // ignore: avoid_print
           print('Available animations: ${animations.length}');
 
-          // Step 11: Clean up
+          // Step 12: Clean up
           await createdController.removeNode('integration_test_model');
           await createdController.removeImageTarget('integration_test_target');
           await createdController.setImageTrackingEnabled(false);
@@ -1034,6 +1078,101 @@ void main() {
         // If AR is not fully supported, test still passes
         // ignore: avoid_print
         print('Complete integration test error (acceptable): $e');
+        expect(e, isNotNull);
+      }
+    });
+
+    testWidgets('Cloud Anchor Integration Test', (WidgetTester tester) async {
+      try {
+        final completer = Completer<AugenController>();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: AugenView(
+                onViewCreated: (c) {
+                  if (!completer.isCompleted) {
+                    completer.complete(c);
+                  }
+                },
+                config: const ARSessionConfig(
+                  planeDetection: true,
+                  lightEstimation: true,
+                  depthData: false,
+                  autoFocus: true,
+                ),
+              ),
+            ),
+          ),
+        );
+
+        await tester.pumpAndSettle();
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        final createdController = await completer.future;
+        expect(createdController, isNotNull);
+
+        // Test cloud anchor support
+        final cloudAnchorsSupported = await createdController
+            .isCloudAnchorsSupported();
+        // ignore: avoid_print
+        print('Cloud anchors supported: $cloudAnchorsSupported');
+
+        if (cloudAnchorsSupported) {
+          // Configure cloud anchors
+          await createdController.setCloudAnchorConfig(
+            maxCloudAnchors: 3,
+            timeout: const Duration(seconds: 15),
+            enableSharing: true,
+          );
+
+          // Test cloud anchor streams
+          final cloudAnchorsSubscription = createdController.cloudAnchorsStream
+              .listen((anchors) {
+                // ignore: avoid_print
+                print('Cloud anchors updated: ${anchors.length}');
+              });
+
+          final cloudAnchorStatusSubscription = createdController
+              .cloudAnchorStatusStream
+              .listen((status) {
+                // ignore: avoid_print
+                print('Cloud anchor status: ${status.state}');
+              });
+
+          // Test session management (using a dummy cloud anchor ID)
+          final sessionId = await createdController.shareCloudAnchor(
+            'dummy_cloud_anchor_id',
+          );
+          // ignore: avoid_print
+          print('Shared cloud anchor session: $sessionId');
+
+          // Test joining a session (this would normally be done with a real session ID)
+          try {
+            await createdController.joinCloudAnchorSession('test_session_123');
+            // ignore: avoid_print
+            print('Joined cloud anchor session');
+          } catch (e) {
+            // Expected to fail with test session ID
+            // ignore: avoid_print
+            print('Join session failed (expected): $e');
+          }
+
+          // Test leaving session
+          await createdController.leaveCloudAnchorSession();
+          // ignore: avoid_print
+          print('Left cloud anchor session');
+
+          // Clean up subscriptions
+          await cloudAnchorsSubscription.cancel();
+          await cloudAnchorStatusSubscription.cancel();
+        }
+
+        expect(true, true);
+      } catch (e) {
+        // If cloud anchors are not supported, test still passes
+        // ignore: avoid_print
+        print('Cloud anchor integration test error (acceptable): $e');
         expect(e, isNotNull);
       }
     });

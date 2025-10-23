@@ -5,14 +5,19 @@ import 'package:augen/src/models/quaternion.dart';
 enum CloudAnchorState {
   /// Cloud anchor is being created/uploaded
   creating,
+
   /// Cloud anchor is successfully created and available
   created,
+
   /// Cloud anchor is being resolved/downloaded
   resolving,
+
   /// Cloud anchor is successfully resolved and available
   resolved,
+
   /// Cloud anchor creation/resolution failed
   failed,
+
   /// Cloud anchor is no longer available
   expired,
 }
@@ -21,37 +26,37 @@ enum CloudAnchorState {
 class ARCloudAnchor {
   /// Unique identifier for the cloud anchor
   final String id;
-  
+
   /// Local anchor ID that this cloud anchor is based on
   final String localAnchorId;
-  
+
   /// Current state of the cloud anchor
   final CloudAnchorState state;
-  
+
   /// Position of the cloud anchor in 3D space
   final Vector3 position;
-  
+
   /// Rotation of the cloud anchor
   final Quaternion rotation;
-  
+
   /// Scale of the cloud anchor
   final Vector3 scale;
-  
+
   /// Confidence score for the cloud anchor (0.0 - 1.0)
   final double confidence;
-  
+
   /// Timestamp when the cloud anchor was created
   final DateTime createdAt;
-  
+
   /// Timestamp when the cloud anchor was last updated
   final DateTime lastUpdated;
-  
+
   /// Expiration time for the cloud anchor (if applicable)
   final DateTime? expiresAt;
-  
+
   /// Whether the cloud anchor is currently being tracked
   final bool isTracked;
-  
+
   /// Whether the cloud anchor is reliable for use
   final bool isReliable;
 
@@ -71,13 +76,16 @@ class ARCloudAnchor {
   });
 
   /// Returns true if the cloud anchor is successfully created or resolved
-  bool get isActive => state == CloudAnchorState.created || state == CloudAnchorState.resolved;
+  bool get isActive =>
+      state == CloudAnchorState.created || state == CloudAnchorState.resolved;
 
   /// Returns true if the cloud anchor is in a failed state
-  bool get isFailed => state == CloudAnchorState.failed || state == CloudAnchorState.expired;
+  bool get isFailed =>
+      state == CloudAnchorState.failed || state == CloudAnchorState.expired;
 
   /// Returns true if the cloud anchor is currently being processed
-  bool get isProcessing => state == CloudAnchorState.creating || state == CloudAnchorState.resolving;
+  bool get isProcessing =>
+      state == CloudAnchorState.creating || state == CloudAnchorState.resolving;
 
   /// Creates an ARCloudAnchor from a map
   factory ARCloudAnchor.fromMap(Map<dynamic, dynamic> map) {
@@ -90,8 +98,10 @@ class ARCloudAnchor {
       scale: Vector3.fromMap(map['scale'] as Map),
       confidence: (map['confidence'] as num).toDouble(),
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
-      lastUpdated: DateTime.fromMillisecondsSinceEpoch(map['lastUpdated'] as int),
-      expiresAt: map['expiresAt'] != null 
+      lastUpdated: DateTime.fromMillisecondsSinceEpoch(
+        map['lastUpdated'] as int,
+      ),
+      expiresAt: map['expiresAt'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['expiresAt'] as int)
           : null,
       isTracked: map['isTracked'] as bool? ?? false,
@@ -160,24 +170,35 @@ class ARCloudAnchor {
 
   @override
   int get hashCode => Object.hash(
-      id, localAnchorId, state, position, rotation, scale, confidence,
-      createdAt, lastUpdated, expiresAt, isTracked, isReliable);
+    id,
+    localAnchorId,
+    state,
+    position,
+    rotation,
+    scale,
+    confidence,
+    createdAt,
+    lastUpdated,
+    expiresAt,
+    isTracked,
+    isReliable,
+  );
 }
 
 /// Represents the status of a cloud anchor operation
 class CloudAnchorStatus {
   /// The cloud anchor ID
   final String cloudAnchorId;
-  
+
   /// The current state of the operation
   final CloudAnchorState state;
-  
+
   /// Progress of the operation (0.0 - 1.0)
   final double progress;
-  
+
   /// Error message if the operation failed
   final String? errorMessage;
-  
+
   /// Timestamp when the status was last updated
   final DateTime timestamp;
 
@@ -190,16 +211,19 @@ class CloudAnchorStatus {
   });
 
   /// Returns true if the operation is complete (success or failure)
-  bool get isComplete => state == CloudAnchorState.created || 
-                        state == CloudAnchorState.resolved || 
-                        state == CloudAnchorState.failed || 
-                        state == CloudAnchorState.expired;
+  bool get isComplete =>
+      state == CloudAnchorState.created ||
+      state == CloudAnchorState.resolved ||
+      state == CloudAnchorState.failed ||
+      state == CloudAnchorState.expired;
 
   /// Returns true if the operation was successful
-  bool get isSuccessful => state == CloudAnchorState.created || state == CloudAnchorState.resolved;
+  bool get isSuccessful =>
+      state == CloudAnchorState.created || state == CloudAnchorState.resolved;
 
   /// Returns true if the operation failed
-  bool get isFailed => state == CloudAnchorState.failed || state == CloudAnchorState.expired;
+  bool get isFailed =>
+      state == CloudAnchorState.failed || state == CloudAnchorState.expired;
 
   /// Creates a CloudAnchorStatus from a map
   factory CloudAnchorStatus.fromMap(Map<dynamic, dynamic> map) {
@@ -238,5 +262,6 @@ class CloudAnchorStatus {
           timestamp == other.timestamp;
 
   @override
-  int get hashCode => Object.hash(cloudAnchorId, state, progress, errorMessage, timestamp);
+  int get hashCode =>
+      Object.hash(cloudAnchorId, state, progress, errorMessage, timestamp);
 }
