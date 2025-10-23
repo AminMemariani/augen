@@ -84,10 +84,12 @@ class AugenController {
   Stream<List<ARFace>> get facesStream => _facesController.stream;
 
   /// Stream of cloud anchors
-  Stream<List<ARCloudAnchor>> get cloudAnchorsStream => _cloudAnchorsController.stream;
+  Stream<List<ARCloudAnchor>> get cloudAnchorsStream =>
+      _cloudAnchorsController.stream;
 
   /// Stream of cloud anchor status updates
-  Stream<CloudAnchorStatus> get cloudAnchorStatusStream => _cloudAnchorStatusController.stream;
+  Stream<CloudAnchorStatus> get cloudAnchorStatusStream =>
+      _cloudAnchorStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -1109,9 +1111,7 @@ class AugenController {
     try {
       final result = await _channel.invokeMethod('getCloudAnchors');
       final anchorsData = result as List;
-      return anchorsData
-          .map((e) => ARCloudAnchor.fromMap(e as Map))
-          .toList();
+      return anchorsData.map((e) => ARCloudAnchor.fromMap(e as Map)).toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get cloud anchors: ${e.message}');
       rethrow;
@@ -1153,7 +1153,9 @@ class AugenController {
       final result = await _channel.invokeMethod('isCloudAnchorsSupported');
       return result as bool;
     } on PlatformException catch (e) {
-      _errorController.add('Failed to check cloud anchors support: ${e.message}');
+      _errorController.add(
+        'Failed to check cloud anchors support: ${e.message}',
+      );
       return false;
     }
   }
@@ -1210,7 +1212,9 @@ class AugenController {
     try {
       await _channel.invokeMethod('leaveCloudAnchorSession');
     } on PlatformException catch (e) {
-      _errorController.add('Failed to leave cloud anchor session: ${e.message}');
+      _errorController.add(
+        'Failed to leave cloud anchor session: ${e.message}',
+      );
       rethrow;
     }
   }

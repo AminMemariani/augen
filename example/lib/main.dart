@@ -181,7 +181,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {
         _trackedImages = tracked;
       });
-      
+
       // Automatically add content to newly tracked images
       for (final trackedImage in tracked) {
         if (trackedImage.isTracked && trackedImage.isReliable) {
@@ -203,27 +203,34 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       }
     });
 
-    _cloudAnchorsSubscription = _controller!.cloudAnchorsStream.listen((anchors) {
+    _cloudAnchorsSubscription = _controller!.cloudAnchorsStream.listen((
+      anchors,
+    ) {
       if (!mounted) return;
       setState(() {
         _cloudAnchors = anchors;
       });
     });
 
-    _cloudAnchorStatusSubscription = _controller!.cloudAnchorStatusStream.listen((status) {
-      if (!mounted) return;
-      if (status.isComplete) {
-        if (status.isSuccessful) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Cloud anchor ${status.cloudAnchorId} ready!')),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Cloud anchor failed: ${status.errorMessage}')),
-          );
-        }
-      }
-    });
+    _cloudAnchorStatusSubscription = _controller!.cloudAnchorStatusStream
+        .listen((status) {
+          if (!mounted) return;
+          if (status.isComplete) {
+            if (status.isSuccessful) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Cloud anchor ${status.cloudAnchorId} ready!'),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Cloud anchor failed: ${status.errorMessage}'),
+                ),
+              );
+            }
+          }
+        });
 
     // Error handling
     _errorSubscription = _controller!.errorStream.listen((error) {
@@ -368,7 +375,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
     try {
       _cloudAnchorsSupported = await _controller!.isCloudAnchorsSupported();
-      
+
       if (!mounted) return;
       setState(() {});
 
@@ -419,16 +426,18 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     if (_controller == null || _cloudAnchors.isEmpty) return;
 
     try {
-      final sessionId = await _controller!.shareCloudAnchor(_cloudAnchors.first.id);
-      
+      final sessionId = await _controller!.shareCloudAnchor(
+        _cloudAnchors.first.id,
+      );
+
       if (!mounted) return;
       setState(() {
         _currentSessionId = sessionId;
       });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Session ID: $sessionId')),
-      );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Session ID: $sessionId')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -470,20 +479,20 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     if (sessionId != null && sessionId.isNotEmpty) {
       try {
         await _controller!.joinCloudAnchorSession(sessionId);
-        
+
         if (!mounted) return;
         setState(() {
           _currentSessionId = sessionId;
         });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Joined session: $sessionId')),
-        );
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Joined session: $sessionId')));
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to join session: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to join session: $e')));
       }
     }
   }
@@ -1061,7 +1070,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                 color: _cloudAnchorsSupported ? Colors.green : Colors.red,
               ),
               title: const Text('Cloud Anchor Support'),
-              subtitle: Text(_cloudAnchorsSupported ? 'Supported' : 'Not Supported'),
+              subtitle: Text(
+                _cloudAnchorsSupported ? 'Supported' : 'Not Supported',
+              ),
               trailing: ElevatedButton(
                 onPressed: _checkCloudAnchorSupport,
                 child: const Text('Check Support'),
@@ -1087,7 +1098,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _cloudAnchorsSupported ? _createCloudAnchor : null,
+                          onPressed: _cloudAnchorsSupported
+                              ? _createCloudAnchor
+                              : null,
                           icon: const Icon(Icons.cloud_upload),
                           label: const Text('Create Cloud Anchor'),
                         ),
@@ -1095,7 +1108,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _cloudAnchors.isNotEmpty ? _shareCloudAnchor : null,
+                          onPressed: _cloudAnchors.isNotEmpty
+                              ? _shareCloudAnchor
+                              : null,
                           icon: const Icon(Icons.share),
                           label: const Text('Share Session'),
                         ),
@@ -1118,18 +1133,25 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                           onPressed: _currentSessionId != null
                               ? () async {
                                   try {
-                                    await _controller?.leaveCloudAnchorSession();
+                                    await _controller
+                                        ?.leaveCloudAnchorSession();
                                     if (!mounted) return;
                                     setState(() {
                                       _currentSessionId = null;
                                     });
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Left session')),
+                                      const SnackBar(
+                                        content: Text('Left session'),
+                                      ),
                                     );
                                   } catch (e) {
                                     if (!mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Failed to leave session: $e')),
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to leave session: $e',
+                                        ),
+                                      ),
                                     );
                                   }
                                 }
@@ -1155,9 +1177,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           const SizedBox(height: 8),
           Expanded(
             child: _cloudAnchors.isEmpty
-                ? const Center(
-                    child: Text('No cloud anchors yet'),
-                  )
+                ? const Center(child: Text('No cloud anchors yet'))
                 : ListView.builder(
                     itemCount: _cloudAnchors.length,
                     itemBuilder: (context, index) {
@@ -1165,15 +1185,21 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                       return Card(
                         child: ListTile(
                           leading: Icon(
-                            anchor.isActive ? Icons.cloud_done : Icons.cloud_off,
-                            color: anchor.isActive ? Colors.green : Colors.orange,
+                            anchor.isActive
+                                ? Icons.cloud_done
+                                : Icons.cloud_off,
+                            color: anchor.isActive
+                                ? Colors.green
+                                : Colors.orange,
                           ),
                           title: Text('Cloud Anchor ${anchor.id}'),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('State: ${anchor.state.name}'),
-                              Text('Confidence: ${(anchor.confidence * 100).toInt()}%'),
+                              Text(
+                                'Confidence: ${(anchor.confidence * 100).toInt()}%',
+                              ),
                               Text('Position: ${anchor.position}'),
                             ],
                           ),
@@ -1187,15 +1213,21 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                             onSelected: (value) async {
                               if (value == 'delete') {
                                 try {
-                                  await _controller?.deleteCloudAnchor(anchor.id);
+                                  await _controller?.deleteCloudAnchor(
+                                    anchor.id,
+                                  );
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Cloud anchor deleted')),
+                                    const SnackBar(
+                                      content: Text('Cloud anchor deleted'),
+                                    ),
                                   );
                                 } catch (e) {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Failed to delete: $e')),
+                                    SnackBar(
+                                      content: Text('Failed to delete: $e'),
+                                    ),
                                   );
                                 }
                               }
@@ -1563,13 +1595,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     _imageTrackingEnabled ? 'Enabled' : 'Disabled',
                   ),
                   _buildStatRow(
-                  'Face Tracking',
-                  _faceTrackingEnabled ? 'Enabled' : 'Disabled',
-                ),
-                _buildStatRow(
-                  'Cloud Anchors',
-                  '${_cloudAnchors.length} anchors, ${_cloudAnchorsSupported ? 'Supported' : 'Not Supported'}',
-                ),
+                    'Face Tracking',
+                    _faceTrackingEnabled ? 'Enabled' : 'Disabled',
+                  ),
+                  _buildStatRow(
+                    'Cloud Anchors',
+                    '${_cloudAnchors.length} anchors, ${_cloudAnchorsSupported ? 'Supported' : 'Not Supported'}',
+                  ),
                 ],
               ),
             ),

@@ -1494,17 +1494,19 @@ void main() {
     group('Cloud Anchor Methods', () {
       test('createCloudAnchor sends correct parameters', () async {
         Map<Object?, Object?>? capturedArgs;
-        
+
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'createCloudAnchor') {
+              if (methodCall.method == 'createCloudAnchor') {
                 capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
-            return 'cloud_anchor_123';
-          }
-          return null;
-        });
+                return 'cloud_anchor_123';
+              }
+              return null;
+            });
 
-        final cloudAnchorId = await controller.createCloudAnchor('local_anchor_1');
+        final cloudAnchorId = await controller.createCloudAnchor(
+          'local_anchor_1',
+        );
 
         expect(capturedArgs, isNotNull);
         expect(capturedArgs!['localAnchorId'], 'local_anchor_1');
@@ -1513,14 +1515,14 @@ void main() {
 
       test('resolveCloudAnchor sends correct parameters', () async {
         Map<Object?, Object?>? capturedArgs;
-        
+
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'resolveCloudAnchor') {
+              if (methodCall.method == 'resolveCloudAnchor') {
                 capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
-          }
-          return null;
-        });
+              }
+              return null;
+            });
 
         await controller.resolveCloudAnchor('cloud_anchor_123');
 
@@ -1531,25 +1533,25 @@ void main() {
       test('getCloudAnchors returns parsed anchors', () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'getCloudAnchors') {
-            return [
-              {
-                'id': 'anchor_1',
-                'localAnchorId': 'local_1',
-                'state': 'created',
-                'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
-                'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
-                'scale': {'x': 1.0, 'y': 1.0, 'z': 1.0},
-                'confidence': 0.9,
-                'createdAt': DateTime.now().millisecondsSinceEpoch,
-                'lastUpdated': DateTime.now().millisecondsSinceEpoch,
-                'isTracked': true,
-                'isReliable': true,
+              if (methodCall.method == 'getCloudAnchors') {
+                return [
+                  {
+                    'id': 'anchor_1',
+                    'localAnchorId': 'local_1',
+                    'state': 'created',
+                    'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
+                    'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                    'scale': {'x': 1.0, 'y': 1.0, 'z': 1.0},
+                    'confidence': 0.9,
+                    'createdAt': DateTime.now().millisecondsSinceEpoch,
+                    'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                    'isTracked': true,
+                    'isReliable': true,
+                  },
+                ];
               }
-            ];
-          }
-          return null;
-        });
+              return null;
+            });
 
         final anchors = await controller.getCloudAnchors();
 
@@ -1562,23 +1564,23 @@ void main() {
       test('getCloudAnchor returns parsed anchor', () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'getCloudAnchor') {
-            return {
-              'id': 'anchor_1',
-              'localAnchorId': 'local_1',
-              'state': 'created',
-              'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
-              'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
-              'scale': {'x': 1.0, 'y': 1.0, 'z': 1.0},
-              'confidence': 0.9,
-              'createdAt': DateTime.now().millisecondsSinceEpoch,
-              'lastUpdated': DateTime.now().millisecondsSinceEpoch,
-              'isTracked': true,
-              'isReliable': true,
-            };
-          }
-          return null;
-        });
+              if (methodCall.method == 'getCloudAnchor') {
+                return {
+                  'id': 'anchor_1',
+                  'localAnchorId': 'local_1',
+                  'state': 'created',
+                  'position': {'x': 1.0, 'y': 2.0, 'z': 3.0},
+                  'rotation': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'w': 1.0},
+                  'scale': {'x': 1.0, 'y': 1.0, 'z': 1.0},
+                  'confidence': 0.9,
+                  'createdAt': DateTime.now().millisecondsSinceEpoch,
+                  'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+                  'isTracked': true,
+                  'isReliable': true,
+                };
+              }
+              return null;
+            });
 
         final anchor = await controller.getCloudAnchor('anchor_1');
 
@@ -1589,14 +1591,14 @@ void main() {
 
       test('deleteCloudAnchor sends correct parameters', () async {
         Map<Object?, Object?>? capturedArgs;
-        
+
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'deleteCloudAnchor') {
+              if (methodCall.method == 'deleteCloudAnchor') {
                 capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
-          }
-          return null;
-        });
+              }
+              return null;
+            });
 
         await controller.deleteCloudAnchor('cloud_anchor_123');
 
@@ -1607,11 +1609,11 @@ void main() {
       test('isCloudAnchorsSupported returns correct value', () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'isCloudAnchorsSupported') {
-            return true;
-          }
-          return null;
-        });
+              if (methodCall.method == 'isCloudAnchorsSupported') {
+                return true;
+              }
+              return null;
+            });
 
         final isSupported = await controller.isCloudAnchorsSupported();
 
@@ -1620,14 +1622,14 @@ void main() {
 
       test('setCloudAnchorConfig sends correct parameters', () async {
         Map<Object?, Object?>? capturedArgs;
-        
+
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'setCloudAnchorConfig') {
+              if (methodCall.method == 'setCloudAnchorConfig') {
                 capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
-          }
-          return null;
-        });
+              }
+              return null;
+            });
 
         await controller.setCloudAnchorConfig(
           maxCloudAnchors: 5,
@@ -1644,11 +1646,11 @@ void main() {
       test('shareCloudAnchor returns session ID', () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'shareCloudAnchor') {
-            return 'session_123';
-          }
-          return null;
-        });
+              if (methodCall.method == 'shareCloudAnchor') {
+                return 'session_123';
+              }
+              return null;
+            });
 
         final sessionId = await controller.shareCloudAnchor('cloud_anchor_123');
 
@@ -1657,14 +1659,14 @@ void main() {
 
       test('joinCloudAnchorSession sends correct parameters', () async {
         Map<Object?, Object?>? capturedArgs;
-        
+
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'joinCloudAnchorSession') {
+              if (methodCall.method == 'joinCloudAnchorSession') {
                 capturedArgs = methodCall.arguments as Map<Object?, Object?>?;
-          }
-          return null;
-        });
+              }
+              return null;
+            });
 
         await controller.joinCloudAnchorSession('session_123');
 
@@ -1674,14 +1676,14 @@ void main() {
 
       test('leaveCloudAnchorSession calls correct method', () async {
         bool methodCalled = false;
-        
+
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'leaveCloudAnchorSession') {
-            methodCalled = true;
-          }
-          return null;
-        });
+              if (methodCall.method == 'leaveCloudAnchorSession') {
+                methodCalled = true;
+              }
+              return null;
+            });
 
         await controller.leaveCloudAnchorSession();
 
@@ -1702,7 +1704,9 @@ void main() {
 
       test('cloudAnchorStatusStream can be listened to', () {
         // Test that the stream can be created and listened to
-        final subscription = controller.cloudAnchorStatusStream.listen((status) {
+        final subscription = controller.cloudAnchorStatusStream.listen((
+          status,
+        ) {
           // Stream is working
         });
 
