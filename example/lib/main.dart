@@ -1363,10 +1363,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Occlusion',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
+          Text('Occlusion', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16),
 
           // Occlusion support status
@@ -1405,15 +1402,27 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _occlusionSupported ? _toggleOcclusion : null,
-                          icon: Icon(_occlusionEnabled ? Icons.visibility_off : Icons.visibility),
-                          label: Text(_occlusionEnabled ? 'Disable Occlusion' : 'Enable Occlusion'),
+                          onPressed: _occlusionSupported
+                              ? _toggleOcclusion
+                              : null,
+                          icon: Icon(
+                            _occlusionEnabled
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          label: Text(
+                            _occlusionEnabled
+                                ? 'Disable Occlusion'
+                                : 'Enable Occlusion',
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: _occlusionSupported ? _createOcclusion : null,
+                          onPressed: _occlusionSupported
+                              ? _createOcclusion
+                              : null,
                           icon: const Icon(Icons.add),
                           label: const Text('Create Occlusion'),
                         ),
@@ -1442,22 +1451,32 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                   if (_occlusions.isEmpty)
                     const Text('No active occlusions')
                   else
-                    ..._occlusions.map((occlusion) => ListTile(
-                      leading: Icon(
-                        occlusion.isActive ? Icons.visibility_off : Icons.visibility,
-                        color: occlusion.isActive ? Colors.green : Colors.grey,
+                    ..._occlusions.map(
+                      (occlusion) => ListTile(
+                        leading: Icon(
+                          occlusion.isActive
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: occlusion.isActive
+                              ? Colors.green
+                              : Colors.grey,
+                        ),
+                        title: Text('${occlusion.type.name} Occlusion'),
+                        subtitle: Text(
+                          'ID: ${occlusion.id}\n'
+                          'Confidence: ${(occlusion.confidence * 100).toStringAsFixed(1)}%\n'
+                          'Position: (${occlusion.position.x.toStringAsFixed(2)}, ${occlusion.position.y.toStringAsFixed(2)}, ${occlusion.position.z.toStringAsFixed(2)})',
+                        ),
+                        trailing: Icon(
+                          occlusion.isReliable
+                              ? Icons.check_circle
+                              : Icons.warning,
+                          color: occlusion.isReliable
+                              ? Colors.green
+                              : Colors.orange,
+                        ),
                       ),
-                      title: Text('${occlusion.type.name} Occlusion'),
-                      subtitle: Text(
-                        'ID: ${occlusion.id}\n'
-                        'Confidence: ${(occlusion.confidence * 100).toStringAsFixed(1)}%\n'
-                        'Position: (${occlusion.position.x.toStringAsFixed(2)}, ${occlusion.position.y.toStringAsFixed(2)}, ${occlusion.position.z.toStringAsFixed(2)})',
-                      ),
-                      trailing: Icon(
-                        occlusion.isReliable ? Icons.check_circle : Icons.warning,
-                        color: occlusion.isReliable ? Colors.green : Colors.orange,
-                      ),
-                    )),
+                    ),
                 ],
               ),
             ),
@@ -1477,10 +1496,18 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
-                  const Text('• Depth: Uses depth maps for realistic occlusion'),
-                  const Text('• Person: Uses person segmentation for human occlusion'),
-                  const Text('• Plane: Uses detected planes for surface occlusion'),
-                  const Text('• None: No occlusion - virtual objects appear in front'),
+                  const Text(
+                    '• Depth: Uses depth maps for realistic occlusion',
+                  ),
+                  const Text(
+                    '• Person: Uses person segmentation for human occlusion',
+                  ),
+                  const Text(
+                    '• Plane: Uses detected planes for surface occlusion',
+                  ),
+                  const Text(
+                    '• None: No occlusion - virtual objects appear in front',
+                  ),
                 ],
               ),
             ),

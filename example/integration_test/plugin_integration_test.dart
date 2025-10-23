@@ -1190,10 +1190,11 @@ void main() {
                     completer.complete(c);
                   }
                 },
-                sessionConfig: ARSessionConfig(
-                  planeDetection: PlaneDetection.horizontalAndVertical,
-                  trackingDirection: TrackingDirection.world,
-                  enableLightEstimation: true,
+                config: const ARSessionConfig(
+                  planeDetection: true,
+                  lightEstimation: true,
+                  depthData: false,
+                  autoFocus: true,
                 ),
               ),
             ),
