@@ -20,6 +20,7 @@ import 'models/ar_occlusion.dart';
 import 'models/ar_physics.dart';
 import 'models/ar_multi_user.dart';
 import 'models/ar_lighting.dart';
+import 'models/ar_environmental_probes.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -80,6 +81,14 @@ class AugenController {
       StreamController<ARLightingConfig>.broadcast();
   final StreamController<ARLightingStatus> _lightingStatusController =
       StreamController<ARLightingStatus>.broadcast();
+
+  // Environmental Probes Stream Controllers
+  final StreamController<List<AREnvironmentalProbe>> _probesController =
+      StreamController<List<AREnvironmentalProbe>>.broadcast();
+  final StreamController<AREnvironmentalProbeConfig> _probeConfigController =
+      StreamController<AREnvironmentalProbeConfig>.broadcast();
+  final StreamController<AREnvironmentalProbeStatus> _probeStatusController =
+      StreamController<AREnvironmentalProbeStatus>.broadcast();
 
   bool _isDisposed = false;
 
@@ -163,6 +172,19 @@ class AugenController {
       _lightingConfigController.stream;
   Stream<ARLightingStatus> get lightingStatusStream =>
       _lightingStatusController.stream;
+
+  // Environmental Probes Streams
+  /// Stream of environmental probes updates
+  Stream<List<AREnvironmentalProbe>> get probesStream =>
+      _probesController.stream;
+
+  /// Stream of environmental probe configuration updates
+  Stream<AREnvironmentalProbeConfig> get probeConfigStream =>
+      _probeConfigController.stream;
+
+  /// Stream of environmental probe status updates
+  Stream<AREnvironmentalProbeStatus> get probeStatusStream =>
+      _probeStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -498,6 +520,27 @@ class AugenController {
         final statusData = call.arguments as Map<String, dynamic>;
         final status = ARLightingStatus.fromMap(statusData);
         _lightingStatusController.add(status);
+        break;
+      case 'onProbesUpdated':
+        final probesData = call.arguments as List<dynamic>;
+        final probes = probesData
+            .map(
+              (probe) => AREnvironmentalProbe.fromMap(
+                Map<String, dynamic>.from(probe as Map),
+              ),
+            )
+            .toList();
+        _probesController.add(probes);
+        break;
+      case 'onProbeConfigUpdated':
+        final configData = call.arguments as Map<String, dynamic>;
+        final config = AREnvironmentalProbeConfig.fromMap(configData);
+        _probeConfigController.add(config);
+        break;
+      case 'onProbeStatusUpdated':
+        final statusData = call.arguments as Map<String, dynamic>;
+        final status = AREnvironmentalProbeStatus.fromMap(statusData);
+        _probeStatusController.add(status);
         break;
     }
   }
@@ -2325,6 +2368,309 @@ class AugenController {
     }
   }
 
+  // Environmental Probes Methods
+
+  /// Check if environmental probes are supported
+  Future<bool> isEnvironmentalProbesSupported() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod(
+        'isEnvironmentalProbesSupported',
+      );
+      return result as bool;
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to check environmental probes support: ${e.message}',
+      );
+      return false;
+    }
+  }
+
+  /// Get environmental probes capabilities
+  Future<Map<String, dynamic>> getEnvironmentalProbesCapabilities() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod(
+        'getEnvironmentalProbesCapabilities',
+      );
+      return Map<String, dynamic>.from(result as Map);
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to get environmental probes capabilities: ${e.message}',
+      );
+      return {};
+    }
+  }
+
+  /// Add environmental probe
+  Future<AREnvironmentalProbe> addEnvironmentalProbe(
+    AREnvironmentalProbe probe,
+  ) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod(
+        'addEnvironmentalProbe',
+        probe.toMap(),
+      );
+      return AREnvironmentalProbe.fromMap(
+        Map<String, dynamic>.from(result as Map),
+      );
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to add environmental probe: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove environmental probe
+  Future<void> removeEnvironmentalProbe(String probeId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('removeEnvironmentalProbe', {
+        'probeId': probeId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to remove environmental probe: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Update environmental probe
+  Future<AREnvironmentalProbe> updateEnvironmentalProbe(
+    AREnvironmentalProbe probe,
+  ) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod(
+        'updateEnvironmentalProbe',
+        probe.toMap(),
+      );
+      return AREnvironmentalProbe.fromMap(
+        Map<String, dynamic>.from(result as Map),
+      );
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update environmental probe: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Get all environmental probes
+  Future<List<AREnvironmentalProbe>> getEnvironmentalProbes() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getEnvironmentalProbes');
+      final List<dynamic> probesList = result as List;
+      return probesList
+          .map(
+            (probe) => AREnvironmentalProbe.fromMap(
+              Map<String, dynamic>.from(probe as Map),
+            ),
+          )
+          .toList();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get environmental probes: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Get specific environmental probe
+  Future<AREnvironmentalProbe?> getEnvironmentalProbe(String probeId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getEnvironmentalProbe', {
+        'probeId': probeId,
+      });
+      if (result == null) return null;
+      return AREnvironmentalProbe.fromMap(
+        Map<String, dynamic>.from(result as Map),
+      );
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get environmental probe: ${e.message}');
+      return null;
+    }
+  }
+
+  /// Set environmental probe configuration
+  Future<void> setEnvironmentalProbeConfig(
+    AREnvironmentalProbeConfig config,
+  ) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod(
+        'setEnvironmentalProbeConfig',
+        config.toMap(),
+      );
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to set environmental probe config: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Get environmental probe configuration
+  Future<AREnvironmentalProbeConfig> getEnvironmentalProbeConfig() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getEnvironmentalProbeConfig');
+      return AREnvironmentalProbeConfig.fromMap(
+        Map<String, dynamic>.from(result as Map),
+      );
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to get environmental probe config: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Update environmental probe position
+  Future<void> updateEnvironmentalProbePosition({
+    required String probeId,
+    required Vector3 position,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateEnvironmentalProbePosition', {
+        'probeId': probeId,
+        'position': position.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update environmental probe position: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Update environmental probe rotation
+  Future<void> updateEnvironmentalProbeRotation({
+    required String probeId,
+    required Quaternion rotation,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateEnvironmentalProbeRotation', {
+        'probeId': probeId,
+        'rotation': rotation.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update environmental probe rotation: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Update environmental probe influence radius
+  Future<void> updateEnvironmentalProbeInfluenceRadius({
+    required String probeId,
+    required double influenceRadius,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateEnvironmentalProbeInfluenceRadius', {
+        'probeId': probeId,
+        'influenceRadius': influenceRadius,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update environmental probe influence radius: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Update environmental probe quality
+  Future<void> updateEnvironmentalProbeQuality({
+    required String probeId,
+    required ARProbeQuality quality,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateEnvironmentalProbeQuality', {
+        'probeId': probeId,
+        'quality': quality.name,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update environmental probe quality: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Enable/disable environmental probe
+  Future<void> setEnvironmentalProbeEnabled({
+    required String probeId,
+    required bool enabled,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setEnvironmentalProbeEnabled', {
+        'probeId': probeId,
+        'enabled': enabled,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to set environmental probe enabled: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Update environmental probe capture settings
+  Future<void> updateEnvironmentalProbeCaptureSettings({
+    required String probeId,
+    required bool captureReflections,
+    required bool captureLighting,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateEnvironmentalProbeCaptureSettings', {
+        'probeId': probeId,
+        'captureReflections': captureReflections,
+        'captureLighting': captureLighting,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to update environmental probe capture settings: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Force environmental probe update
+  Future<void> forceEnvironmentalProbeUpdate(String probeId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('forceEnvironmentalProbeUpdate', {
+        'probeId': probeId,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to force environmental probe update: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
+  /// Clear all environmental probes
+  Future<void> clearEnvironmentalProbes() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('clearEnvironmentalProbes');
+    } on PlatformException catch (e) {
+      _errorController.add(
+        'Failed to clear environmental probes: ${e.message}',
+      );
+      rethrow;
+    }
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -2352,6 +2698,9 @@ class AugenController {
     _lightsController.close();
     _lightingConfigController.close();
     _lightingStatusController.close();
+    _probesController.close();
+    _probeConfigController.close();
+    _probeStatusController.close();
     _channel.setMethodCallHandler(null);
   }
 }

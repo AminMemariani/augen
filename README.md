@@ -20,6 +20,7 @@
 ⚛️ **Physics Simulation**: Realistic interactions with dynamic, static, and kinematic bodies, materials, and constraints  
 👥 **Multi-User AR**: Shared AR experiences with real-time collaboration, participant management, and object synchronization  
 💡 **Real-time Lighting**: Dynamic lighting with shadows, ambient illumination, and multiple light types  
+🌍 **Environmental Probes**: Realistic environmental lighting and reflections with spherical, box, and planar probes  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
@@ -59,7 +60,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.11.0
+  augen: ^1.0.0
 ```
 
 Run:
@@ -878,11 +879,13 @@ Have an idea for improvement? Let us know!
 
 ## Recent Updates
 
-### v0.10.1 - Code Quality & Formatting (Latest)
-- 🔧 **Code Formatting** - Applied Dart formatter to all files for consistent code style
-- 🧹 **Code Cleanup** - Removed unused variables and fixed BuildContext usage across async gaps
-- ✅ **Zero Linting Issues** - All code now follows Dart formatting standards
-- 🚀 **Production Ready** - Codebase is fully formatted and lint-free
+### v1.0.0 - Environmental Probes and Reflections (Latest)
+- 🌍 **Environmental Probes** - Complete environmental lighting system for AR
+- 🔮 **Probe Types** - Spherical, box, and planar environmental probes
+- 🌟 **Real-time Reflections** - Environmental lighting capture and reflection generation
+- ⚙️ **Probe Configuration** - Quality, update modes, and influence radius settings
+- 🎨 **Environmental Lighting** - Realistic environmental lighting for virtual objects
+- 🔧 **Probe Management** - Add, update, and remove environmental probes dynamically
 
 ### v0.11.0 - Real-time Lighting and Shadows
 - 💡 **Real-time Lighting** - Complete lighting system with multiple light types

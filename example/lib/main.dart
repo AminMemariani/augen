@@ -47,6 +47,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   bool _lightingSupported = false;
   bool _shadowsEnabled = true;
   ShadowQuality _shadowQuality = ShadowQuality.medium;
+  List<AREnvironmentalProbe> _environmentalProbes = [];
+  AREnvironmentalProbeConfig? _probeConfig;
+  bool _environmentalProbesSupported = false;
   int _nodeCounter = 0;
   String _statusMessage = 'Initializing...';
   bool _imageTrackingEnabled = false;
@@ -152,6 +155,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
       // Check lighting support
       await _checkLightingSupport();
+      await _checkEnvironmentalProbesSupport();
     } catch (e) {
       setState(() {
         _statusMessage = 'Error: $e';
@@ -846,6 +850,50 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     }
   }
 
+  Future<void> _checkEnvironmentalProbesSupport() async {
+    if (_controller == null) return;
+
+    try {
+      _environmentalProbesSupported = await _controller!
+          .isEnvironmentalProbesSupported();
+
+      if (!mounted) return;
+      setState(() {});
+
+      if (_environmentalProbesSupported) {
+        // Get environmental probes capabilities
+        final capabilities = await _controller!
+            .getEnvironmentalProbesCapabilities();
+        print('Environmental probes capabilities: $capabilities');
+
+        // Set up default environmental probes configuration
+        const config = AREnvironmentalProbeConfig(
+          enableProbes: true,
+          defaultQuality: ARProbeQuality.medium,
+          defaultUpdateMode: ARProbeUpdateMode.automatic,
+          defaultTextureResolution: 512,
+          maxActiveProbes: 4,
+          defaultInfluenceRadius: 5.0,
+          defaultRealTime: true,
+          defaultUpdateFrequency: 1.0,
+          autoCreateProbes: true,
+          optimizePlacement: true,
+        );
+
+        await _controller!.setEnvironmentalProbeConfig(config);
+        _probeConfig = config;
+
+        if (!mounted) return;
+        setState(() {});
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Environmental probes support check failed: $e';
+      });
+    }
+  }
+
   Future<void> _addPointLight() async {
     if (_controller == null || !_lightingSupported) return;
 
@@ -984,6 +1032,153 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to clear lights: $e')));
+    }
+  }
+
+  // Environmental Probes Methods
+  Future<void> _addSphericalProbe() async {
+    if (_controller == null || !_environmentalProbesSupported) return;
+
+    try {
+      final now = DateTime.now();
+      final probe = AREnvironmentalProbe(
+        id: 'spherical_probe_${_nodeCounter}',
+        type: ARProbeType.spherical,
+        position: Vector3(
+          (Random().nextDouble() - 0.5) * 4,
+          1.5,
+          (Random().nextDouble() - 0.5) * 4,
+        ),
+        rotation: const Quaternion(0, 0, 0, 1),
+        scale: const Vector3(1, 1, 1),
+        influenceRadius: 5.0,
+        updateMode: ARProbeUpdateMode.automatic,
+        quality: ARProbeQuality.medium,
+        isActive: true,
+        captureReflections: true,
+        captureLighting: true,
+        textureResolution: 512,
+        isRealTime: true,
+        updateFrequency: 1.0,
+        confidence: 0.8,
+        createdAt: now,
+        lastModified: now,
+      );
+
+      final addedProbe = await _controller!.addEnvironmentalProbe(probe);
+      _environmentalProbes.add(addedProbe);
+      _nodeCounter++;
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add spherical probe: $e')),
+      );
+    }
+  }
+
+  Future<void> _addBoxProbe() async {
+    if (_controller == null || !_environmentalProbesSupported) return;
+
+    try {
+      final now = DateTime.now();
+      final probe = AREnvironmentalProbe(
+        id: 'box_probe_${_nodeCounter}',
+        type: ARProbeType.box,
+        position: Vector3(
+          (Random().nextDouble() - 0.5) * 4,
+          1.5,
+          (Random().nextDouble() - 0.5) * 4,
+        ),
+        rotation: const Quaternion(0, 0, 0, 1),
+        scale: const Vector3(2, 2, 2),
+        influenceRadius: 3.0,
+        updateMode: ARProbeUpdateMode.automatic,
+        quality: ARProbeQuality.high,
+        isActive: true,
+        captureReflections: true,
+        captureLighting: true,
+        textureResolution: 1024,
+        isRealTime: true,
+        updateFrequency: 0.5,
+        confidence: 0.9,
+        createdAt: now,
+        lastModified: now,
+      );
+
+      final addedProbe = await _controller!.addEnvironmentalProbe(probe);
+      _environmentalProbes.add(addedProbe);
+      _nodeCounter++;
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add box probe: $e')));
+    }
+  }
+
+  Future<void> _addPlanarProbe() async {
+    if (_controller == null || !_environmentalProbesSupported) return;
+
+    try {
+      final now = DateTime.now();
+      final probe = AREnvironmentalProbe(
+        id: 'planar_probe_${_nodeCounter}',
+        type: ARProbeType.planar,
+        position: Vector3(
+          (Random().nextDouble() - 0.5) * 4,
+          1.0,
+          (Random().nextDouble() - 0.5) * 4,
+        ),
+        rotation: const Quaternion(0, 0, 0, 1),
+        scale: const Vector3(4, 0.1, 4),
+        influenceRadius: 2.0,
+        updateMode: ARProbeUpdateMode.manual,
+        quality: ARProbeQuality.low,
+        isActive: true,
+        captureReflections: true,
+        captureLighting: false,
+        textureResolution: 256,
+        isRealTime: false,
+        updateFrequency: 2.0,
+        confidence: 0.7,
+        createdAt: now,
+        lastModified: now,
+      );
+
+      final addedProbe = await _controller!.addEnvironmentalProbe(probe);
+      _environmentalProbes.add(addedProbe);
+      _nodeCounter++;
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add planar probe: $e')));
+    }
+  }
+
+  Future<void> _clearEnvironmentalProbes() async {
+    if (_controller == null || !_environmentalProbesSupported) return;
+
+    try {
+      await _controller!.clearEnvironmentalProbes();
+      _environmentalProbes.clear();
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to clear environmental probes: $e')),
+      );
     }
   }
 
@@ -1245,6 +1440,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             Tab(icon: Icon(Icons.visibility_off), text: 'Occlusion'),
             Tab(icon: Icon(Icons.science), text: 'Physics'),
             Tab(icon: Icon(Icons.lightbulb), text: 'Lighting'),
+            Tab(icon: Icon(Icons.refresh), text: 'Probes'),
             Tab(icon: Icon(Icons.animation), text: 'Animations'),
             Tab(icon: Icon(Icons.dashboard), text: 'Demo'),
             Tab(icon: Icon(Icons.info), text: 'Status'),
@@ -1260,6 +1456,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           _buildOcclusionView(),
           _buildPhysicsView(),
           _buildLightingView(),
+          _buildEnvironmentalProbesView(),
           _buildAnimationView(),
           _buildDemoView(),
           _buildStatusView(),
@@ -2392,6 +2589,264 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                       title: const Text('Shadow Distance'),
                       subtitle: Text(
                         '${_lightingConfig!.shadowDistance.toStringAsFixed(1)}m',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEnvironmentalProbesView() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Environmental Probes & Reflections',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+
+          // Environmental probes support status
+          Card(
+            child: ListTile(
+              leading: Icon(
+                _environmentalProbesSupported
+                    ? Icons.refresh
+                    : Icons.refresh_outlined,
+                color: _environmentalProbesSupported
+                    ? Colors.green
+                    : Colors.red,
+              ),
+              title: const Text('Environmental Probes Support'),
+              subtitle: Text(
+                _environmentalProbesSupported ? 'Supported' : 'Not Supported',
+              ),
+              trailing: ElevatedButton(
+                onPressed: _checkEnvironmentalProbesSupport,
+                child: const Text('Check Support'),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Environmental probes controls
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Environmental Probes Controls',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _environmentalProbesSupported
+                            ? _addSphericalProbe
+                            : null,
+                        icon: const Icon(Icons.circle),
+                        label: const Text('Add Spherical Probe'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _environmentalProbesSupported
+                            ? _addBoxProbe
+                            : null,
+                        icon: const Icon(Icons.crop_square),
+                        label: const Text('Add Box Probe'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _environmentalProbesSupported
+                            ? _addPlanarProbe
+                            : null,
+                        icon: const Icon(Icons.rectangle),
+                        label: const Text('Add Planar Probe'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _environmentalProbesSupported
+                            ? _clearEnvironmentalProbes
+                            : null,
+                        icon: const Icon(Icons.clear_all),
+                        label: const Text('Clear All Probes'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Current environmental probes
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Current Environmental Probes (${_environmentalProbes.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  if (_environmentalProbes.isEmpty)
+                    const Text('No environmental probes added yet')
+                  else
+                    ..._environmentalProbes.map(
+                      (probe) => ListTile(
+                        leading: Icon(
+                          probe.type == ARProbeType.spherical
+                              ? Icons.circle
+                              : probe.type == ARProbeType.box
+                              ? Icons.crop_square
+                              : probe.type == ARProbeType.planar
+                              ? Icons.rectangle
+                              : Icons.refresh,
+                          color: probe.isActive ? Colors.blue : Colors.grey,
+                        ),
+                        title: Text(probe.id),
+                        subtitle: Text(
+                          '${probe.type.name.toUpperCase()} - '
+                          'Quality: ${probe.quality.name.toUpperCase()} - '
+                          'Radius: ${probe.influenceRadius.toStringAsFixed(1)}m - '
+                          'Active: ${probe.isActive ? "Yes" : "No"}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: () async {
+                                if (_controller != null) {
+                                  try {
+                                    await _controller!
+                                        .setEnvironmentalProbeEnabled(
+                                          probeId: probe.id,
+                                          enabled: !probe.isActive,
+                                        );
+                                    setState(() {});
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to toggle probe: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                              icon: Icon(
+                                probe.isActive
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () async {
+                                if (_controller != null) {
+                                  try {
+                                    await _controller!.removeEnvironmentalProbe(
+                                      probe.id,
+                                    );
+                                    _environmentalProbes.removeWhere(
+                                      (p) => p.id == probe.id,
+                                    );
+                                    setState(() {});
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to remove probe: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.delete),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Environmental probes configuration
+          if (_probeConfig != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Environmental Probes Configuration',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      leading: const Icon(Icons.refresh),
+                      title: const Text('Probes Enabled'),
+                      subtitle: Text(
+                        _probeConfig!.enableProbes ? 'Enabled' : 'Disabled',
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.high_quality),
+                      title: const Text('Default Quality'),
+                      subtitle: Text(
+                        _probeConfig!.defaultQuality.name.toUpperCase(),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.settings),
+                      title: const Text('Default Update Mode'),
+                      subtitle: Text(
+                        _probeConfig!.defaultUpdateMode.name.toUpperCase(),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.texture),
+                      title: const Text('Texture Resolution'),
+                      subtitle: Text(
+                        '${_probeConfig!.defaultTextureResolution}x${_probeConfig!.defaultTextureResolution}',
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.group),
+                      title: const Text('Max Active Probes'),
+                      subtitle: Text('${_probeConfig!.maxActiveProbes}'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.straighten),
+                      title: const Text('Default Influence Radius'),
+                      subtitle: Text(
+                        '${_probeConfig!.defaultInfluenceRadius.toStringAsFixed(1)}m',
                       ),
                     ),
                   ],

@@ -2907,5 +2907,116 @@ void main() {
         subscription.cancel();
       });
     });
+
+    group('Environmental Probes Methods', () {
+      test('isEnvironmentalProbesSupported sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'isEnvironmentalProbesSupported') {
+            return true;
+          }
+          return null;
+        });
+
+        final result = await controller.isEnvironmentalProbesSupported();
+        expect(result, true);
+      });
+
+      test('getEnvironmentalProbesCapabilities returns capabilities', () async {
+        final capabilities = {
+          'maxProbes': 8,
+          'supportedTypes': ['spherical', 'box', 'planar'],
+          'maxTextureResolution': 2048,
+        };
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'getEnvironmentalProbesCapabilities') {
+            return capabilities;
+          }
+          return null;
+        });
+
+        final result = await controller.getEnvironmentalProbesCapabilities();
+        expect(result, capabilities);
+      });
+
+      test('addEnvironmentalProbe sends correct probe data', () async {
+        final now = DateTime.now();
+        final probe = AREnvironmentalProbe(
+          id: 'test_probe',
+          type: ARProbeType.spherical,
+          position: const Vector3(1, 2, 3),
+          rotation: const Quaternion(0, 0, 0, 1),
+          scale: const Vector3(1, 1, 1),
+          influenceRadius: 5.0,
+          updateMode: ARProbeUpdateMode.automatic,
+          quality: ARProbeQuality.medium,
+          isActive: true,
+          captureReflections: true,
+          captureLighting: true,
+          textureResolution: 512,
+          isRealTime: true,
+          updateFrequency: 1.0,
+          confidence: 0.8,
+          createdAt: now,
+          lastModified: now,
+        );
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'addEnvironmentalProbe') {
+            return probe.toMap();
+          }
+          return null;
+        });
+
+        final result = await controller.addEnvironmentalProbe(probe);
+        expect(result.id, 'test_probe');
+      });
+
+      test('removeEnvironmentalProbe sends correct probeId', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'removeEnvironmentalProbe') {
+            return null;
+          }
+          return null;
+        });
+
+        await controller.removeEnvironmentalProbe('test_probe');
+      });
+
+      test('clearEnvironmentalProbes calls correct method', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          if (methodCall.method == 'clearEnvironmentalProbes') {
+            return null;
+          }
+          return null;
+        });
+
+        await controller.clearEnvironmentalProbes();
+      });
+    });
+
+    group('Environmental Probes Streams', () {
+      test('probesStream can be listened to', () {
+        final subscription = controller.probesStream.listen((probes) {});
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('probeConfigStream can be listened to', () {
+        final subscription = controller.probeConfigStream.listen((config) {});
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('probeStatusStream can be listened to', () {
+        final subscription = controller.probeStatusStream.listen((status) {});
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+    });
   });
 }

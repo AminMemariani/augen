@@ -21,5 +21,6 @@ export 'src/models/ar_occlusion.dart';
 export 'src/models/ar_physics.dart';
 export 'src/models/ar_multi_user.dart';
 export 'src/models/ar_lighting.dart';
+export 'src/models/ar_environmental_probes.dart';
 export 'src/models/vector3.dart';
 export 'src/models/quaternion.dart';

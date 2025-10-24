@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2025-01-16
+
+### Added
+- 🌍 **Environmental Probes and Reflections** - Complete environmental lighting system for AR
+  - Multiple probe types: spherical, box, and planar probes
+  - Real-time environmental lighting capture and reflection generation
+  - Configurable probe quality, update modes, and influence radius
+  - Automatic and manual probe update modes
+  - Environmental probe management with add, update, and remove operations
+
+### New Features
+- **AREnvironmentalProbe Model**: Complete environmental probe data structure with position, rotation, scale, influence radius, quality, and capture settings
+- **AREnvironmentalProbeConfig Model**: Global environmental probe configuration with quality, update mode, and optimization settings
+- **AREnvironmentalProbeStatus Model**: Real-time status updates for environmental probe operations
+- **Probe Types**: Spherical, box, and planar environmental probe support
+- **Probe Quality**: Low, medium, high, and ultra probe quality options
+- **Update Modes**: Automatic and manual probe update modes
+- **Environmental Probe Management**: Add, update, remove, and clear environmental probes
+- **Real-time Monitoring**: Streams for probe updates, configuration changes, and status updates
+- **Performance Optimization**: Configurable texture resolution, update frequency, and active probe limits
+
+### Controller Methods
+- `isEnvironmentalProbesSupported()` - Check if environmental probes are supported
+- `getEnvironmentalProbesCapabilities()` - Get environmental probe capabilities
+- `addEnvironmentalProbe(probe)` - Add a new environmental probe
+- `removeEnvironmentalProbe(probeId)` - Remove a specific environmental probe
+- `updateEnvironmentalProbe(probe)` - Update an existing environmental probe
+- `getEnvironmentalProbes()` - Get all environmental probes
+- `getEnvironmentalProbe(probeId)` - Get a specific environmental probe
+- `setEnvironmentalProbeConfig(config)` - Set global environmental probe configuration
+- `getEnvironmentalProbeConfig()` - Get current environmental probe configuration
+- `updateEnvironmentalProbePosition(probeId, position)` - Update probe position
+- `updateEnvironmentalProbeRotation(probeId, rotation)` - Update probe rotation
+- `updateEnvironmentalProbeInfluenceRadius(probeId, radius)` - Update influence radius
+- `updateEnvironmentalProbeQuality(probeId, quality)` - Update probe quality
+- `setEnvironmentalProbeEnabled(probeId, enabled)` - Enable/disable probe
+- `updateEnvironmentalProbeCaptureSettings(probeId, settings)` - Update capture settings
+- `forceEnvironmentalProbeUpdate(probeId)` - Force probe update
+- `clearEnvironmentalProbes()` - Clear all environmental probes
+
+### Streams
+- `probesStream` - Stream of environmental probe updates
+- `probeConfigStream` - Stream of environmental probe configuration updates
+- `probeStatusStream` - Stream of environmental probe status updates
+
+### Example App Updates
+- Added Environmental Probes tab with comprehensive controls
+- Spherical, box, and planar probe creation examples
+- Environmental probe management and monitoring
+- Integration tests for environmental probe functionality
+
+### Documentation
+- Complete Environmental Probes and Reflections section in Documentation.md
+- API reference for all environmental probe models and methods
+- Best practices for environmental probe placement and optimization
+- Complete example implementation with environmental probe management
+
+### Testing
+- Comprehensive unit tests for environmental probe models and controller methods
+- Integration tests for environmental probe functionality
+- Example app integration tests covering all environmental probe features
+
 ## [0.11.0] - 2025-01-16
 
 ### Added

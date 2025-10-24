@@ -91,7 +91,14 @@
    - [Ambient Lighting](#ambient-lighting)
    - [Best Practices](#best-practices-lighting)
 
-11. [Animations](#11-animations)
+11. [Environmental Probes and Reflections](#11-environmental-probes-and-reflections)
+   - [Setting Up Environmental Probes](#setting-up-environmental-probes)
+   - [Creating Environmental Probes](#creating-environmental-probes)
+   - [Managing Environmental Probes](#managing-environmental-probes)
+   - [Monitoring Environmental Probes](#monitoring-environmental-probes)
+   - [Best Practices](#environmental-probes-best-practices)
+
+12. [Animations](#12-animations)
    - [Basic Animations](#basic-animations)
    - [Advanced Animation Features](#advanced-animation-features)
    - [Animation Blending](#animation-blending)
@@ -6472,6 +6479,424 @@ class _LightingARExampleState extends State<LightingARExample> {
 }
 ```
 
+# 11. Environmental Probes and Reflections
+
+Environmental probes capture realistic environmental lighting and reflections, providing immersive AR experiences with accurate environmental reflections on virtual objects.
+
+## Overview
+
+Environmental probes are essential for creating realistic AR experiences by:
+- **Capturing Environmental Lighting**: Recording real-world lighting conditions
+- **Generating Reflections**: Creating accurate reflections on virtual objects
+- **Supporting Multiple Probe Types**: Spherical, box, and planar probes
+- **Real-time Updates**: Automatic or manual probe updates
+- **Quality Control**: Configurable resolution and update frequency
+
+## Setting Up Environmental Probes
+
+### Check Environmental Probes Support
+
+```dart
+final probesSupported = await controller.isEnvironmentalProbesSupported();
+if (probesSupported) {
+  print('Environmental probes are supported on this device');
+} else {
+  print('Environmental probes are not supported on this device');
+}
+```
+
+### Get Environmental Probes Capabilities
+
+```dart
+final capabilities = await controller.getEnvironmentalProbesCapabilities();
+print('Max probes: ${capabilities.maxProbes}');
+print('Supported types: ${capabilities.supportedTypes}');
+```
+
+## Creating Environmental Probes
+
+### Spherical Probes
+
+Spherical probes capture omnidirectional environmental lighting:
+
+```dart
+final sphericalProbe = AREnvironmentalProbe(
+  id: 'spherical_probe_1',
+  type: ARProbeType.spherical,
+  position: Vector3(0, 1, 0),
+  rotation: Quaternion(0, 0, 0, 1),
+  scale: Vector3(1, 1, 1),
+  influenceRadius: 5.0,
+  updateMode: ARProbeUpdateMode.automatic,
+  quality: ARProbeQuality.medium,
+  isActive: true,
+  captureReflections: true,
+  captureLighting: true,
+  textureResolution: 512,
+  isRealTime: true,
+  updateFrequency: 1.0,
+  confidence: 0.8,
+);
+
+final addedProbe = await controller.addEnvironmentalProbe(sphericalProbe);
+```
+
+### Box Probes
+
+Box probes capture directional environmental lighting:
+
+```dart
+final boxProbe = AREnvironmentalProbe(
+  id: 'box_probe_1',
+  type: ARProbeType.box,
+  position: Vector3(1, 1, 1),
+  rotation: Quaternion(0, 0, 0, 1),
+  scale: Vector3(2, 2, 2),
+  influenceRadius: 3.0,
+  updateMode: ARProbeUpdateMode.automatic,
+  quality: ARProbeQuality.high,
+  isActive: true,
+  captureReflections: true,
+  captureLighting: true,
+  textureResolution: 1024,
+  isRealTime: true,
+  updateFrequency: 0.5,
+  confidence: 0.9,
+);
+
+final addedProbe = await controller.addEnvironmentalProbe(boxProbe);
+```
+
+### Planar Probes
+
+Planar probes capture surface-based environmental lighting:
+
+```dart
+final planarProbe = AREnvironmentalProbe(
+  id: 'planar_probe_1',
+  type: ARProbeType.planar,
+  position: Vector3(2, 0.5, 2),
+  rotation: Quaternion(0, 0, 0, 1),
+  scale: Vector3(4, 0.1, 4),
+  influenceRadius: 2.0,
+  updateMode: ARProbeUpdateMode.manual,
+  quality: ARProbeQuality.low,
+  isActive: true,
+  captureReflections: true,
+  captureLighting: false,
+  textureResolution: 256,
+  isRealTime: false,
+  updateFrequency: 2.0,
+  confidence: 0.7,
+);
+
+final addedProbe = await controller.addEnvironmentalProbe(planarProbe);
+```
+
+## Managing Environmental Probes
+
+### Getting Probes
+
+```dart
+// Get all probes
+final allProbes = await controller.getEnvironmentalProbes();
+print('Total probes: ${allProbes.length}');
+
+// Get specific probe
+final probe = await controller.getEnvironmentalProbe('probe_id');
+if (probe != null) {
+  print('Probe type: ${probe.type}');
+  print('Influence radius: ${probe.influenceRadius}');
+}
+```
+
+### Updating Probes
+
+```dart
+// Update probe position
+await controller.updateEnvironmentalProbePosition(
+  probeId: 'probe_id',
+  position: Vector3(2, 3, 4),
+);
+
+// Update probe rotation
+await controller.updateEnvironmentalProbeRotation(
+  probeId: 'probe_id',
+  rotation: Quaternion(0, 0, 0, 1),
+);
+
+// Update influence radius
+await controller.updateEnvironmentalProbeInfluenceRadius(
+  probeId: 'probe_id',
+  influenceRadius: 7.0,
+);
+
+// Update quality
+await controller.updateEnvironmentalProbeQuality(
+  probeId: 'probe_id',
+  quality: ARProbeQuality.high,
+);
+```
+
+### Probe Configuration
+
+```dart
+// Set global probe configuration
+final probeConfig = AREnvironmentalProbeConfig(
+  enableProbes: true,
+  defaultQuality: ARProbeQuality.medium,
+  defaultUpdateMode: ARProbeUpdateMode.automatic,
+  defaultTextureResolution: 512,
+  maxActiveProbes: 10,
+  defaultInfluenceRadius: 5.0,
+  defaultRealTime: true,
+  defaultUpdateFrequency: 1.0,
+  autoCreateProbes: true,
+  optimizePlacement: true,
+);
+
+await controller.setEnvironmentalProbeConfig(probeConfig);
+
+// Get current configuration
+final currentConfig = await controller.getEnvironmentalProbeConfig();
+```
+
+## Monitoring Environmental Probes
+
+### Listen to Probe Updates
+
+```dart
+// Listen to probe updates
+controller.probesStream.listen((probes) {
+  print('Probes updated: ${probes.length} active');
+  for (final probe in probes) {
+    print('Probe ${probe.id}: ${probe.type} at ${probe.position}');
+  }
+});
+
+// Listen to configuration updates
+controller.probeConfigStream.listen((config) {
+  print('Probe config updated: maxProbes=${config.maxActiveProbes}');
+});
+
+// Listen to status updates
+controller.probeStatusStream.listen((status) {
+  print('Probe status: ${status.status}');
+  if (status.errorMessage != null) {
+    print('Error: ${status.errorMessage}');
+  }
+});
+```
+
+## Environmental Probes Best Practices
+
+### Probe Placement
+
+1. **Strategic Positioning**: Place probes where environmental lighting changes
+2. **Influence Radius**: Set appropriate influence radius for each probe
+3. **Quality vs Performance**: Balance probe quality with performance
+4. **Update Frequency**: Use automatic updates for dynamic scenes
+
+### Performance Optimization
+
+1. **Limit Active Probes**: Keep the number of active probes reasonable
+2. **Quality Settings**: Use lower quality for distant or less important probes
+3. **Update Modes**: Use manual updates for static environments
+4. **Texture Resolution**: Balance reflection quality with memory usage
+
+### Design Guidelines
+
+1. **Environmental Consistency**: Ensure probes match the real environment
+2. **Reflection Accuracy**: Use appropriate probe types for different surfaces
+3. **Lighting Integration**: Combine with real-time lighting for best results
+4. **User Experience**: Consider performance impact on user devices
+
+## Complete Example
+
+```dart
+class EnvironmentalProbesARExample extends StatefulWidget {
+  @override
+  _EnvironmentalProbesARExampleState createState() => _EnvironmentalProbesARExampleState();
+}
+
+class _EnvironmentalProbesARExampleState extends State<EnvironmentalProbesARExample> {
+  AugenController? _controller;
+  List<AREnvironmentalProbe> _probes = [];
+  AREnvironmentalProbeConfig? _probeConfig;
+  bool _probesSupported = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeProbes();
+  }
+
+  Future<void> _initializeProbes() async {
+    if (_controller != null) {
+      _probesSupported = await _controller!.isEnvironmentalProbesSupported();
+      
+      if (_probesSupported) {
+        final config = AREnvironmentalProbeConfig(
+          enableProbes: true,
+          defaultQuality: ARProbeQuality.medium,
+          defaultUpdateMode: ARProbeUpdateMode.automatic,
+          defaultTextureResolution: 512,
+          maxActiveProbes: 5,
+          defaultInfluenceRadius: 5.0,
+          defaultRealTime: true,
+          defaultUpdateFrequency: 1.0,
+          autoCreateProbes: true,
+          optimizePlacement: true,
+        );
+        
+        await _controller!.setEnvironmentalProbeConfig(config);
+        _probeConfig = config;
+      }
+    }
+  }
+
+  Future<void> _addSphericalProbe() async {
+    if (_controller == null || !_probesSupported) return;
+
+    final probe = AREnvironmentalProbe(
+      id: 'spherical_${_probes.length}',
+      type: ARProbeType.spherical,
+      position: Vector3(
+        (Random().nextDouble() - 0.5) * 4,
+        1.5,
+        (Random().nextDouble() - 0.5) * 4,
+      ),
+      rotation: Quaternion(0, 0, 0, 1),
+      scale: Vector3(1, 1, 1),
+      influenceRadius: 5.0,
+      updateMode: ARProbeUpdateMode.automatic,
+      quality: ARProbeQuality.medium,
+      isActive: true,
+      captureReflections: true,
+      captureLighting: true,
+      textureResolution: 512,
+      isRealTime: true,
+      updateFrequency: 1.0,
+      confidence: 0.8,
+    );
+
+    final addedProbe = await _controller!.addEnvironmentalProbe(probe);
+    setState(() {
+      _probes.add(addedProbe);
+    });
+  }
+
+  Future<void> _addBoxProbe() async {
+    if (_controller == null || !_probesSupported) return;
+
+    final probe = AREnvironmentalProbe(
+      id: 'box_${_probes.length}',
+      type: ARProbeType.box,
+      position: Vector3(
+        (Random().nextDouble() - 0.5) * 4,
+        1.5,
+        (Random().nextDouble() - 0.5) * 4,
+      ),
+      rotation: Quaternion(0, 0, 0, 1),
+      scale: Vector3(2, 2, 2),
+      influenceRadius: 3.0,
+      updateMode: ARProbeUpdateMode.automatic,
+      quality: ARProbeQuality.high,
+      isActive: true,
+      captureReflections: true,
+      captureLighting: true,
+      textureResolution: 1024,
+      isRealTime: true,
+      updateFrequency: 0.5,
+      confidence: 0.9,
+    );
+
+    final addedProbe = await _controller!.addEnvironmentalProbe(probe);
+    setState(() {
+      _probes.add(addedProbe);
+    });
+  }
+
+  Future<void> _addPlanarProbe() async {
+    if (_controller == null || !_probesSupported) return;
+
+    final probe = AREnvironmentalProbe(
+      id: 'planar_${_probes.length}',
+      type: ARProbeType.planar,
+      position: Vector3(
+        (Random().nextDouble() - 0.5) * 4,
+        1.0,
+        (Random().nextDouble() - 0.5) * 4,
+      ),
+      rotation: Quaternion(0, 0, 0, 1),
+      scale: Vector3(4, 0.1, 4),
+      influenceRadius: 2.0,
+      updateMode: ARProbeUpdateMode.manual,
+      quality: ARProbeQuality.low,
+      isActive: true,
+      captureReflections: true,
+      captureLighting: false,
+      textureResolution: 256,
+      isRealTime: false,
+      updateFrequency: 2.0,
+      confidence: 0.7,
+    );
+
+    final addedProbe = await _controller!.addEnvironmentalProbe(probe);
+    setState(() {
+      _probes.add(addedProbe);
+    });
+  }
+
+  Future<void> _clearProbes() async {
+    if (_controller == null || !_probesSupported) return;
+
+    await _controller!.clearEnvironmentalProbes();
+    setState(() {
+      _probes.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Environmental Probes AR')),
+      body: Column(
+        children: [
+          if (_probesSupported) ...[
+            Text('Environmental Probes: Supported'),
+            Text('Active Probes: ${_probes.length}'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: _addSphericalProbe,
+                  child: Text('Add Spherical'),
+                ),
+                ElevatedButton(
+                  onPressed: _addBoxProbe,
+                  child: Text('Add Box'),
+                ),
+                ElevatedButton(
+                  onPressed: _addPlanarProbe,
+                  child: Text('Add Planar'),
+                ),
+              ],
+            ),
+            ElevatedButton(
+              onPressed: _clearProbes,
+              child: Text('Clear All Probes'),
+            ),
+          ] else ...[
+            Text('Environmental Probes: Not Supported'),
+          ],
+        ],
+      ),
+    );
+  }
+}
+```
+
 ## Next Steps for Users
 
 1. Install the plugin: `flutter pub add augen`
@@ -6485,7 +6910,7 @@ class _LightingARExampleState extends State<LightingARExample> {
 
 **Made with ❤️ for the Flutter community**
 
-**Version**: 0.5.0  
+**Version**: 1.0.0  
 **Platforms**: Android 7.0+ | iOS 13.0+  
 **License**: MIT
 
