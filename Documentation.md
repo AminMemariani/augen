@@ -83,7 +83,15 @@
    - [Best Practices](#best-practices-multi-user)
    - [Complete Example](#complete-example-multi-user)
 
-10. [Animations](#10-animations)
+10. [Real-time Lighting and Shadows](#10-real-time-lighting-and-shadows)
+   - [Overview](#overview-lighting)
+   - [Setting Up Lighting](#setting-up-lighting)
+   - [Light Types](#light-types)
+   - [Shadow Configuration](#shadow-configuration)
+   - [Ambient Lighting](#ambient-lighting)
+   - [Best Practices](#best-practices-lighting)
+
+11. [Animations](#11-animations)
    - [Basic Animations](#basic-animations)
    - [Advanced Animation Features](#advanced-animation-features)
    - [Animation Blending](#animation-blending)
@@ -92,7 +100,7 @@
    - [Blend Trees](#blend-trees)
    - [Layered Animations](#layered-animations)
 
-11. [Advanced Animation Blending - Complete Guide](#11-advanced-animation-blending---complete-guide)
+12. [Advanced Animation Blending - Complete Guide](#12-advanced-animation-blending---complete-guide)
    - [Overview](#overview-advanced)
    - [Animation Blending In-Depth](#animation-blending-in-depth)
    - [Crossfade Transitions In-Depth](#crossfade-transitions-in-depth)
@@ -6025,6 +6033,441 @@ class _MultiUserARViewState extends State<MultiUserARView> {
   void dispose() {
     _controller?.leaveMultiUserSession();
     super.dispose();
+  }
+}
+```
+
+# 10. Real-time Lighting and Shadows
+
+## Overview
+
+Real-time lighting and shadows enhance AR experiences by providing realistic illumination and shadow effects. This feature allows you to create dynamic lighting environments, configure shadow quality, and manage ambient lighting for more immersive AR applications.
+
+### Key Features
+
+- **Multiple Light Types**: Directional, point, spot, and ambient lights
+- **Dynamic Shadows**: Real-time shadow casting and receiving
+- **Shadow Quality Control**: Configurable shadow resolution and filtering
+- **Ambient Lighting**: Global illumination settings
+- **Light Management**: Add, update, and remove lights dynamically
+- **Performance Optimization**: Efficient shadow rendering
+
+## Setting Up Lighting
+
+### Check Lighting Support
+
+```dart
+final lightingSupported = await controller.isLightingSupported();
+if (lightingSupported) {
+  print('Lighting is supported on this device');
+} else {
+  print('Lighting is not supported on this device');
+}
+```
+
+### Get Lighting Capabilities
+
+```dart
+final capabilities = await controller.getLightingCapabilities();
+print('Max lights: ${capabilities['maxLights']}');
+print('Shadow quality: ${capabilities['shadowQuality']}');
+```
+
+## Light Types
+
+### Directional Light
+
+Directional lights simulate sunlight or other distant light sources:
+
+```dart
+final directionalLight = ARLight(
+  id: 'sun_light',
+  type: ARLightType.directional,
+  position: const Vector3(0, 10, 0),
+  direction: const Vector3(0, -1, 0),
+  intensity: 1000.0,
+  intensityUnit: LightIntensityUnit.lux,
+  color: const Vector3(1.0, 0.95, 0.8), // Warm sunlight
+  isEnabled: true,
+  castShadows: true,
+  shadowQuality: ShadowQuality.high,
+  shadowFilterMode: ShadowFilterMode.soft,
+);
+
+final addedLight = await controller.addLight(directionalLight);
+```
+
+### Point Light
+
+Point lights emit light in all directions from a specific position:
+
+```dart
+final pointLight = ARLight(
+  id: 'lamp_light',
+  type: ARLightType.point,
+  position: const Vector3(1, 2, 3),
+  intensity: 500.0,
+  intensityUnit: LightIntensityUnit.lumen,
+  color: const Vector3(1.0, 0.8, 0.6), // Warm lamp color
+  range: 10.0,
+  isEnabled: true,
+  castShadows: true,
+  shadowQuality: ShadowQuality.medium,
+);
+
+await controller.addLight(pointLight);
+```
+
+### Spot Light
+
+Spot lights emit light in a cone shape:
+
+```dart
+final spotLight = ARLight(
+  id: 'flashlight',
+  type: ARLightType.spot,
+  position: const Vector3(0, 1.5, 0),
+  direction: const Vector3(0, -1, 0),
+  intensity: 800.0,
+  intensityUnit: LightIntensityUnit.lumen,
+  color: const Vector3(1.0, 1.0, 0.9), // White light
+  range: 15.0,
+  innerConeAngle: 30.0,
+  outerConeAngle: 45.0,
+  isEnabled: true,
+  castShadows: true,
+  shadowQuality: ShadowQuality.high,
+);
+
+await controller.addLight(spotLight);
+```
+
+### Ambient Light
+
+Ambient lights provide global illumination:
+
+```dart
+final ambientLight = ARLight(
+  id: 'ambient_light',
+  type: ARLightType.ambient,
+  intensity: 0.3,
+  intensityUnit: LightIntensityUnit.lux,
+  color: const Vector3(0.9, 0.9, 1.0), // Cool ambient
+  isEnabled: true,
+  castShadows: false,
+);
+
+await controller.addLight(ambientLight);
+```
+
+## Shadow Configuration
+
+### Global Shadow Settings
+
+```dart
+final lightingConfig = ARLightingConfig(
+  enableGlobalIllumination: true,
+  enableShadows: true,
+  globalShadowQuality: ShadowQuality.high,
+  globalShadowFilterMode: ShadowFilterMode.soft,
+  shadowDistance: 50.0,
+  maxShadowCasters: 4,
+  enableCascadedShadows: true,
+  shadowCascadeCount: 4,
+  shadowCascadeDistances: [10.0, 25.0, 50.0, 100.0],
+);
+
+await controller.setLightingConfig(lightingConfig);
+```
+
+### Shadow Quality Control
+
+```dart
+// Enable/disable shadows globally
+await controller.setShadowsEnabled(true);
+
+// Set shadow quality
+await controller.setShadowQuality(ShadowQuality.ultra);
+```
+
+### Shadow Quality Options
+
+- **Low**: Basic shadows, good performance
+- **Medium**: Balanced quality and performance
+- **High**: High-quality shadows
+- **Ultra**: Maximum quality shadows
+
+### Shadow Filtering
+
+- **None**: No filtering, sharp shadows
+- **Soft**: Soft shadows with basic filtering
+- **PCF**: Percentage Closer Filtering for smooth shadows
+
+## Ambient Lighting
+
+### Set Global Ambient Lighting
+
+```dart
+await controller.setAmbientLighting(
+  intensity: 0.4,
+  color: const Vector3(0.9, 0.9, 1.0), // Cool blue ambient
+);
+```
+
+### Ambient Lighting Best Practices
+
+- Use low intensity (0.1-0.5) to avoid washing out shadows
+- Choose colors that complement your scene
+- Consider the time of day or environment you're simulating
+
+## Light Management
+
+### Update Light Properties
+
+```dart
+// Update light position
+await controller.updateLightPosition(
+  lightId: 'lamp_light',
+  position: const Vector3(2, 3, 4),
+);
+
+// Update light intensity
+await controller.updateLightIntensity(
+  lightId: 'lamp_light',
+  intensity: 750.0,
+);
+
+// Update light color
+await controller.updateLightColor(
+  lightId: 'lamp_light',
+  color: const Vector3(1.0, 0.9, 0.7),
+);
+
+// Enable/disable light
+await controller.setLightEnabled(
+  lightId: 'lamp_light',
+  enabled: false,
+);
+
+// Control shadow casting
+await controller.setLightCastShadows(
+  lightId: 'lamp_light',
+  castShadows: true,
+);
+```
+
+### Get and Manage Lights
+
+```dart
+// Get all lights
+final lights = await controller.getLights();
+print('Total lights: ${lights.length}');
+
+// Get specific light
+final light = await controller.getLight('lamp_light');
+if (light != null) {
+  print('Light intensity: ${light.intensity}');
+}
+
+// Remove specific light
+await controller.removeLight('lamp_light');
+
+// Clear all lights
+await controller.clearLights();
+```
+
+## Monitoring Lighting Status
+
+### Listen to Lighting Updates
+
+```dart
+// Listen to lights stream
+controller.lightsStream.listen((lights) {
+  print('Lights updated: ${lights.length} lights');
+  for (final light in lights) {
+    print('Light ${light.id}: ${light.type} at ${light.position}');
+  }
+});
+
+// Listen to lighting config stream
+controller.lightingConfigStream.listen((config) {
+  print('Lighting config updated: shadows=${config.enableShadows}');
+});
+
+// Listen to lighting status stream
+controller.lightingStatusStream.listen((status) {
+  print('Lighting status: ${status.status}');
+  if (status.errorMessage != null) {
+    print('Error: ${status.errorMessage}');
+  }
+});
+```
+
+## Best Practices
+
+### Performance Optimization
+
+1. **Limit Light Count**: Use 2-4 lights maximum for mobile devices
+2. **Shadow Quality**: Use medium quality for better performance
+3. **Shadow Distance**: Keep shadow distance reasonable (20-50 units)
+4. **Light Range**: Set appropriate ranges for point/spot lights
+
+### Lighting Design
+
+1. **Three-Point Lighting**: Use key, fill, and rim lights
+2. **Color Temperature**: Match real-world lighting conditions
+3. **Shadow Direction**: Ensure shadows enhance depth perception
+4. **Ambient Balance**: Use ambient light to fill dark areas
+
+### Mobile Considerations
+
+1. **Battery Life**: More lights = higher battery usage
+2. **Thermal Management**: Monitor device temperature
+3. **Quality Settings**: Adjust based on device capabilities
+4. **Fallback Options**: Provide low-quality lighting options
+
+## Complete Example
+
+```dart
+class LightingARExample extends StatefulWidget {
+  @override
+  _LightingARExampleState createState() => _LightingARExampleState();
+}
+
+class _LightingARExampleState extends State<LightingARExample> {
+  AugenController? _controller;
+  List<ARLight> _lights = [];
+  ARLightingConfig? _lightingConfig;
+  bool _lightingSupported = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeLighting();
+  }
+
+  Future<void> _initializeLighting() async {
+    if (_controller == null) return;
+
+    try {
+      // Check lighting support
+      _lightingSupported = await _controller!.isLightingSupported();
+      if (!_lightingSupported) return;
+
+      // Set up lighting configuration
+      final config = ARLightingConfig(
+        enableGlobalIllumination: true,
+        enableShadows: true,
+        globalShadowQuality: ShadowQuality.medium,
+        globalShadowFilterMode: ShadowFilterMode.soft,
+        ambientIntensity: 0.3,
+        ambientColor: const Vector3(1.0, 1.0, 1.0),
+        shadowDistance: 50.0,
+        maxShadowCasters: 4,
+      );
+
+      await _controller!.setLightingConfig(config);
+      _lightingConfig = config;
+
+      // Add directional light (sun)
+      final sunLight = ARLight(
+        id: 'sun_light',
+        type: ARLightType.directional,
+        position: const Vector3(0, 10, 0),
+        direction: const Vector3(0, -1, 0),
+        intensity: 1000.0,
+        intensityUnit: LightIntensityUnit.lux,
+        color: const Vector3(1.0, 0.95, 0.8),
+        isEnabled: true,
+        castShadows: true,
+        shadowQuality: ShadowQuality.medium,
+        shadowFilterMode: ShadowFilterMode.soft,
+      );
+
+      await _controller!.addLight(sunLight);
+
+      // Add ambient light
+      final ambientLight = ARLight(
+        id: 'ambient_light',
+        type: ARLightType.ambient,
+        intensity: 0.3,
+        intensityUnit: LightIntensityUnit.lux,
+        color: const Vector3(0.9, 0.9, 1.0),
+        isEnabled: true,
+        castShadows: false,
+      );
+
+      await _controller!.addLight(ambientLight);
+
+      // Listen to lighting updates
+      _controller!.lightsStream.listen((lights) {
+        setState(() {
+          _lights = lights;
+        });
+      });
+
+    } catch (e) {
+      print('Failed to initialize lighting: $e');
+    }
+  }
+
+  Future<void> _addPointLight() async {
+    if (_controller == null || !_lightingSupported) return;
+
+    try {
+      final pointLight = ARLight(
+        id: 'point_light_${DateTime.now().millisecondsSinceEpoch}',
+        type: ARLightType.point,
+        position: const Vector3(0, 2, 0),
+        intensity: 500.0,
+        intensityUnit: LightIntensityUnit.lumen,
+        color: const Vector3(1.0, 0.8, 0.6),
+        range: 10.0,
+        isEnabled: true,
+        castShadows: true,
+        shadowQuality: ShadowQuality.medium,
+      );
+
+      await _controller!.addLight(pointLight);
+    } catch (e) {
+      print('Failed to add point light: $e');
+    }
+  }
+
+  Future<void> _toggleShadows() async {
+    if (_controller == null || !_lightingSupported) return;
+
+    try {
+      final currentConfig = await _controller!.getLightingConfig();
+      await _controller!.setShadowsEnabled(!currentConfig.enableShadows);
+    } catch (e) {
+      print('Failed to toggle shadows: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Lighting AR')),
+      body: Column(
+        children: [
+          if (_lightingSupported) ...[
+            Text('Lighting: Supported'),
+            Text('Lights: ${_lights.length}'),
+            ElevatedButton(
+              onPressed: _addPointLight,
+              child: Text('Add Point Light'),
+            ),
+            ElevatedButton(
+              onPressed: _toggleShadows,
+              child: Text('Toggle Shadows'),
+            ),
+          ] else ...[
+            Text('Lighting: Not Supported'),
+          ],
+        ],
+      ),
+    );
   }
 }
 ```

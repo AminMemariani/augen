@@ -19,6 +19,7 @@ import 'models/ar_cloud_anchor.dart';
 import 'models/ar_occlusion.dart';
 import 'models/ar_physics.dart';
 import 'models/ar_multi_user.dart';
+import 'models/ar_lighting.dart';
 
 /// Controller for managing AR session
 class AugenController {
@@ -71,6 +72,14 @@ class AugenController {
   final StreamController<MultiUserSessionStatus>
   _multiUserSessionStatusController =
       StreamController<MultiUserSessionStatus>.broadcast();
+
+  // Lighting stream controllers
+  final StreamController<List<ARLight>> _lightsController =
+      StreamController<List<ARLight>>.broadcast();
+  final StreamController<ARLightingConfig> _lightingConfigController =
+      StreamController<ARLightingConfig>.broadcast();
+  final StreamController<ARLightingStatus> _lightingStatusController =
+      StreamController<ARLightingStatus>.broadcast();
 
   bool _isDisposed = false;
 
@@ -147,6 +156,13 @@ class AugenController {
       _multiUserSharedObjectsController.stream;
   Stream<MultiUserSessionStatus> get multiUserSessionStatusStream =>
       _multiUserSessionStatusController.stream;
+
+  // Lighting streams
+  Stream<List<ARLight>> get lightsStream => _lightsController.stream;
+  Stream<ARLightingConfig> get lightingConfigStream =>
+      _lightingConfigController.stream;
+  Stream<ARLightingStatus> get lightingStatusStream =>
+      _lightingStatusController.stream;
 
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
@@ -462,6 +478,26 @@ class AugenController {
         final statusData = call.arguments as Map<String, dynamic>;
         final status = MultiUserSessionStatus.fromMap(statusData);
         _multiUserSessionStatusController.add(status);
+        break;
+      case 'onLightsUpdated':
+        final lightsData = call.arguments as List<dynamic>;
+        final lights = lightsData
+            .map(
+              (light) =>
+                  ARLight.fromMap(Map<String, dynamic>.from(light as Map)),
+            )
+            .toList();
+        _lightsController.add(lights);
+        break;
+      case 'onLightingConfigUpdated':
+        final configData = call.arguments as Map<String, dynamic>;
+        final config = ARLightingConfig.fromMap(configData);
+        _lightingConfigController.add(config);
+        break;
+      case 'onLightingStatusUpdated':
+        final statusData = call.arguments as Map<String, dynamic>;
+        final status = ARLightingStatus.fromMap(statusData);
+        _lightingStatusController.add(status);
         break;
     }
   }
@@ -2019,6 +2055,276 @@ class AugenController {
     }
   }
 
+  // ===== LIGHTING METHODS =====
+
+  /// Check if lighting and shadows are supported
+  Future<bool> isLightingSupported() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('isLightingSupported');
+      return result as bool;
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to check lighting support: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get lighting capabilities
+  Future<Map<String, dynamic>> getLightingCapabilities() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getLightingCapabilities');
+      return Map<String, dynamic>.from(result as Map);
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get lighting capabilities: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Add a light to the scene
+  Future<ARLight> addLight(ARLight light) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('addLight', light.toMap());
+      return ARLight.fromMap(Map<String, dynamic>.from(result as Map));
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to add light: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove a light from the scene
+  Future<void> removeLight(String lightId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('removeLight', {'lightId': lightId});
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to remove light: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update an existing light
+  Future<ARLight> updateLight(ARLight light) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('updateLight', light.toMap());
+      return ARLight.fromMap(Map<String, dynamic>.from(result as Map));
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update light: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all lights in the scene
+  Future<List<ARLight>> getLights() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getLights');
+      final List<dynamic> lightsList = result as List;
+      return lightsList
+          .map(
+            (light) => ARLight.fromMap(Map<String, dynamic>.from(light as Map)),
+          )
+          .toList();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get lights: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get a specific light by ID
+  Future<ARLight?> getLight(String lightId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getLight', {
+        'lightId': lightId,
+      });
+      if (result == null) return null;
+      return ARLight.fromMap(Map<String, dynamic>.from(result as Map));
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get light: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Set global lighting configuration
+  Future<void> setLightingConfig(ARLightingConfig config) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setLightingConfig', config.toMap());
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set lighting config: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get current lighting configuration
+  Future<ARLightingConfig> getLightingConfig() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _channel.invokeMethod('getLightingConfig');
+      return ARLightingConfig.fromMap(Map<String, dynamic>.from(result as Map));
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get lighting config: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Enable or disable shadows
+  Future<void> setShadowsEnabled(bool enabled) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setShadowsEnabled', {'enabled': enabled});
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set shadows enabled: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Set shadow quality
+  Future<void> setShadowQuality(ShadowQuality quality) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setShadowQuality', {
+        'quality': quality.name,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set shadow quality: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Set ambient lighting
+  Future<void> setAmbientLighting({
+    required double intensity,
+    required Vector3 color,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setAmbientLighting', {
+        'intensity': intensity,
+        'color': color.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set ambient lighting: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update light position
+  Future<void> updateLightPosition({
+    required String lightId,
+    required Vector3 position,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateLightPosition', {
+        'lightId': lightId,
+        'position': position.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update light position: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update light rotation
+  Future<void> updateLightRotation({
+    required String lightId,
+    required Quaternion rotation,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateLightRotation', {
+        'lightId': lightId,
+        'rotation': rotation.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update light rotation: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update light intensity
+  Future<void> updateLightIntensity({
+    required String lightId,
+    required double intensity,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateLightIntensity', {
+        'lightId': lightId,
+        'intensity': intensity,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update light intensity: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Update light color
+  Future<void> updateLightColor({
+    required String lightId,
+    required Vector3 color,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('updateLightColor', {
+        'lightId': lightId,
+        'color': color.toMap(),
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to update light color: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Enable or disable a light
+  Future<void> setLightEnabled({
+    required String lightId,
+    required bool enabled,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setLightEnabled', {
+        'lightId': lightId,
+        'enabled': enabled,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set light enabled: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Enable or disable shadows for a specific light
+  Future<void> setLightCastShadows({
+    required String lightId,
+    required bool castShadows,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('setLightCastShadows', {
+        'lightId': lightId,
+        'castShadows': castShadows,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set light cast shadows: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Clear all lights from the scene
+  Future<void> clearLights() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _channel.invokeMethod('clearLights');
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to clear lights: ${e.message}');
+      rethrow;
+    }
+  }
+
   /// Dispose the controller
   void dispose() {
     if (_isDisposed) return;
@@ -2043,6 +2349,9 @@ class AugenController {
     _multiUserParticipantsController.close();
     _multiUserSharedObjectsController.close();
     _multiUserSessionStatusController.close();
+    _lightsController.close();
+    _lightingConfigController.close();
+    _lightingStatusController.close();
     _channel.setMethodCallHandler(null);
   }
 }

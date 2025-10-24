@@ -2514,5 +2514,398 @@ void main() {
         subscription.cancel();
       });
     });
+
+    group('Lighting Methods', () {
+      test('isLightingSupported sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'isLightingSupported');
+              return true;
+            });
+
+        final result = await controller.isLightingSupported();
+        expect(result, true);
+      });
+
+      test('getLightingCapabilities returns capabilities', () async {
+        final capabilities = {
+          'supportsShadows': true,
+          'maxLights': 8,
+          'supportsGlobalIllumination': true,
+        };
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'getLightingCapabilities');
+              return capabilities;
+            });
+
+        final result = await controller.getLightingCapabilities();
+        expect(result, capabilities);
+      });
+
+      test('addLight sends correct light data', () async {
+        final now = DateTime.now();
+        final light = ARLight(
+          id: 'test_light',
+          type: ARLightType.directional,
+          position: const Vector3(0, 5, 0),
+          rotation: const Quaternion(0, 0, 0, 1),
+          direction: const Vector3(0, -1, 0),
+          intensity: 1000.0,
+          createdAt: now,
+          lastModified: now,
+        );
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'addLight');
+              expect(call.arguments, light.toMap());
+              return light.toMap();
+            });
+
+        final result = await controller.addLight(light);
+        expect(result.id, light.id);
+        expect(result.type, light.type);
+      });
+
+      test('removeLight sends correct lightId', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'removeLight');
+              expect(call.arguments, {'lightId': 'test_light'});
+              return null;
+            });
+
+        await controller.removeLight('test_light');
+      });
+
+      test('updateLight sends correct light data', () async {
+        final now = DateTime.now();
+        final light = ARLight(
+          id: 'test_light',
+          type: ARLightType.point,
+          position: const Vector3(1, 2, 3),
+          rotation: const Quaternion(0, 0, 0, 1),
+          direction: const Vector3(0, -1, 0),
+          intensity: 500.0,
+          createdAt: now,
+          lastModified: now,
+        );
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'updateLight');
+              expect(call.arguments, light.toMap());
+              return light.toMap();
+            });
+
+        final result = await controller.updateLight(light);
+        expect(result.id, light.id);
+        expect(result.type, light.type);
+      });
+
+      test('getLights returns parsed lights', () async {
+        final now = DateTime.now();
+        final lightsData = [
+          {
+            'id': 'light_1',
+            'type': 'directional',
+            'position': {'x': 0, 'y': 5, 'z': 0},
+            'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 1},
+            'direction': {'x': 0, 'y': -1, 'z': 0},
+            'intensity': 1000.0,
+            'intensityUnit': 'lux',
+            'color': {'x': 1, 'y': 1, 'z': 1},
+            'range': 10.0,
+            'innerConeAngle': 0.0,
+            'outerConeAngle': 45.0,
+            'isEnabled': true,
+            'castShadows': true,
+            'shadowQuality': 'medium',
+            'shadowFilterMode': 'soft',
+            'shadowBias': 0.005,
+            'shadowNormalBias': 0.0,
+            'shadowNearPlane': 0.1,
+            'shadowFarPlane': 100.0,
+            'createdAt': now.millisecondsSinceEpoch,
+            'lastModified': now.millisecondsSinceEpoch,
+            'metadata': {},
+          },
+        ];
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'getLights');
+              return lightsData;
+            });
+
+        final result = await controller.getLights();
+        expect(result.length, 1);
+        expect(result.first.id, 'light_1');
+        expect(result.first.type, ARLightType.directional);
+      });
+
+      test('getLight returns specific light', () async {
+        final now = DateTime.now();
+        final lightData = {
+          'id': 'test_light',
+          'type': 'spot',
+          'position': {'x': 1, 'y': 2, 'z': 3},
+          'rotation': {'x': 0, 'y': 0, 'z': 0, 'w': 1},
+          'direction': {'x': 0, 'y': -1, 'z': 0},
+          'intensity': 750.0,
+          'intensityUnit': 'lux',
+          'color': {'x': 1, 'y': 1, 'z': 1},
+          'range': 15.0,
+          'innerConeAngle': 10.0,
+          'outerConeAngle': 30.0,
+          'isEnabled': true,
+          'castShadows': true,
+          'shadowQuality': 'high',
+          'shadowFilterMode': 'pcf',
+          'shadowBias': 0.01,
+          'shadowNormalBias': 0.005,
+          'shadowNearPlane': 0.5,
+          'shadowFarPlane': 200.0,
+          'createdAt': now.millisecondsSinceEpoch,
+          'lastModified': now.millisecondsSinceEpoch,
+          'metadata': {},
+        };
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'getLight');
+              expect(call.arguments, {'lightId': 'test_light'});
+              return lightData;
+            });
+
+        final result = await controller.getLight('test_light');
+        expect(result, isNotNull);
+        expect(result!.id, 'test_light');
+        expect(result.type, ARLightType.spot);
+      });
+
+      test('setLightingConfig sends correct config', () async {
+        const config = ARLightingConfig(
+          enableGlobalIllumination: true,
+          enableShadows: true,
+          globalShadowQuality: ShadowQuality.high,
+        );
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'setLightingConfig');
+              expect(call.arguments, config.toMap());
+              return null;
+            });
+
+        await controller.setLightingConfig(config);
+      });
+
+      test('getLightingConfig returns parsed config', () async {
+        const configData = {
+          'enableGlobalIllumination': true,
+          'enableShadows': true,
+          'globalShadowQuality': 'high',
+          'globalShadowFilterMode': 'pcf',
+          'ambientIntensity': 0.5,
+          'ambientColor': {'x': 0.8, 'y': 0.9, 'z': 1.0},
+          'shadowDistance': 100.0,
+          'maxShadowCasters': 8,
+          'enableCascadedShadows': true,
+          'shadowCascadeCount': 4,
+          'shadowCascadeDistances': [10.0, 25.0, 50.0, 100.0],
+          'enableContactShadows': true,
+          'contactShadowDistance': 10.0,
+          'enableScreenSpaceShadows': true,
+          'enableRayTracedShadows': false,
+          'metadata': {},
+        };
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'getLightingConfig');
+              return configData;
+            });
+
+        final result = await controller.getLightingConfig();
+        expect(result.enableGlobalIllumination, true);
+        expect(result.enableShadows, true);
+        expect(result.globalShadowQuality, ShadowQuality.high);
+      });
+
+      test('setShadowsEnabled sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'setShadowsEnabled');
+              expect(call.arguments, {'enabled': true});
+              return null;
+            });
+
+        await controller.setShadowsEnabled(true);
+      });
+
+      test('setShadowQuality sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'setShadowQuality');
+              expect(call.arguments, {'quality': 'ultra'});
+              return null;
+            });
+
+        await controller.setShadowQuality(ShadowQuality.ultra);
+      });
+
+      test('setAmbientLighting sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'setAmbientLighting');
+              expect(call.arguments, {
+                'intensity': 0.7,
+                'color': {'x': 0.9, 'y': 0.8, 'z': 0.7},
+              });
+              return null;
+            });
+
+        await controller.setAmbientLighting(
+          intensity: 0.7,
+          color: const Vector3(0.9, 0.8, 0.7),
+        );
+      });
+
+      test('updateLightPosition sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'updateLightPosition');
+              expect(call.arguments, {
+                'lightId': 'test_light',
+                'position': {'x': 2, 'y': 3, 'z': 4},
+              });
+              return null;
+            });
+
+        await controller.updateLightPosition(
+          lightId: 'test_light',
+          position: const Vector3(2, 3, 4),
+        );
+      });
+
+      test('updateLightRotation sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'updateLightRotation');
+              expect(call.arguments, {
+                'lightId': 'test_light',
+                'rotation': {'x': 0.1, 'y': 0.2, 'z': 0.3, 'w': 0.9},
+              });
+              return null;
+            });
+
+        await controller.updateLightRotation(
+          lightId: 'test_light',
+          rotation: const Quaternion(0.1, 0.2, 0.3, 0.9),
+        );
+      });
+
+      test('updateLightIntensity sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'updateLightIntensity');
+              expect(call.arguments, {
+                'lightId': 'test_light',
+                'intensity': 1500.0,
+              });
+              return null;
+            });
+
+        await controller.updateLightIntensity(
+          lightId: 'test_light',
+          intensity: 1500.0,
+        );
+      });
+
+      test('updateLightColor sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'updateLightColor');
+              expect(call.arguments, {
+                'lightId': 'test_light',
+                'color': {'x': 1.0, 'y': 0.5, 'z': 0.2},
+              });
+              return null;
+            });
+
+        await controller.updateLightColor(
+          lightId: 'test_light',
+          color: const Vector3(1.0, 0.5, 0.2),
+        );
+      });
+
+      test('setLightEnabled sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'setLightEnabled');
+              expect(call.arguments, {
+                'lightId': 'test_light',
+                'enabled': false,
+              });
+              return null;
+            });
+
+        await controller.setLightEnabled(lightId: 'test_light', enabled: false);
+      });
+
+      test('setLightCastShadows sends correct parameters', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'setLightCastShadows');
+              expect(call.arguments, {
+                'lightId': 'test_light',
+                'castShadows': true,
+              });
+              return null;
+            });
+
+        await controller.setLightCastShadows(
+          lightId: 'test_light',
+          castShadows: true,
+        );
+      });
+
+      test('clearLights calls correct method', () async {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (call) async {
+              expect(call.method, 'clearLights');
+              return null;
+            });
+
+        await controller.clearLights();
+      });
+    });
+
+    group('Lighting Streams', () {
+      test('lightsStream can be listened to', () {
+        final subscription = controller.lightsStream.listen((lights) {});
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('lightingConfigStream can be listened to', () {
+        final subscription = controller.lightingConfigStream.listen(
+          (config) {},
+        );
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+
+      test('lightingStatusStream can be listened to', () {
+        final subscription = controller.lightingStatusStream.listen(
+          (status) {},
+        );
+        expect(subscription, isNotNull);
+        subscription.cancel();
+      });
+    });
   });
 }

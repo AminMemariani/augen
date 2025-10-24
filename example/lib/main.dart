@@ -42,6 +42,11 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   List<AROcclusion> _occlusions = [];
   List<ARPhysicsBody> _physicsBodies = [];
   List<PhysicsConstraint> _physicsConstraints = [];
+  List<ARLight> _lights = [];
+  ARLightingConfig? _lightingConfig;
+  bool _lightingSupported = false;
+  bool _shadowsEnabled = true;
+  ShadowQuality _shadowQuality = ShadowQuality.medium;
   int _nodeCounter = 0;
   String _statusMessage = 'Initializing...';
   bool _imageTrackingEnabled = false;
@@ -144,6 +149,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
       // Check physics support
       await _checkPhysicsSupport();
+
+      // Check lighting support
+      await _checkLightingSupport();
     } catch (e) {
       setState(() {
         _statusMessage = 'Error: $e';
@@ -752,6 +760,233 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     }
   }
 
+  // Lighting Methods
+  Future<void> _checkLightingSupport() async {
+    if (_controller == null) return;
+
+    try {
+      _lightingSupported = await _controller!.isLightingSupported();
+
+      if (!mounted) return;
+      setState(() {});
+
+      if (_lightingSupported) {
+        // Get lighting capabilities
+        final capabilities = await _controller!.getLightingCapabilities();
+        print('Lighting capabilities: $capabilities');
+
+        // Set up default lighting configuration
+        const config = ARLightingConfig(
+          enableGlobalIllumination: true,
+          enableShadows: true,
+          globalShadowQuality: ShadowQuality.medium,
+          globalShadowFilterMode: ShadowFilterMode.soft,
+          ambientIntensity: 0.3,
+          ambientColor: Vector3(1.0, 1.0, 1.0),
+          shadowDistance: 50.0,
+          maxShadowCasters: 4,
+          enableCascadedShadows: true,
+          shadowCascadeCount: 4,
+          shadowCascadeDistances: [10.0, 25.0, 50.0, 100.0],
+          enableContactShadows: false,
+          contactShadowDistance: 5.0,
+          enableScreenSpaceShadows: false,
+          enableRayTracedShadows: false,
+        );
+
+        await _controller!.setLightingConfig(config);
+        _lightingConfig = config;
+
+        // Add a default directional light
+        final now = DateTime.now();
+        final directionalLight = ARLight(
+          id: 'sun_light',
+          type: ARLightType.directional,
+          position: const Vector3(0, 10, 0),
+          rotation: const Quaternion(0, 0, 0, 1),
+          direction: const Vector3(0, -1, 0),
+          intensity: 1000.0,
+          intensityUnit: LightIntensityUnit.lux,
+          color: const Vector3(1.0, 0.95, 0.8), // Warm sunlight
+          isEnabled: true,
+          castShadows: true,
+          shadowQuality: ShadowQuality.medium,
+          shadowFilterMode: ShadowFilterMode.soft,
+          createdAt: now,
+          lastModified: now,
+        );
+
+        await _controller!.addLight(directionalLight);
+        _lights.add(directionalLight);
+
+        // Add an ambient light
+        final ambientLight = ARLight(
+          id: 'ambient_light',
+          type: ARLightType.ambient,
+          position: const Vector3(0, 0, 0),
+          rotation: const Quaternion(0, 0, 0, 1),
+          direction: const Vector3(0, 0, 0),
+          intensity: 200.0,
+          intensityUnit: LightIntensityUnit.lux,
+          color: const Vector3(0.8, 0.9, 1.0), // Cool ambient
+          isEnabled: true,
+          castShadows: false,
+          createdAt: now,
+          lastModified: now,
+        );
+
+        await _controller!.addLight(ambientLight);
+        _lights.add(ambientLight);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Lighting support check failed: $e';
+      });
+    }
+  }
+
+  Future<void> _addPointLight() async {
+    if (_controller == null || !_lightingSupported) return;
+
+    try {
+      final now = DateTime.now();
+      final light = ARLight(
+        id: 'point_light_${_nodeCounter}',
+        type: ARLightType.point,
+        position: Vector3(
+          (Random().nextDouble() - 0.5) * 4,
+          2.0,
+          (Random().nextDouble() - 0.5) * 4,
+        ),
+        rotation: const Quaternion(0, 0, 0, 1),
+        direction: const Vector3(0, -1, 0),
+        intensity: 500.0 + Random().nextDouble() * 1000.0,
+        intensityUnit: LightIntensityUnit.lux,
+        color: Vector3(
+          Random().nextDouble(),
+          Random().nextDouble(),
+          Random().nextDouble(),
+        ),
+        range: 5.0 + Random().nextDouble() * 5.0,
+        isEnabled: true,
+        castShadows: true,
+        shadowQuality: _shadowQuality,
+        shadowFilterMode: ShadowFilterMode.soft,
+        createdAt: now,
+        lastModified: now,
+      );
+
+      final addedLight = await _controller!.addLight(light);
+      _lights.add(addedLight);
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add point light: $e')));
+    }
+  }
+
+  Future<void> _addSpotLight() async {
+    if (_controller == null || !_lightingSupported) return;
+
+    try {
+      final now = DateTime.now();
+      final light = ARLight(
+        id: 'spot_light_${_nodeCounter}',
+        type: ARLightType.spot,
+        position: Vector3(
+          (Random().nextDouble() - 0.5) * 4,
+          3.0,
+          (Random().nextDouble() - 0.5) * 4,
+        ),
+        rotation: const Quaternion(0, 0, 0, 1),
+        direction: const Vector3(0, -1, 0),
+        intensity: 800.0 + Random().nextDouble() * 1200.0,
+        intensityUnit: LightIntensityUnit.lux,
+        color: Vector3(
+          Random().nextDouble(),
+          Random().nextDouble(),
+          Random().nextDouble(),
+        ),
+        range: 8.0 + Random().nextDouble() * 4.0,
+        innerConeAngle: 15.0 + Random().nextDouble() * 15.0,
+        outerConeAngle: 30.0 + Random().nextDouble() * 30.0,
+        isEnabled: true,
+        castShadows: true,
+        shadowQuality: _shadowQuality,
+        shadowFilterMode: ShadowFilterMode.soft,
+        createdAt: now,
+        lastModified: now,
+      );
+
+      final addedLight = await _controller!.addLight(light);
+      _lights.add(addedLight);
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add spot light: $e')));
+    }
+  }
+
+  Future<void> _toggleShadows() async {
+    if (_controller == null || !_lightingSupported) return;
+
+    try {
+      _shadowsEnabled = !_shadowsEnabled;
+      await _controller!.setShadowsEnabled(_shadowsEnabled);
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to toggle shadows: $e')));
+    }
+  }
+
+  Future<void> _setShadowQuality(ShadowQuality quality) async {
+    if (_controller == null || !_lightingSupported) return;
+
+    try {
+      _shadowQuality = quality;
+      await _controller!.setShadowQuality(quality);
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to set shadow quality: $e')),
+      );
+    }
+  }
+
+  Future<void> _clearLights() async {
+    if (_controller == null || !_lightingSupported) return;
+
+    try {
+      await _controller!.clearLights();
+      _lights.clear();
+
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to clear lights: $e')));
+    }
+  }
+
   // Occlusion Methods
   Future<void> _checkOcclusionSupport() async {
     if (_controller == null) return;
@@ -1009,6 +1244,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             Tab(icon: Icon(Icons.cloud), text: 'Cloud Anchors'),
             Tab(icon: Icon(Icons.visibility_off), text: 'Occlusion'),
             Tab(icon: Icon(Icons.science), text: 'Physics'),
+            Tab(icon: Icon(Icons.lightbulb), text: 'Lighting'),
             Tab(icon: Icon(Icons.animation), text: 'Animations'),
             Tab(icon: Icon(Icons.dashboard), text: 'Demo'),
             Tab(icon: Icon(Icons.info), text: 'Status'),
@@ -1023,6 +1259,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           _buildCloudAnchorView(),
           _buildOcclusionView(),
           _buildPhysicsView(),
+          _buildLightingView(),
           _buildAnimationView(),
           _buildDemoView(),
           _buildStatusView(),
@@ -1869,6 +2106,298 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLightingView() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Real-time Lighting & Shadows',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+
+          // Lighting support status
+          Card(
+            child: ListTile(
+              leading: Icon(
+                _lightingSupported ? Icons.lightbulb : Icons.lightbulb_outline,
+                color: _lightingSupported ? Colors.green : Colors.red,
+              ),
+              title: const Text('Lighting Support'),
+              subtitle: Text(
+                _lightingSupported ? 'Supported' : 'Not Supported',
+              ),
+              trailing: ElevatedButton(
+                onPressed: _checkLightingSupport,
+                child: const Text('Check Support'),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Lighting controls
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Lighting Controls',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _lightingSupported ? _addPointLight : null,
+                        icon: const Icon(Icons.lightbulb),
+                        label: const Text('Add Point Light'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _lightingSupported ? _addSpotLight : null,
+                        icon: const Icon(Icons.flashlight_on),
+                        label: const Text('Add Spot Light'),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _lightingSupported ? _toggleShadows : null,
+                        icon: Icon(
+                          _shadowsEnabled
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                        label: Text(
+                          _shadowsEnabled
+                              ? 'Disable Shadows'
+                              : 'Enable Shadows',
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _lightingSupported ? _clearLights : null,
+                        icon: const Icon(Icons.clear_all),
+                        label: const Text('Clear All Lights'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Shadow quality controls
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Shadow Quality',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButton<ShadowQuality>(
+                          value: _shadowQuality,
+                          isExpanded: true,
+                          onChanged: _lightingSupported
+                              ? (value) {
+                                  if (value != null) {
+                                    _setShadowQuality(value);
+                                  }
+                                }
+                              : null,
+                          items: ShadowQuality.values.map((quality) {
+                            return DropdownMenuItem(
+                              value: quality,
+                              child: Text(quality.name.toUpperCase()),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Current lights
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Current Lights (${_lights.length})',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  if (_lights.isEmpty)
+                    const Text('No lights added yet')
+                  else
+                    ..._lights.map(
+                      (light) => ListTile(
+                        leading: Icon(
+                          light.type == ARLightType.directional
+                              ? Icons.wb_sunny
+                              : light.type == ARLightType.point
+                              ? Icons.lightbulb
+                              : light.type == ARLightType.spot
+                              ? Icons.flashlight_on
+                              : light.type == ARLightType.ambient
+                              ? Icons.brightness_6
+                              : Icons.lightbulb_outline,
+                          color: light.isEnabled ? Colors.orange : Colors.grey,
+                        ),
+                        title: Text(light.id),
+                        subtitle: Text(
+                          '${light.type.name.toUpperCase()} - '
+                          'Intensity: ${light.intensity.toStringAsFixed(0)} '
+                          '${light.intensityUnit.name} - '
+                          'Shadows: ${light.castShadows ? "On" : "Off"}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: () async {
+                                if (_controller != null) {
+                                  try {
+                                    await _controller!.setLightEnabled(
+                                      lightId: light.id,
+                                      enabled: !light.isEnabled,
+                                    );
+                                    setState(() {});
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to toggle light: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                              icon: Icon(
+                                light.isEnabled
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () async {
+                                if (_controller != null) {
+                                  try {
+                                    await _controller!.removeLight(light.id);
+                                    _lights.removeWhere(
+                                      (l) => l.id == light.id,
+                                    );
+                                    setState(() {});
+                                  } catch (e) {
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to remove light: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.delete),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Lighting configuration
+          if (_lightingConfig != null)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Lighting Configuration',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      leading: const Icon(Icons.lightbulb),
+                      title: const Text('Global Illumination'),
+                      subtitle: Text(
+                        _lightingConfig!.enableGlobalIllumination
+                            ? 'Enabled'
+                            : 'Disabled',
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.visibility),
+                      title: const Text('Shadows'),
+                      subtitle: Text(
+                        _lightingConfig!.enableShadows ? 'Enabled' : 'Disabled',
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.tune),
+                      title: const Text('Shadow Quality'),
+                      subtitle: Text(
+                        _lightingConfig!.globalShadowQuality.name.toUpperCase(),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.color_lens),
+                      title: const Text('Ambient Intensity'),
+                      subtitle: Text(
+                        _lightingConfig!.ambientIntensity.toStringAsFixed(2),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.straighten),
+                      title: const Text('Shadow Distance'),
+                      subtitle: Text(
+                        '${_lightingConfig!.shadowDistance.toStringAsFixed(1)}m',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
         ],
       ),
     );

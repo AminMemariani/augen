@@ -19,6 +19,7 @@
 👁️ **Occlusion**: Realistic rendering with depth, person, and plane occlusion  
 ⚛️ **Physics Simulation**: Realistic interactions with dynamic, static, and kinematic bodies, materials, and constraints  
 👥 **Multi-User AR**: Shared AR experiences with real-time collaboration, participant management, and object synchronization  
+💡 **Real-time Lighting**: Dynamic lighting with shadows, ambient illumination, and multiple light types  
 🎨 **3D Objects**: Add spheres, cubes, cylinders, and custom models  
 🎭 **Custom 3D Models**: Load GLTF, GLB, OBJ, and USDZ models from assets or URLs  
 🎬 **Animations**: Full skeletal animation support with advanced blending, transitions, and state machines  
@@ -58,7 +59,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^0.10.1
+  augen: ^0.11.0
 ```
 
 Run:
@@ -883,6 +884,14 @@ Have an idea for improvement? Let us know!
 - ✅ **Zero Linting Issues** - All code now follows Dart formatting standards
 - 🚀 **Production Ready** - Codebase is fully formatted and lint-free
 
+### v0.11.0 - Real-time Lighting and Shadows
+- 💡 **Real-time Lighting** - Complete lighting system with multiple light types
+- 🌟 **Light Types** - Directional, point, spot, and ambient lights
+- 🌑 **Dynamic Shadows** - Real-time shadow casting and receiving with configurable quality
+- ⚙️ **Shadow Configuration** - Global shadow settings with quality and filtering options
+- 🎨 **Ambient Lighting** - Global illumination settings for realistic lighting
+- 🔧 **Light Management** - Add, update, and remove lights dynamically during runtime
+
 ### v0.10.0 - Multi-User AR Experiences
 - 👥 **Multi-User AR** - Complete shared AR system with real-time collaboration
 - 🔄 **Session Management** - Create, join, and leave collaborative AR sessions
@@ -901,7 +910,7 @@ Have an idea for improvement? Let us know!
 - [x] Occlusion for realistic rendering ✅ **v0.8.0**
 - [x] Physics simulation for AR objects ✅ **v0.9.0**
 - [x] Multi-user AR experiences ✅ **v0.10.0**
-- [ ] Real-time lighting and shadows
+- [x] Real-time lighting and shadows ✅ **v0.11.0**
 - [ ] Environmental probes and reflections
 
 ---

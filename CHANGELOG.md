@@ -2,6 +2,73 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2025-01-16
+
+### Added
+- 💡 **Real-time Lighting and Shadows** - Complete lighting system for AR
+  - Multiple light types: directional, point, spot, and ambient lights
+  - Dynamic shadow casting and receiving with configurable quality
+  - Global shadow settings with quality and filtering options
+  - Ambient lighting for realistic global illumination
+  - Real-time light management with add, update, and remove operations
+
+### New Features
+- **ARLight Model**: Complete light data structure with position, rotation, intensity, color, and shadow settings
+- **ARLightingConfig Model**: Global lighting configuration with shadow quality and ambient settings
+- **ARLightingStatus Model**: Real-time status updates for lighting operations
+- **Light Types**: Directional, point, spot, and ambient light support
+- **Shadow Quality**: Low, medium, high, and ultra shadow quality options
+- **Shadow Filtering**: None, soft, and PCF shadow filtering modes
+- **Light Intensity Units**: Lumen, lux, and candela intensity units
+
+### Enhanced Controller
+- **Lighting Methods**: Complete lighting API with 15+ new methods
+  - `isLightingSupported()` - Check lighting support
+  - `getLightingCapabilities()` - Get device lighting capabilities
+  - `addLight()` - Add new light to scene
+  - `removeLight()` - Remove light from scene
+  - `updateLight()` - Update existing light properties
+  - `getLights()` - Get all lights in scene
+  - `getLight()` - Get specific light by ID
+  - `setLightingConfig()` - Configure global lighting settings
+  - `getLightingConfig()` - Get current lighting configuration
+  - `setShadowsEnabled()` - Enable/disable shadows globally
+  - `setShadowQuality()` - Set shadow quality level
+  - `setAmbientLighting()` - Set global ambient lighting
+  - `updateLightPosition()` - Update light position
+  - `updateLightRotation()` - Update light rotation
+  - `updateLightIntensity()` - Update light intensity
+  - `updateLightColor()` - Update light color
+  - `setLightEnabled()` - Enable/disable specific light
+  - `setLightCastShadows()` - Control shadow casting per light
+  - `clearLights()` - Remove all lights from scene
+
+### New Streams
+- **lightsStream**: Real-time updates for all lights in scene
+- **lightingConfigStream**: Updates for lighting configuration changes
+- **lightingStatusStream**: Status updates for lighting operations
+
+### Testing & Quality
+- **Unit Tests**: Comprehensive unit tests for all lighting models and enums
+- **Controller Tests**: Full test coverage for all lighting methods and streams
+- **Integration Tests**: Complete integration tests for lighting functionality
+- **Example App**: Full lighting demonstration with UI controls
+- **Documentation**: Complete lighting documentation with examples
+
+### Performance & Optimization
+- **Efficient Rendering**: Optimized shadow rendering for mobile devices
+- **Performance Controls**: Configurable shadow quality and distance settings
+- **Battery Optimization**: Efficient lighting calculations for better battery life
+- **Thermal Management**: Consideration for device thermal constraints
+- **Quality Settings**: Adaptive quality based on device capabilities
+
+### Documentation Updates
+- **Lighting Guide**: Complete lighting and shadows documentation
+- **API Reference**: Updated with all new lighting methods and models
+- **Examples**: Comprehensive lighting examples and best practices
+- **Best Practices**: Performance optimization and mobile considerations
+- **Complete Example**: Full working example with lighting controls
+
 ## [0.10.1] - 2025-01-16
 
 ### Fixed
