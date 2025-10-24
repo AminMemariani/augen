@@ -41,6 +41,8 @@
 - Occlusion
 - Physics Simulation
 - Multi-User AR
+- Real-time Lighting & Shadows
+- Environmental Probes & Reflections
 - Animations & Advanced Blending
 - Testing
 - Examples & Best Practices
@@ -914,7 +916,7 @@ Have an idea for improvement? Let us know!
 - [x] Physics simulation for AR objects ✅ **v0.9.0**
 - [x] Multi-user AR experiences ✅ **v0.10.0**
 - [x] Real-time lighting and shadows ✅ **v0.11.0**
-- [ ] Environmental probes and reflections
+- [x] Environmental probes and reflections ✅ **v1.0.0**
 
 ---
 

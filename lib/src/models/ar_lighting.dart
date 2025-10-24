@@ -2,37 +2,16 @@ import 'vector3.dart';
 import 'quaternion.dart';
 
 /// Types of lighting sources in AR
-enum ARLightType {
-  directional,
-  point,
-  spot,
-  ambient,
-  environment,
-}
+enum ARLightType { directional, point, spot, ambient, environment }
 
 /// Shadow quality levels
-enum ShadowQuality {
-  low,
-  medium,
-  high,
-  ultra,
-}
+enum ShadowQuality { low, medium, high, ultra }
 
 /// Shadow filtering modes
-enum ShadowFilterMode {
-  hard,
-  soft,
-  pcf,
-  pcss,
-}
+enum ShadowFilterMode { hard, soft, pcf, pcss }
 
 /// Light intensity units
-enum LightIntensityUnit {
-  lux,
-  candela,
-  lumen,
-  watt,
-}
+enum LightIntensityUnit { lux, candela, lumen, watt }
 
 /// AR lighting source model
 class ARLight {
@@ -215,9 +194,15 @@ class ARLight {
         (e) => e.name == map['type'],
         orElse: () => ARLightType.directional,
       ),
-      position: Vector3.fromMap(Map<String, dynamic>.from(map['position'] as Map)),
-      rotation: Quaternion.fromMap(Map<String, dynamic>.from(map['rotation'] as Map)),
-      direction: Vector3.fromMap(Map<String, dynamic>.from(map['direction'] as Map)),
+      position: Vector3.fromMap(
+        Map<String, dynamic>.from(map['position'] as Map),
+      ),
+      rotation: Quaternion.fromMap(
+        Map<String, dynamic>.from(map['rotation'] as Map),
+      ),
+      direction: Vector3.fromMap(
+        Map<String, dynamic>.from(map['direction'] as Map),
+      ),
       intensity: (map['intensity'] as num).toDouble(),
       intensityUnit: LightIntensityUnit.values.firstWhere(
         (e) => e.name == map['intensityUnit'],
@@ -242,8 +227,12 @@ class ARLight {
       shadowNearPlane: (map['shadowNearPlane'] as num).toDouble(),
       shadowFarPlane: (map['shadowFarPlane'] as num).toDouble(),
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
-      lastModified: DateTime.fromMillisecondsSinceEpoch(map['lastModified'] as int),
-      metadata: Map<String, dynamic>.from(map['metadata'] as Map<Object?, Object?>),
+      lastModified: DateTime.fromMillisecondsSinceEpoch(
+        map['lastModified'] as int,
+      ),
+      metadata: Map<String, dynamic>.from(
+        map['metadata'] as Map<Object?, Object?>,
+      ),
     );
   }
 
@@ -363,21 +352,28 @@ class ARLightingConfig {
     Map<String, dynamic>? metadata,
   }) {
     return ARLightingConfig(
-      enableGlobalIllumination: enableGlobalIllumination ?? this.enableGlobalIllumination,
+      enableGlobalIllumination:
+          enableGlobalIllumination ?? this.enableGlobalIllumination,
       enableShadows: enableShadows ?? this.enableShadows,
       globalShadowQuality: globalShadowQuality ?? this.globalShadowQuality,
-      globalShadowFilterMode: globalShadowFilterMode ?? this.globalShadowFilterMode,
+      globalShadowFilterMode:
+          globalShadowFilterMode ?? this.globalShadowFilterMode,
       ambientIntensity: ambientIntensity ?? this.ambientIntensity,
       ambientColor: ambientColor ?? this.ambientColor,
       shadowDistance: shadowDistance ?? this.shadowDistance,
       maxShadowCasters: maxShadowCasters ?? this.maxShadowCasters,
-      enableCascadedShadows: enableCascadedShadows ?? this.enableCascadedShadows,
+      enableCascadedShadows:
+          enableCascadedShadows ?? this.enableCascadedShadows,
       shadowCascadeCount: shadowCascadeCount ?? this.shadowCascadeCount,
-      shadowCascadeDistances: shadowCascadeDistances ?? this.shadowCascadeDistances,
+      shadowCascadeDistances:
+          shadowCascadeDistances ?? this.shadowCascadeDistances,
       enableContactShadows: enableContactShadows ?? this.enableContactShadows,
-      contactShadowDistance: contactShadowDistance ?? this.contactShadowDistance,
-      enableScreenSpaceShadows: enableScreenSpaceShadows ?? this.enableScreenSpaceShadows,
-      enableRayTracedShadows: enableRayTracedShadows ?? this.enableRayTracedShadows,
+      contactShadowDistance:
+          contactShadowDistance ?? this.contactShadowDistance,
+      enableScreenSpaceShadows:
+          enableScreenSpaceShadows ?? this.enableScreenSpaceShadows,
+      enableRayTracedShadows:
+          enableRayTracedShadows ?? this.enableRayTracedShadows,
       metadata: metadata ?? this.metadata,
     );
   }
@@ -418,17 +414,22 @@ class ARLightingConfig {
         orElse: () => ShadowFilterMode.soft,
       ),
       ambientIntensity: (map['ambientIntensity'] as num).toDouble(),
-      ambientColor: Vector3.fromMap(Map<String, dynamic>.from(map['ambientColor'] as Map)),
+      ambientColor: Vector3.fromMap(
+        Map<String, dynamic>.from(map['ambientColor'] as Map),
+      ),
       shadowDistance: (map['shadowDistance'] as num).toDouble(),
       maxShadowCasters: map['maxShadowCasters'] as int,
       enableCascadedShadows: map['enableCascadedShadows'] as bool,
       shadowCascadeCount: map['shadowCascadeCount'] as int,
-      shadowCascadeDistances: (map['shadowCascadeDistances'] as List).cast<double>(),
+      shadowCascadeDistances: (map['shadowCascadeDistances'] as List)
+          .cast<double>(),
       enableContactShadows: map['enableContactShadows'] as bool,
       contactShadowDistance: (map['contactShadowDistance'] as num).toDouble(),
       enableScreenSpaceShadows: map['enableScreenSpaceShadows'] as bool,
       enableRayTracedShadows: map['enableRayTracedShadows'] as bool,
-      metadata: Map<String, dynamic>.from(map['metadata'] as Map<Object?, Object?>),
+      metadata: Map<String, dynamic>.from(
+        map['metadata'] as Map<Object?, Object?>,
+      ),
     );
   }
 
@@ -523,7 +524,9 @@ class ARLightingStatus {
       progress: (map['progress'] as num).toDouble(),
       errorMessage: map['errorMessage'] as String?,
       timestamp: DateTime.fromMillisecondsSinceEpoch(map['timestamp'] as int),
-      metadata: Map<String, dynamic>.from(map['metadata'] as Map<Object?, Object?>),
+      metadata: Map<String, dynamic>.from(
+        map['metadata'] as Map<Object?, Object?>,
+      ),
     );
   }
 

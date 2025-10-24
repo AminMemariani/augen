@@ -214,8 +214,14 @@ void main() {
         expect(restoredLight.shadowNormalBias, originalLight.shadowNormalBias);
         expect(restoredLight.shadowNearPlane, originalLight.shadowNearPlane);
         expect(restoredLight.shadowFarPlane, originalLight.shadowFarPlane);
-        expect(restoredLight.createdAt.millisecondsSinceEpoch, originalLight.createdAt.millisecondsSinceEpoch);
-        expect(restoredLight.lastModified.millisecondsSinceEpoch, originalLight.lastModified.millisecondsSinceEpoch);
+        expect(
+          restoredLight.createdAt.millisecondsSinceEpoch,
+          originalLight.createdAt.millisecondsSinceEpoch,
+        );
+        expect(
+          restoredLight.lastModified.millisecondsSinceEpoch,
+          originalLight.lastModified.millisecondsSinceEpoch,
+        );
         expect(restoredLight.metadata, originalLight.metadata);
       });
 
@@ -423,21 +429,57 @@ void main() {
         final map = originalConfig.toMap();
         final restoredConfig = ARLightingConfig.fromMap(map);
 
-        expect(restoredConfig.enableGlobalIllumination, originalConfig.enableGlobalIllumination);
+        expect(
+          restoredConfig.enableGlobalIllumination,
+          originalConfig.enableGlobalIllumination,
+        );
         expect(restoredConfig.enableShadows, originalConfig.enableShadows);
-        expect(restoredConfig.globalShadowQuality, originalConfig.globalShadowQuality);
-        expect(restoredConfig.globalShadowFilterMode, originalConfig.globalShadowFilterMode);
-        expect(restoredConfig.ambientIntensity, originalConfig.ambientIntensity);
+        expect(
+          restoredConfig.globalShadowQuality,
+          originalConfig.globalShadowQuality,
+        );
+        expect(
+          restoredConfig.globalShadowFilterMode,
+          originalConfig.globalShadowFilterMode,
+        );
+        expect(
+          restoredConfig.ambientIntensity,
+          originalConfig.ambientIntensity,
+        );
         expect(restoredConfig.ambientColor, originalConfig.ambientColor);
         expect(restoredConfig.shadowDistance, originalConfig.shadowDistance);
-        expect(restoredConfig.maxShadowCasters, originalConfig.maxShadowCasters);
-        expect(restoredConfig.enableCascadedShadows, originalConfig.enableCascadedShadows);
-        expect(restoredConfig.shadowCascadeCount, originalConfig.shadowCascadeCount);
-        expect(restoredConfig.shadowCascadeDistances, originalConfig.shadowCascadeDistances);
-        expect(restoredConfig.enableContactShadows, originalConfig.enableContactShadows);
-        expect(restoredConfig.contactShadowDistance, originalConfig.contactShadowDistance);
-        expect(restoredConfig.enableScreenSpaceShadows, originalConfig.enableScreenSpaceShadows);
-        expect(restoredConfig.enableRayTracedShadows, originalConfig.enableRayTracedShadows);
+        expect(
+          restoredConfig.maxShadowCasters,
+          originalConfig.maxShadowCasters,
+        );
+        expect(
+          restoredConfig.enableCascadedShadows,
+          originalConfig.enableCascadedShadows,
+        );
+        expect(
+          restoredConfig.shadowCascadeCount,
+          originalConfig.shadowCascadeCount,
+        );
+        expect(
+          restoredConfig.shadowCascadeDistances,
+          originalConfig.shadowCascadeDistances,
+        );
+        expect(
+          restoredConfig.enableContactShadows,
+          originalConfig.enableContactShadows,
+        );
+        expect(
+          restoredConfig.contactShadowDistance,
+          originalConfig.contactShadowDistance,
+        );
+        expect(
+          restoredConfig.enableScreenSpaceShadows,
+          originalConfig.enableScreenSpaceShadows,
+        );
+        expect(
+          restoredConfig.enableRayTracedShadows,
+          originalConfig.enableRayTracedShadows,
+        );
         expect(restoredConfig.metadata, originalConfig.metadata);
       });
 
@@ -567,7 +609,10 @@ void main() {
         expect(restoredStatus.status, originalStatus.status);
         expect(restoredStatus.progress, originalStatus.progress);
         expect(restoredStatus.errorMessage, originalStatus.errorMessage);
-        expect(restoredStatus.timestamp.millisecondsSinceEpoch, originalStatus.timestamp.millisecondsSinceEpoch);
+        expect(
+          restoredStatus.timestamp.millisecondsSinceEpoch,
+          originalStatus.timestamp.millisecondsSinceEpoch,
+        );
         expect(restoredStatus.metadata, originalStatus.metadata);
       });
 

@@ -2912,11 +2912,11 @@ void main() {
       test('isEnvironmentalProbesSupported sends correct parameters', () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'isEnvironmentalProbesSupported') {
-            return true;
-          }
-          return null;
-        });
+              if (methodCall.method == 'isEnvironmentalProbesSupported') {
+                return true;
+              }
+              return null;
+            });
 
         final result = await controller.isEnvironmentalProbesSupported();
         expect(result, true);
@@ -2930,11 +2930,11 @@ void main() {
         };
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'getEnvironmentalProbesCapabilities') {
-            return capabilities;
-          }
-          return null;
-        });
+              if (methodCall.method == 'getEnvironmentalProbesCapabilities') {
+                return capabilities;
+              }
+              return null;
+            });
 
         final result = await controller.getEnvironmentalProbesCapabilities();
         expect(result, capabilities);
@@ -2964,11 +2964,11 @@ void main() {
 
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'addEnvironmentalProbe') {
-            return probe.toMap();
-          }
-          return null;
-        });
+              if (methodCall.method == 'addEnvironmentalProbe') {
+                return probe.toMap();
+              }
+              return null;
+            });
 
         final result = await controller.addEnvironmentalProbe(probe);
         expect(result.id, 'test_probe');
@@ -2977,11 +2977,11 @@ void main() {
       test('removeEnvironmentalProbe sends correct probeId', () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'removeEnvironmentalProbe') {
-            return null;
-          }
-          return null;
-        });
+              if (methodCall.method == 'removeEnvironmentalProbe') {
+                return null;
+              }
+              return null;
+            });
 
         await controller.removeEnvironmentalProbe('test_probe');
       });
@@ -2989,11 +2989,11 @@ void main() {
       test('clearEnvironmentalProbes calls correct method', () async {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
-          if (methodCall.method == 'clearEnvironmentalProbes') {
-            return null;
-          }
-          return null;
-        });
+              if (methodCall.method == 'clearEnvironmentalProbes') {
+                return null;
+              }
+              return null;
+            });
 
         await controller.clearEnvironmentalProbes();
       });
