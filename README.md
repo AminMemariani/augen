@@ -62,7 +62,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^1.0.0
+  augen: ^1.0.1
 ```
 
 Run:
@@ -881,7 +881,13 @@ Have an idea for improvement? Let us know!
 
 ## Recent Updates
 
-### v1.0.0 - Environmental Probes and Reflections (Latest)
+### v1.0.1 - Code Quality & Documentation (Latest)
+- 🔧 **Code Formatting** - Applied Dart formatter to all files for consistent code style
+- 📚 **Documentation Updates** - Updated README.md with latest feature implementation
+- 🧹 **Code Quality** - Ensured all Dart files are compliant with Dart formatter standards
+- 📝 **Roadmap Updates** - Marked environmental probes and reflections as completed in v1.0.0
+
+### v1.0.0 - Environmental Probes and Reflections
 - 🌍 **Environmental Probes** - Complete environmental lighting system for AR
 - 🔮 **Probe Types** - Spherical, box, and planar environmental probes
 - 🌟 **Real-time Reflections** - Environmental lighting capture and reflection generation

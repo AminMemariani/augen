@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2025-01-16
+
+### Fixed
+- 🔧 **Code Formatting** - Applied Dart formatter to all files for consistent code style
+- 📚 **Documentation Updates** - Updated README.md with latest feature implementation
+- 🧹 **Code Quality** - Ensured all Dart files are compliant with Dart formatter standards
+- 📝 **Roadmap Updates** - Marked environmental probes and reflections as completed in v1.0.0
+
+### Improved
+- **Code Consistency** - All files now follow official Dart formatting standards
+- **Documentation Accuracy** - README now accurately reflects all implemented features
+- **Project Organization** - Better structured documentation and feature tracking
+
 ## [1.0.0] - 2025-01-16
 
 ### Added
