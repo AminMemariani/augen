@@ -90,7 +90,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 4,
+      length: 11,
       vsync: this,
       initialIndex: _currentTabIndex,
     );
@@ -1448,6 +1448,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         ),
       ),
       body: TabBarView(
+        controller: _tabController,
         children: [
           _buildARView(),
           _buildImageTrackingView(),
@@ -1953,14 +1954,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildOcclusionView() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Occlusion', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16),
-
           // Occlusion support status
           Card(
             child: ListTile(
@@ -1978,9 +1978,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Occlusion controls
           Card(
             child: Padding(
@@ -2028,9 +2026,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Active occlusions
           Card(
             child: Padding(
@@ -2076,9 +2072,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Occlusion info
           Card(
             child: Padding(
@@ -2113,7 +2107,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildPhysicsView() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2123,7 +2117,6 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
-
           // Physics support status
           Card(
             child: ListTile(
@@ -2139,9 +2132,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Physics controls
           Card(
             child: Padding(
@@ -2200,9 +2191,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Active physics bodies
           Card(
             child: Padding(
@@ -2241,9 +2230,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Physics constraints
           Card(
             child: Padding(
@@ -2257,48 +2244,15 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                   ),
                   const SizedBox(height: 8),
                   if (_physicsConstraints.isEmpty)
-                    const Text('No physics constraints')
+                    const Text('No constraints')
                   else
                     ..._physicsConstraints.map(
-                      (constraint) => ListTile(
-                        leading: Icon(
-                          constraint.isActive ? Icons.link : Icons.link_off,
-                          color: constraint.isActive
-                              ? Colors.green
-                              : Colors.grey,
-                        ),
-                        title: Text('${constraint.type.name} Constraint'),
-                        subtitle: Text(
-                          'ID: ${constraint.id}\n'
-                          'Body A: ${constraint.bodyAId}\n'
-                          'Body B: ${constraint.bodyBId}',
-                        ),
+                      (c) => ListTile(
+                        leading: const Icon(Icons.link),
+                        title: Text('${c.type.name} Constraint'),
+                        subtitle: Text('ID: ${c.id}'),
                       ),
                     ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Physics info
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Physics Body Types',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text('• Dynamic: Responds to forces and collisions'),
-                  const Text('• Static: Fixed position, can collide'),
-                  const Text(
-                    '• Kinematic: Moves but doesn\'t respond to forces',
-                  ),
                 ],
               ),
             ),
@@ -2309,17 +2263,16 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildLightingView() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Real-time Lighting & Shadows',
+            'Real-time Lighting',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
-
           // Lighting support status
           Card(
             child: ListTile(
@@ -2337,9 +2290,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Lighting controls
           Card(
             child: Padding(
@@ -2390,9 +2341,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Shadow quality controls
           Card(
             child: Padding(
@@ -2432,9 +2381,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Current lights
           Card(
             child: Padding(
@@ -2538,9 +2485,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Lighting configuration
           if (_lightingConfig != null)
             Card(
@@ -2601,17 +2546,16 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildEnvironmentalProbesView() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Environmental Probes & Reflections',
+            'Environmental Probes',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
-
           // Environmental probes support status
           Card(
             child: ListTile(
@@ -2633,9 +2577,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Environmental probes controls
           Card(
             child: Padding(
@@ -2686,9 +2628,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Current environmental probes
           Card(
             child: Padding(
@@ -2793,9 +2733,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Environmental probes configuration
           if (_probeConfig != null)
             Card(
@@ -3136,14 +3074,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildStatusView() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('AR Status', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 16),
-
           // Session status
           Card(
             child: ListTile(
@@ -3155,13 +3092,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               subtitle: Text(_isInitialized ? 'Active' : 'Not Initialized'),
             ),
           ),
-
           const SizedBox(height: 16),
-
           // Statistics
           Text('Statistics', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
-
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -3208,16 +3142,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
               ),
             ),
           ),
-
           const SizedBox(height: 24),
-
           // Control buttons
           Text(
             'Session Controls',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -3257,10 +3188,18 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Expanded(child: Text(label)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
     );
