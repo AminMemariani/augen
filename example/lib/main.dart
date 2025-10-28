@@ -1431,19 +1431,23 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         title: const Text('Augen AR Demo - Complete Features'),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           onTap: (index) => setState(() => _currentTabIndex = index),
-          tabs: const [
-            Tab(icon: Icon(Icons.view_in_ar), text: 'AR View'),
-            Tab(icon: Icon(Icons.image_search), text: 'Image Tracking'),
-            Tab(icon: Icon(Icons.face), text: 'Face Tracking'),
-            Tab(icon: Icon(Icons.cloud), text: 'Cloud Anchors'),
-            Tab(icon: Icon(Icons.visibility_off), text: 'Occlusion'),
-            Tab(icon: Icon(Icons.science), text: 'Physics'),
-            Tab(icon: Icon(Icons.lightbulb), text: 'Lighting'),
-            Tab(icon: Icon(Icons.refresh), text: 'Probes'),
-            Tab(icon: Icon(Icons.animation), text: 'Animations'),
-            Tab(icon: Icon(Icons.dashboard), text: 'Demo'),
-            Tab(icon: Icon(Icons.info), text: 'Status'),
+          tabs: [
+            Tab(child: _buildTab(Icons.view_in_ar, 'AR View', 'Scene')),
+            Tab(child: _buildTab(Icons.image_search, 'Image', 'Tracking')),
+            Tab(child: _buildTab(Icons.face, 'Face', 'Tracking')),
+            Tab(child: _buildTab(Icons.cloud, 'Cloud', 'Anchors')),
+            Tab(
+              child: _buildTab(Icons.visibility_off, 'Realistic', 'Occlusion'),
+            ),
+            Tab(child: _buildTab(Icons.science, 'Physics', 'Simulation')),
+            Tab(child: _buildTab(Icons.lightbulb, 'Lighting', 'Shadows')),
+            Tab(child: _buildTab(Icons.refresh, 'Env', 'Probes')),
+            Tab(child: _buildTab(Icons.animation, 'Anim', 'Blending')),
+            Tab(child: _buildTab(Icons.dashboard, 'Feature', 'Demos')),
+            Tab(child: _buildTab(Icons.info, 'AR', 'Status')),
           ],
         ),
       ),
@@ -1463,6 +1467,28 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           _buildStatusView(),
         ],
       ),
+    );
+  }
+
+  Widget _buildTab(IconData icon, String title, String subtitle) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16),
+        const SizedBox(height: 1),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 10),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 8),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 
