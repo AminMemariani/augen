@@ -62,7 +62,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^1.0.1
+  augen: ^1.0.2
 ```
 
 Run:
@@ -881,7 +881,12 @@ Have an idea for improvement? Let us know!
 
 ## Recent Updates
 
-### v1.0.1 - Code Quality & Documentation (Latest)
+### v1.0.2 - UI Improvements (Latest)
+- 🎨 **Enhanced TabBar** - Horizontal scrolling with compact labels and better alignment
+- 🔧 **UI Fixes** - Fixed TabBar overflow issues and improved responsive design
+- 📱 **Better UX** - Improved tab navigation with icons and subtitles for all features
+
+### v1.0.1 - Code Quality & Documentation
 - 🔧 **Code Formatting** - Applied Dart formatter to all files for consistent code style
 - 📚 **Documentation Updates** - Updated README.md with latest feature implementation
 - 🧹 **Code Quality** - Ensured all Dart files are compliant with Dart formatter standards

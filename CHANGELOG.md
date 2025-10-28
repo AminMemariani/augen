@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2025-01-16
+
+### Fixed
+- 🎨 **Enhanced TabBar** - Horizontal scrolling with compact labels and better alignment
+- 🔧 **UI Fixes** - Fixed TabBar overflow issues and improved responsive design
+- 📱 **Better UX** - Improved tab navigation with icons and subtitles for all features
+
+### Improved
+- **TabBar Design** - Added horizontal scrolling and compact tab labels
+- **UI Responsiveness** - Fixed overflow issues and improved layout on different screen sizes
+- **User Experience** - Better tab navigation with descriptive icons and subtitles
+
 ## [1.0.1] - 2025-01-16
 
 ### Fixed
