@@ -1,6 +1,10 @@
 package com.example.augen
 
+import android.app.Activity
 import android.content.Context
+import android.opengl.GLES11Ext
+import android.opengl.GLES20
+import android.opengl.GLSurfaceView
 import android.view.View
 import android.widget.FrameLayout
 import com.google.ar.core.*
@@ -9,7 +13,12 @@ import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.FloatBuffer
 import java.util.*
+import javax.microedition.khronos.egl.EGLConfig
+import javax.microedition.khronos.opengles.GL10
 
 class AugenARView(
     private val context: Context,
@@ -20,12 +29,15 @@ class AugenARView(
 
     private val containerView: FrameLayout = FrameLayout(context)
     private val methodChannel: MethodChannel = MethodChannel(messenger, "augen_$viewId")
-    
+
     private var arSession: Session? = null
     private var isARSessionInitialized = false
     private val nodes = mutableMapOf<String, ARNode>()
     private val anchors = mutableMapOf<String, Anchor>()
     private val detectedPlanes = mutableListOf<ARPlaneInfo>()
+
+    private var glSurfaceView: GLSurfaceView? = null
+    private var cameraTextureId = -1
 
     init {
         methodChannel.setMethodCallHandler(this)
@@ -64,44 +76,60 @@ class AugenARView(
                 return
             }
 
-            // Check if ARCore is supported
+            // Check if ARCore is supported and installed
             val availability = ArCoreApk.getInstance().checkAvailability(context)
             if (availability.isTransient) {
-                // Wait and check again
                 result.error("AR_CHECKING", "Checking AR availability...", null)
                 return
             }
 
             if (availability != ArCoreApk.Availability.SUPPORTED_INSTALLED) {
-                result.error("AR_NOT_SUPPORTED", "ARCore is not supported on this device", null)
+                // Try to request install
+                if (availability == ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD ||
+                    availability == ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED) {
+                    try {
+                        val activity = context as? Activity
+                        if (activity != null) {
+                            ArCoreApk.getInstance().requestInstall(activity, true)
+                        }
+                    } catch (_: Exception) {}
+                }
+                result.error("AR_NOT_SUPPORTED", "ARCore is not supported or not installed on this device (status: $availability)", null)
                 return
             }
 
-            // Create AR session
-            arSession = Session(context).apply {
+            // Read config from call.arguments (sent by Dart controller.initialize())
+            val args = call.arguments as? Map<String, Any> ?: creationParams
+
+            // Create AR session — needs an Activity context
+            val activityContext = context as? Activity ?: run {
+                result.error("INIT_ERROR", "AR requires an Activity context", null)
+                return
+            }
+
+            arSession = Session(activityContext).apply {
                 val config = Config(this)
-                
-                // Apply configuration from params
-                val planeDetection = creationParams["planeDetection"] as? Boolean ?: true
+
+                val planeDetection = args["planeDetection"] as? Boolean ?: true
                 config.planeFindingMode = if (planeDetection) {
                     Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
                 } else {
                     Config.PlaneFindingMode.DISABLED
                 }
 
-                val lightEstimation = creationParams["lightEstimation"] as? Boolean ?: true
+                val lightEstimation = args["lightEstimation"] as? Boolean ?: true
                 config.lightEstimationMode = if (lightEstimation) {
                     Config.LightEstimationMode.AMBIENT_INTENSITY
                 } else {
                     Config.LightEstimationMode.DISABLED
                 }
 
-                val depthData = creationParams["depthData"] as? Boolean ?: false
+                val depthData = args["depthData"] as? Boolean ?: false
                 if (isDepthModeSupported(Config.DepthMode.AUTOMATIC) && depthData) {
                     config.depthMode = Config.DepthMode.AUTOMATIC
                 }
 
-                val autoFocus = creationParams["autoFocus"] as? Boolean ?: true
+                val autoFocus = args["autoFocus"] as? Boolean ?: true
                 config.focusMode = if (autoFocus) {
                     Config.FocusMode.AUTO
                 } else {
@@ -111,10 +139,210 @@ class AugenARView(
                 configure(config)
             }
 
+            // Set up the GL surface view for camera rendering
+            setupGLSurfaceView()
+
             isARSessionInitialized = true
             result.success(null)
         } catch (e: Exception) {
             result.error("INIT_ERROR", "Failed to initialize AR: ${e.message}", null)
+        }
+    }
+
+    private fun setupGLSurfaceView() {
+        glSurfaceView = GLSurfaceView(context).apply {
+            preserveEGLContextOnPause = true
+            setEGLContextClientVersion(2)
+            setEGLConfigChooser(8, 8, 8, 8, 16, 0)
+            setRenderer(ARRenderer())
+            renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
+        }
+        containerView.addView(glSurfaceView, FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+    }
+
+    private inner class ARRenderer : GLSurfaceView.Renderer {
+        private var cameraBackgroundRenderer: CameraBackgroundRenderer? = null
+
+        override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+            GLES20.glClearColor(0f, 0f, 0f, 1f)
+
+            // Create the external texture for camera
+            val textures = IntArray(1)
+            GLES20.glGenTextures(1, textures, 0)
+            cameraTextureId = textures[0]
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, cameraTextureId)
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+            GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+
+            arSession?.setCameraTextureName(cameraTextureId)
+            cameraBackgroundRenderer = CameraBackgroundRenderer()
+
+            // Resume session now that GL is ready
+            try {
+                arSession?.resume()
+            } catch (e: CameraNotAvailableException) {
+                arSession = null
+                isARSessionInitialized = false
+            }
+        }
+
+        override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+            GLES20.glViewport(0, 0, width, height)
+            arSession?.setDisplayGeometry(0, width, height)
+        }
+
+        override fun onDrawFrame(gl: GL10?) {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
+
+            val session = arSession ?: return
+            try {
+                val frame = session.update()
+                cameraBackgroundRenderer?.draw(frame)
+
+                // Report detected planes back to Flutter
+                val allPlanes = session.getAllTrackables(Plane::class.java)
+                val activePlanes = allPlanes.filter { it.trackingState == TrackingState.TRACKING }
+                if (activePlanes.isNotEmpty()) {
+                    val planeData = activePlanes.map { plane ->
+                        val pose = plane.centerPose
+                        mapOf(
+                            "id" to plane.hashCode().toString(),
+                            "type" to when (plane.type) {
+                                Plane.Type.HORIZONTAL_UPWARD_FACING -> "horizontal_up"
+                                Plane.Type.HORIZONTAL_DOWNWARD_FACING -> "horizontal_down"
+                                Plane.Type.VERTICAL -> "vertical"
+                                else -> "unknown"
+                            },
+                            "centerX" to pose.tx().toDouble(),
+                            "centerY" to pose.ty().toDouble(),
+                            "centerZ" to pose.tz().toDouble(),
+                            "width" to plane.extentX.toDouble(),
+                            "height" to plane.extentZ.toDouble()
+                        )
+                    }
+                    // Send plane data back to Dart on the main thread
+                    containerView.post {
+                        methodChannel.invokeMethod("onPlanesDetected", planeData)
+                    }
+                }
+            } catch (_: Exception) {
+                // Session may have been paused or closed
+            }
+        }
+    }
+
+    /**
+     * Renders the ARCore camera background using OpenGL ES 2.0.
+     */
+    private class CameraBackgroundRenderer {
+        private val vertexShaderCode = """
+            attribute vec4 aPosition;
+            attribute vec2 aTexCoord;
+            varying vec2 vTexCoord;
+            void main() {
+                gl_Position = aPosition;
+                vTexCoord = aTexCoord;
+            }
+        """.trimIndent()
+
+        private val fragmentShaderCode = """
+            #extension GL_OES_EGL_image_external : require
+            precision mediump float;
+            varying vec2 vTexCoord;
+            uniform samplerExternalOES sTexture;
+            void main() {
+                gl_FragColor = texture2D(sTexture, vTexCoord);
+            }
+        """.trimIndent()
+
+        private val program: Int
+        private val quadVertices: FloatBuffer
+        private var quadTexCoords: FloatBuffer
+
+        init {
+            // Full-screen quad vertices
+            val vertices = floatArrayOf(
+                -1f, -1f,  // bottom-left
+                 1f, -1f,  // bottom-right
+                -1f,  1f,  // top-left
+                 1f,  1f   // top-right
+            )
+            quadVertices = ByteBuffer.allocateDirect(vertices.size * 4)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer()
+                .put(vertices)
+            quadVertices.position(0)
+
+            // Default tex coords (will be updated by ARCore)
+            val texCoords = floatArrayOf(
+                0f, 1f,
+                1f, 1f,
+                0f, 0f,
+                1f, 0f
+            )
+            quadTexCoords = ByteBuffer.allocateDirect(texCoords.size * 4)
+                .order(ByteOrder.nativeOrder())
+                .asFloatBuffer()
+                .put(texCoords)
+            quadTexCoords.position(0)
+
+            // Compile shaders and link program
+            val vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
+            val fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode)
+            program = GLES20.glCreateProgram()
+            GLES20.glAttachShader(program, vertexShader)
+            GLES20.glAttachShader(program, fragmentShader)
+            GLES20.glLinkProgram(program)
+        }
+
+        fun draw(frame: Frame) {
+            if (frame.hasDisplayGeometryChanged()) {
+                frame.transformCoordinates2d(
+                    Coordinates2d.OPENGL_NORMALIZED_DEVICE_COORDINATES,
+                    quadVertices,
+                    Coordinates2d.TEXTURE_NORMALIZED,
+                    quadTexCoords
+                )
+            }
+
+            // Disable depth test for background
+            GLES20.glDisable(GLES20.GL_DEPTH_TEST)
+            GLES20.glDepthMask(false)
+
+            GLES20.glUseProgram(program)
+
+            val positionHandle = GLES20.glGetAttribLocation(program, "aPosition")
+            val texCoordHandle = GLES20.glGetAttribLocation(program, "aTexCoord")
+
+            GLES20.glEnableVertexAttribArray(positionHandle)
+            GLES20.glEnableVertexAttribArray(texCoordHandle)
+
+            quadVertices.position(0)
+            GLES20.glVertexAttribPointer(positionHandle, 2, GLES20.GL_FLOAT, false, 0, quadVertices)
+
+            quadTexCoords.position(0)
+            GLES20.glVertexAttribPointer(texCoordHandle, 2, GLES20.GL_FLOAT, false, 0, quadTexCoords)
+
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+
+            GLES20.glDisableVertexAttribArray(positionHandle)
+            GLES20.glDisableVertexAttribArray(texCoordHandle)
+
+            // Re-enable depth for other rendering
+            GLES20.glDepthMask(true)
+            GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+        }
+
+        private fun loadShader(type: Int, shaderCode: String): Int {
+            val shader = GLES20.glCreateShader(type)
+            GLES20.glShaderSource(shader, shaderCode)
+            GLES20.glCompileShader(shader)
+            return shader
         }
     }
 
@@ -318,6 +546,7 @@ class AugenARView(
 
     private fun pause(result: MethodChannel.Result) {
         try {
+            glSurfaceView?.onPause()
             arSession?.pause()
             result.success(null)
         } catch (e: Exception) {
@@ -328,6 +557,7 @@ class AugenARView(
     private fun resume(result: MethodChannel.Result) {
         try {
             arSession?.resume()
+            glSurfaceView?.onResume()
             result.success(null)
         } catch (e: Exception) {
             result.error("RESUME_ERROR", "Failed to resume AR: ${e.message}", null)
@@ -458,8 +688,10 @@ class AugenARView(
 
     override fun dispose() {
         methodChannel.setMethodCallHandler(null)
+        glSurfaceView?.onPause()
         arSession?.close()
         arSession = null
+        glSurfaceView = null
     }
 
     // Helper classes
