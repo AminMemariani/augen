@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2026-03-20
+
+### Fixed
+- 🤖 **Android AR Camera Not Rendering** - Fixed critical issue where the AR camera feed was not displayed on Android devices
+  - Added `GLSurfaceView` with OpenGL ES 2.0 renderer for ARCore camera background rendering
+  - Added proper AR session lifecycle management (`session.resume()` was never called)
+  - Fixed `Activity` context handling — ARCore requires an `Activity`, not `applicationContext`
+  - Made `AugenPlugin` implement `ActivityAware` to provide the correct context
+  - Fixed `initialize` method reading config from wrong source (`creationParams` instead of `call.arguments`)
+  - Added camera background shader program for rendering the ARCore camera texture
+  - Added real-time plane detection reporting back to Flutter via method channel
+  - Proper `GLSurfaceView` lifecycle management in pause/resume/dispose
+
 ## [1.0.2] - 2025-01-16
 
 ### Fixed

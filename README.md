@@ -62,7 +62,7 @@ Add `augen` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  augen: ^1.0.2
+  augen: ^1.0.3
 ```
 
 Run:
@@ -881,7 +881,13 @@ Have an idea for improvement? Let us know!
 
 ## Recent Updates
 
-### v1.0.2 - UI Improvements (Latest)
+### v1.0.3 - Android AR Camera Fix (Latest)
+- 🤖 **Android AR Camera** - Fixed critical issue where the AR camera feed was not displayed on Android
+- 🎨 **OpenGL Renderer** - Added GLSurfaceView with camera background rendering for ARCore
+- 🔧 **Session Lifecycle** - Fixed AR session not resuming and proper Activity context handling
+- 📡 **Plane Reporting** - Added real-time plane detection reporting from native to Flutter
+
+### v1.0.2 - UI Improvements
 - 🎨 **Enhanced TabBar** - Horizontal scrolling with compact labels and better alignment
 - 🔧 **UI Fixes** - Fixed TabBar overflow issues and improved responsive design
 - 📱 **Better UX** - Improved tab navigation with icons and subtitles for all features
