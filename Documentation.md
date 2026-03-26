@@ -7,144 +7,29 @@
 ## Table of Contents
 
 1. [Getting Started](#1-getting-started)
-   - [Prerequisites](#prerequisites)
-   - [Installation](#installation)
-   - [Platform Setup](#platform-setup)
-   - [Your First AR App](#your-first-ar-app)
-   - [Common Issues](#common-issues)
-
+   - Prerequisites, Installation, Platform Setup, Your First AR App, Common Issues
 2. [API Reference](#2-api-reference)
-   - [Core Classes](#core-classes)
-   - [Configuration](#configuration)
-   - [Models](#models)
-   - [Enums](#enums)
-   - [Error Handling](#error-handling)
-
+   - Core Classes, Configuration, Models, Enums, Error Handling
 3. [Custom 3D Models](#3-custom-3d-models)
-   - [Supported Formats](#supported-formats)
-   - [Loading Models](#loading-models)
-   - [Platform Considerations](#platform-considerations)
-   - [Best Practices](#best-practices-models)
-
+   - Supported Formats, Loading Models, Platform Considerations, Best Practices
 4. [Image Tracking](#4-image-tracking)
-   - [Overview](#overview-image-tracking)
-   - [Setting Up Image Targets](#setting-up-image-targets)
-   - [Tracking Images](#tracking-images)
-   - [Anchoring Content](#anchoring-content)
-   - [Best Practices](#best-practices-image-tracking)
-
+   - Setting Up Image Targets, Tracking Images, Anchoring Content
 5. [Face Tracking](#5-face-tracking)
-   - [Overview](#overview-face-tracking)
-   - [Setting Up Face Tracking](#setting-up-face-tracking)
-   - [Tracking Faces](#tracking-faces)
-   - [Face Landmarks](#face-landmarks)
-   - [Anchoring Content to Faces](#anchoring-content-to-faces)
-   - [Best Practices](#best-practices-face-tracking)
-
+   - Setting Up, Tracking Faces, Face Landmarks, Anchoring Content
 6. [Cloud Anchors](#6-cloud-anchors)
-   - [Overview](#overview-cloud-anchors)
-   - [Setting Up Cloud Anchors](#setting-up-cloud-anchors)
-   - [Creating Cloud Anchors](#creating-cloud-anchors)
-   - [Resolving Cloud Anchors](#resolving-cloud-anchors)
-   - [Sharing Cloud Anchors](#sharing-cloud-anchors)
-   - [Best Practices](#best-practices-cloud-anchors)
-
+   - Creating, Resolving, Sharing Cloud Anchors
 7. [Occlusion](#7-occlusion)
-   - [Overview](#overview-occlusion)
-   - [Setting Up Occlusion](#setting-up-occlusion)
-   - [Creating Occlusions](#creating-occlusions)
-   - [Managing Occlusions](#managing-occlusions)
-   - [Monitoring Occlusion Status](#monitoring-occlusion-status)
-   - [Occlusion Types](#occlusion-types)
-   - [Best Practices](#best-practices-occlusion)
-
+   - Depth, Person, and Plane Occlusion
 8. [Physics Simulation](#8-physics-simulation)
-   - [Overview](#overview-1)
-   - [Setting Up Physics](#setting-up-physics)
-   - [Creating Physics Bodies](#creating-physics-bodies)
-   - [Physics Constraints](#physics-constraints)
-   - [Managing Physics Bodies](#managing-physics-bodies)
-   - [Monitoring Physics Status](#monitoring-physics-status)
-   - [Physics Body Types](#physics-body-types)
-   - [Physics Materials](#physics-materials)
-   - [Physics World Configuration](#physics-world-configuration)
-   - [Best Practices](#best-practices-1)
-   - [Complete Example](#complete-example-1)
-
-9. [Multi-User AR](#9-multi-user-ar)
-   - [Overview](#overview-multi-user)
-   - [Setting Up Multi-User Sessions](#setting-up-multi-user-sessions)
-   - [Creating Sessions](#creating-sessions)
-   - [Joining Sessions](#joining-sessions)
-   - [Managing Participants](#managing-participants)
-   - [Sharing Objects](#sharing-objects)
-   - [Monitoring Multi-User Status](#monitoring-multi-user-status)
-   - [Session Capabilities](#session-capabilities)
-   - [Best Practices](#best-practices-multi-user)
-   - [Complete Example](#complete-example-multi-user)
-
-10. [Real-time Lighting and Shadows](#10-real-time-lighting-and-shadows)
-   - [Overview](#overview-lighting)
-   - [Setting Up Lighting](#setting-up-lighting)
-   - [Light Types](#light-types)
-   - [Shadow Configuration](#shadow-configuration)
-   - [Ambient Lighting](#ambient-lighting)
-   - [Best Practices](#best-practices-lighting)
-
-11. [Environmental Probes and Reflections](#11-environmental-probes-and-reflections)
-   - [Setting Up Environmental Probes](#setting-up-environmental-probes)
-   - [Creating Environmental Probes](#creating-environmental-probes)
-   - [Managing Environmental Probes](#managing-environmental-probes)
-   - [Monitoring Environmental Probes](#monitoring-environmental-probes)
-   - [Best Practices](#environmental-probes-best-practices)
-
-12. [Animations](#12-animations)
-   - [Basic Animations](#basic-animations)
-   - [Advanced Animation Features](#advanced-animation-features)
-   - [Animation Blending](#animation-blending)
-   - [Crossfade Transitions](#crossfade-transitions)
-   - [Animation State Machines](#animation-state-machines)
-   - [Blend Trees](#blend-trees)
-   - [Layered Animations](#layered-animations)
-
-12. [Advanced Animation Blending - Complete Guide](#12-advanced-animation-blending---complete-guide)
-   - [Overview](#overview-advanced)
-   - [Animation Blending In-Depth](#animation-blending-in-depth)
-   - [Crossfade Transitions In-Depth](#crossfade-transitions-in-depth)
-   - [Animation State Machines In-Depth](#animation-state-machines-in-depth)
-   - [Blend Trees In-Depth](#blend-trees-in-depth)
-   - [Layered & Additive Animations In-Depth](#layered--additive-animations-in-depth)
-   - [Real-World Examples](#real-world-examples)
-   - [Best Practices](#best-practices-animation)
-   - [Performance Tips](#performance-tips)
-   - [Troubleshooting](#troubleshooting)
-
-12. [Advanced Animation Features Summary](#12-advanced-animation-features-summary)
-   - [Implementation Overview](#implementation-overview)
-   - [New Features](#new-features)
-   - [Files Created](#files-created)
-   - [Key Capabilities](#key-capabilities)
-   - [Platform Implementation Notes](#platform-implementation-notes)
-
-10. [Testing](#10-testing)
-   - [Test Summary](#test-summary)
-   - [Test Coverage](#test-coverage)
-   - [Running Tests](#running-tests)
-
-11. [Project Information](#11-project-information)
-   - [Features](#features)
-   - [Architecture](#architecture)
-   - [Roadmap](#roadmap)
-   - [Contributing](#contributing)
-
-12. [Project Summary & Architecture](#12-project-summary--architecture)
-    - [Project Overview](#project-overview)
-    - [Project Structure](#project-structure)
-    - [Core Features Implemented](#core-features-implemented)
-    - [API Highlights](#api-highlights)
-    - [Platform Requirements](#platform-requirements)
-    - [Example Application](#example-application)
-    - [What Makes This Plugin Special](#what-makes-this-plugin-special)
+   - Physics Bodies, Constraints, Materials, World Configuration
+9. [Animations](#9-animations)
+   - Basic Animations, Blending, Transitions, State Machines, Blend Trees, Layered Animations
+10. [Multi-User AR](#10-multi-user-ar)
+    - Sessions, Participants, Shared Objects, Capabilities
+11. [Real-time Lighting and Shadows](#11-real-time-lighting-and-shadows)
+    - Light Types, Shadow Configuration, Ambient Lighting
+12. [Environmental Probes and Reflections](#12-environmental-probes-and-reflections)
+    - Spherical, Box, and Planar Probes
 
 ---
 
@@ -156,11 +41,11 @@ This guide will help you create your first AR application using Augen in just a 
 
 Before you begin, make sure you have:
 
-- ✅ Flutter SDK installed (3.3.0 or higher)
-- ✅ Dart SDK (3.9.2 or higher)
-- ✅ For Android: Android Studio with API level 24+
-- ✅ For iOS: Xcode 13+ with iOS 13.0+ deployment target
-- ✅ A physical device (AR doesn't work well in simulators/emulators)
+- Flutter SDK 3.3.0 or higher
+- Dart SDK 3.9.2 or higher
+- For Android: Android Studio with API level 24+
+- For iOS: Xcode 13+ with iOS 13.0+ deployment target
+- A physical device (AR does not work in simulators/emulators)
 
 ## Installation
 
@@ -179,7 +64,7 @@ Open `pubspec.yaml` and add Augen:
 dependencies:
   flutter:
     sdk: flutter
-  augen: ^0.4.0
+  augen: ^1.0.3
 ```
 
 Then run:
@@ -485,10 +370,10 @@ flutter run
 
 ## Tips for Best AR Experience
 
-1. 🔦 **Good Lighting**: AR works best in well-lit environments
-2. 📱 **Move Slowly**: Move your device slowly to help detect surfaces
-3. 🎯 **Flat Surfaces**: Start with flat surfaces like tables or floors
-4. 🔄 **Scan the Area**: Move your device around to detect more surfaces
+1. **Good Lighting** — AR works best in well-lit environments
+2. **Move Slowly** — move your device slowly to help detect surfaces
+3. **Flat Surfaces** — start with flat surfaces like tables or floors
+4. **Scan the Area** — move your device around to detect more surfaces
 
 ---
 
@@ -3672,11 +3557,11 @@ print('Available bones: $bones');
 
 ---
 
-# 9. Advanced Animation Blending - Complete Guide
+## Advanced Animation Blending
 
-Complete guide for using advanced animation blending, transitions, state machines, and blend trees in Augen AR.
+Comprehensive guide for animation blending, transitions, state machines, and blend trees.
 
-## Overview (Advanced)
+### Overview
 
 The Augen AR plugin provides industry-standard animation blending and transition systems, enabling you to create complex, lifelike character animations in your AR applications.
 
@@ -5068,678 +4953,16 @@ print('Bone count: ${bones.length}');
 
 ---
 
-# 6. Advanced Animation Features Summary
 
-## Implementation Overview
+# 10. Multi-User AR
 
-Successfully implemented a comprehensive advanced animation blending and transition system for the Augen AR plugin. All features are fully tested with **177 passing tests** (up from 87 tests).
-
-## New Features
-
-### 1. Animation Blending System
-- **AnimationBlend** model: Define weighted animation combinations
-- **AnimationBlendSet** model: Manage collections of blended animations
-- **BlendMode** support: Replace, Additive, Weighted, Override, Multiply
-- **BlendType** support: Linear, Slerp, Cubic, Step interpolation
-- Dynamic weight updates during runtime
-- Automatic weight normalization
-
-### 2. Crossfade Transitions
-- **AnimationTransition** model: Define transitions between animations
-- **CrossfadeTransition** model: Specialized smooth crossfades
-- **TransitionCurve** support: Linear, EaseIn, EaseOut, EaseInOut, Cubic, Elastic, Bounce
-- Custom weight curves for fine-grained control
-- Priority-based transition system
-- Conditional transitions based on parameters
-- Interruptible/non-interruptible transitions
-- Real-time transition progress tracking
-
-### 3. Animation State Machines
-- **AnimationState** class: Define animation states with transitions
-- **AnimationStateMachine** class: Complete state machine system
-- **StateMachineStatus**: Real-time state machine status updates
-- Entry states and auto-start support
-- State-specific and any-state transitions
-- Conditional transitions with parameter matching
-- Minimum/maximum duration constraints
-- State tags for categorization
-- Action callbacks (onEnter, onExit, onUpdate)
-
-### 4. Blend Trees
-- **BlendTreeNode** abstract class: Base for all blend tree nodes
-- **AnimationNode**: Leaf node for single animations
-- **Blend1DNode**: 1D parameter-based blending (e.g., speed)
-- **Blend2DNode**: 2D parameter-based blending (e.g., speed + direction)
-- **AdditiveNode**: Layer animations additively
-- **OverrideNode**: Override specific bones with different animations
-- **SelectorNode**: Choose animations by index
-- **ConditionalNode**: Switch animations based on boolean conditions
-- **AnimationBlendTree**: Complete tree with parameters
-- **BlendTreeParameter**: Typed parameters (float, int, bool, string)
-- Recursive evaluation system
-- Parameter validation
-
-### 5. Layered Animations
-- Multi-layer animation support
-- Per-layer weight control
-- Additive blending on layers
-- Bone masking for selective animation
-- Layer priority system
-- Query current animation layers
-
-### 6. Controller Methods Added
-
-**Blending Methods:**
-- `playBlendSet()` - Play animation blend set
-- `stopBlendSet()` - Stop blend set
-- `updateBlendWeights()` - Update blend weights dynamically
-- `blendAnimations()` - Simple helper for weighted blending
-
-**Transition Methods:**
-- `startCrossfadeTransition()` - Start crossfade transition
-- `crossfadeToAnimation()` - Simple crossfade helper
-- `stopTransition()` - Stop running transition
-
-**State Machine Methods:**
-- `startStateMachine()` - Start animation state machine
-- `stopStateMachine()` - Stop state machine
-- `updateStateMachineParameters()` - Update parameters
-- `triggerStateMachineTransition()` - Manually trigger transition
-
-**Blend Tree Methods:**
-- `startBlendTree()` - Start blend tree
-- `stopBlendTree()` - Stop blend tree
-- `updateBlendTreeParameters()` - Update tree parameters
-
-**Layer Methods:**
-- `playAdditiveAnimation()` - Play animation on specific layer
-- `setAnimationLayerWeight()` - Control layer weight
-- `getAnimationLayers()` - Query current layers
-- `setAnimationBoneMask()` - Set bone mask for layer
-- `getBoneHierarchy()` - Get model's bone structure
-
-### 7. Streams Added
-- `transitionStatusStream` - Monitor transition progress
-- `stateMachineStatusStream` - Monitor state machine updates
-
-## Files Created
-
-### Models:
-1. `lib/src/models/animation_blend.dart` - Animation blending models
-2. `lib/src/models/animation_transition.dart` - Transition models
-3. `lib/src/models/animation_state_machine.dart` - State machine models
-4. `lib/src/models/animation_blend_tree.dart` - Blend tree system
-
-### Tests:
-1. `test/animation_blending_test.dart` - Blending and transition tests (57 tests)
-2. `test/animation_blend_tree_test.dart` - Blend tree tests (42 tests)
-3. Extended `test/augen_controller_test.dart` - Controller method tests (15 new tests)
-
-### Documentation:
-1. `ADVANCED_ANIMATION_BLENDING.md` - Comprehensive guide for advanced features
-2. Updated `README.md` - Updated features, test count, and roadmap
-
-## Key Capabilities
-
-### What You Can Do Now:
-
-1. **Smooth Character Movement**: Blend between idle, walk, run based on speed
-2. **Directional Movement**: 2D blending for omnidirectional movement
-3. **Gesture Layering**: Play gestures on top of locomotion animations
-4. **Combat Systems**: Complex state machines for attack, defense, combos
-5. **Reactive Characters**: Additive reactions and emotes
-6. **Weapon Switching**: Selector-based animation switching
-7. **Procedural Animation**: Parameter-driven animation control
-8. **Cinematic Transitions**: Smooth, customizable animation transitions
-
-## Platform Implementation Notes
-
-While the Dart API is complete and fully tested, the native platform implementations (Android/iOS) will need to implement the corresponding native methods:
-- `playBlendSet` - Blend multiple animations with weights
-- `startCrossfadeTransition` - Handle smooth crossfades
-- `startStateMachine` - Manage state machine execution
-- `startBlendTree` - Evaluate and apply blend trees
-- `playAdditiveAnimation` - Layer animations additively
-- And all other new controller methods
-
-The Dart-side implementation provides the complete data structures and API, making it straightforward to implement the native counterparts using ARCore's Filament (Android) and RealityKit (iOS).
-
----
-
-# 7. Testing
-
-## Test Summary
-
-The Augen AR Flutter plugin has comprehensive test coverage with **177 passing tests**.
-
-### Test Results
-
-✅ **177/177 tests PASSING**
-
-```
-All tests passed! (ran in ~2s)
-```
-
-## Test Coverage
-
-### Test Breakdown
-
-#### Animation Blending Tests (57 tests)
-**File:** `test/animation_blending_test.dart`
-
-- AnimationBlend (10 tests) ✅
-- AnimationBlendSet (5 tests) ✅
-- AnimationTransition (7 tests) ✅
-- TransitionStatus (3 tests) ✅
-- CrossfadeTransition (3 tests) ✅
-- AnimationStateMachine (7 tests) ✅
-- StateMachineStatus (3 tests) ✅
-- Enum Tests (13 tests) ✅
-
-#### Blend Tree Tests (42 tests)
-**File:** `test/animation_blend_tree_test.dart`
-
-- AnimationNode (4 tests) ✅
-- Blend1DNode (6 tests) ✅
-- Blend2DNode (5 tests) ✅
-- AdditiveNode (4 tests) ✅
-- OverrideNode (3 tests) ✅
-- SelectorNode (5 tests) ✅
-- ConditionalNode (5 tests) ✅
-- AnimationBlendTree (4 tests) ✅
-- BlendTreeParameter (2 tests) ✅
-- Factory and Enum Tests (4 tests) ✅
-
-#### Controller Tests (46 tests)
-**File:** `test/augen_controller_test.dart`
-
-- Basic Operations (23 tests) ✅
-- Animation Methods (10 tests) ✅
-- Animation Blending Methods (11 tests) ✅
-- Stream Tests (2 tests) ✅
-
-#### Model Tests (20 tests)
-**File:** `test/augen_test.dart`
-
-- Vector3 (5 tests) ✅
-- Quaternion (5 tests) ✅
-- ARNode (11 tests) ✅
-- ARPlane (4 tests) ✅
-- ARAnchor (3 tests) ✅
-- ARHitResult (4 tests) ✅
-- ARSessionConfig (4 tests) ✅
-- ModelFormat (2 tests) ✅
-
-#### Animation Tests (22 tests)
-**File:** `test/augen_animation_test.dart`
-
-- ARAnimation (5 tests) ✅
-- AnimationLoopMode (2 tests) ✅
-- AnimationState (2 tests) ✅
-- AnimationStatus (4 tests) ✅
-- ARNode with Animations (4 tests) ✅
-
-## Test Coverage by Component
-
-| Component | Tests | Coverage |
-|-----------|-------|----------|
-| Animation Blending | 57 | 100% |
-| Blend Trees | 42 | 100% |
-| Controller | 46 | 100% |
-| Models | 20 | 100% |
-| Animations | 22 | 100% |
-| Method Channel | 1 | 100% |
-| **Total** | **177** | **100%** |
-
-## Running Tests
-
-### Run All Tests
-
-```bash
-flutter test
-```
-
-### Run Specific Test File
-
-```bash
-flutter test test/animation_blending_test.dart
-flutter test test/animation_blend_tree_test.dart
-flutter test test/augen_controller_test.dart
-flutter test test/augen_animation_test.dart
-flutter test test/augen_test.dart
-```
-
-### Run with Coverage
-
-```bash
-flutter test --coverage
-```
-
-## Test Quality
-
-The test suite ensures:
-
-1. **Comprehensive Coverage**: All public APIs are tested
-2. **Edge Cases**: Null handling, error cases, boundary conditions
-3. **Mock Quality**: Proper mock implementations
-4. **Isolation**: Tests are fully isolated and deterministic
-5. **Type Safety**: All models validate data types correctly
-
----
-
-# 8. Project Information
-
-## Features
-
-Augen supports full AR functionality including:
-
-- ✅ Skeletal (bone-based) animations
-- ✅ Morph target animations
-- ✅ Transform animations
-- ✅ Multiple animations per model
-- ✅ **Advanced Animation Blending & Transitions**
-- ✅ **Animation State Machines**
-- ✅ **Blend Trees with Parameter Control**
-- ✅ **Layered Animations & Additive Blending**
-- ✅ **Smooth Crossfade Transitions**
-- ✅ **Bone Masking & Selective Animation**
-- ✅ Speed control
-- ✅ Loop modes (once, loop, ping-pong)
-- ✅ Time seeking and scrubbing
-- ✅ Cross-platform AR (Android ARCore + iOS RealityKit)
-- ✅ Pure Dart API - no native code required
-- ✅ Plane detection (horizontal and vertical)
-- ✅ Hit testing for surface detection
-- ✅ 3D objects (sphere, cube, cylinder, custom models)
-- ✅ Custom 3D model loading (GLTF, GLB, OBJ, USDZ)
-- ✅ Anchor management
-- ✅ Real-time position tracking
-- ✅ Light estimation
-
-## Architecture
-
-### Communication Flow
-```
-Flutter Dart Code
-    ↓ (Method Channel)
-Platform Interface
-    ↓
-Android (ARCore) / iOS (RealityKit)
-    ↓
-Native AR Framework
-```
-
-### Data Flow
-```
-AR Session → Native Code → Method Channel → Dart Streams → Flutter UI
-```
-
-### Platform Views
-- Android: Hybrid composition with AndroidView
-- iOS: UiKitView for native view embedding
-
-## Platform Support
-
-| Platform | Minimum Version | AR Framework |
-|----------|----------------|--------------|
-| Android  | API 24 (Android 7.0) | ARCore |
-| iOS      | iOS 13.0       | RealityKit & ARKit |
-
-## Roadmap
-
-- [x] Custom 3D model loading (GLTF, GLB, OBJ, USDZ) ✅ **v0.2.0**
-- [x] Model animations and skeletal animation support ✅ **v0.3.0**
-- [x] Advanced animation blending and transitions ✅ **v0.4.0**
-- [ ] Image tracking and recognition
-- [ ] Face tracking capabilities
-- [ ] Cloud anchors for persistent AR
-- [ ] Occlusion for realistic rendering
-- [ ] Physics simulation for AR objects
-- [ ] Multi-user AR experiences
-- [ ] Real-time lighting and shadows
-- [ ] Environmental probes and reflections
-
-## Contributing
-
-We welcome contributions! Here's how you can help:
-
-1. **Report Bugs**: [Create an issue](https://github.com/AminMemariani/augen/issues/new?labels=bug)
-2. **Request Features**: [Create an issue](https://github.com/AminMemariani/augen/issues/new?labels=enhancement)
-3. **Submit Pull Requests**: Fork the repo and submit PRs
-4. **Improve Documentation**: Help make docs better
-5. **Share Examples**: Show what you've built!
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/AminMemariani/augen.git
-cd augen
-
-# Get dependencies
-flutter pub get
-
-# Run tests
-flutter test
-
-# Run example
-cd example
-flutter run
-```
-
-### Coding Standards
-
-- Follow Dart/Flutter style guide
-- Write tests for new features
-- Update documentation
-- Use meaningful commit messages
-- Ensure all tests pass before submitting PRs
-
-## Project Status
-
-✅ **Production Ready**
-
-- Robust error handling
-- Session lifecycle management
-- Memory leak prevention
-- Platform compatibility checks
-- Permission handling
-- Comprehensive documentation
-- 177 passing tests
-- 100% test coverage
-
-## Statistics
-
-| Category | Count |
-|----------|-------|
-| **Dart Files** | 16 |
-| **Kotlin Files** | 2 |
-| **Swift Files** | 2 |
-| **Test Files** | 5 |
-| **Tests Passing** | 177 |
-| **Documentation Files** | 8+ |
-| **Lines of Code** | ~5,000+ |
-
-## Resources
-
-### Learning Resources
-- **Blender Animations**: https://www.blender.org/features/animation/
-- **glTF Animation**: https://github.com/KhronosGroup/glTF-Tutorials
-- **RealityKit Animations**: https://developer.apple.com/documentation/realitykit
-- **ARCore Guidelines**: https://developers.google.com/ar
-- **Filament Animator**: https://google.github.io/filament/
-
-### Tools
-- **Blender** (Free): https://www.blender.org/
-- **Reality Converter** (macOS): Convert to USDZ
-- **glTF Tools**: https://github.com/KhronosGroup/glTF
-
-### Model Libraries
-- **Sketchfab**: https://sketchfab.com/
-- **Poly Haven**: https://polyhaven.com/
-- **TurboSquid**: https://www.turbosquid.com/
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Support
-
-- 📖 [Full Documentation](https://github.com/AminMemariani/augen)
-- 🐛 [Report Issues](https://github.com/AminMemariani/augen/issues)
-- 💬 [Discussions](https://github.com/AminMemariani/augen/discussions)
-- ⭐ [Star on GitHub](https://github.com/AminMemariani/augen)
-
----
-
-# 9. Project Summary & Architecture
-
-## Project Overview
-
-**Augen** is a complete Flutter plugin for Augmented Reality development that enables pure Dart AR programming for both Android (ARCore) and iOS (RealityKit).
-
-## Project Structure
-
-```
-augen/
-├── android/                          # Android native implementation
-│   ├── src/main/
-│   │   ├── kotlin/com/example/augen/
-│   │   │   ├── AugenPlugin.kt       # Main plugin class
-│   │   │   └── AugenARView.kt       # ARCore implementation
-│   │   └── AndroidManifest.xml      # Android permissions
-│   └── build.gradle                  # Android dependencies (ARCore)
-│
-├── ios/                              # iOS native implementation
-│   ├── Classes/
-│   │   ├── AugenPlugin.swift        # Main plugin class
-│   │   └── AugenARView.swift        # RealityKit implementation
-│   └── augen.podspec                 # iOS dependencies (RealityKit/ARKit)
-│
-├── lib/                              # Dart API
-│   ├── src/
-│   │   ├── models/
-│   │   │   ├── vector3.dart         # 3D vector class
-│   │   │   ├── quaternion.dart      # Rotation quaternion
-│   │   │   ├── ar_anchor.dart       # AR anchor model
-│   │   │   ├── ar_node.dart         # 3D node model
-│   │   │   ├── ar_plane.dart        # Detected plane model
-│   │   │   ├── ar_hit_result.dart   # Hit test result
-│   │   │   ├── ar_session_config.dart # AR configuration
-│   │   │   ├── ar_animation.dart    # Animation model
-│   │   │   ├── animation_blend.dart # Animation blending
-│   │   │   ├── animation_transition.dart # Transitions
-│   │   │   ├── animation_state_machine.dart # State machines
-│   │   │   └── animation_blend_tree.dart # Blend trees
-│   │   ├── augen_controller.dart    # Main controller
-│   │   └── augen_view.dart          # AR view widget
-│   ├── augen.dart                    # Main export file
-│   ├── augen_platform_interface.dart # Platform interface
-│   └── augen_method_channel.dart    # Method channel implementation
-│
-├── example/                          # Example application
-│   ├── lib/main.dart                # Complete AR demo app
-│   ├── android/app/src/main/AndroidManifest.xml
-│   └── ios/Runner/Info.plist
-│
-├── test/                             # Unit tests (177 tests)
-│   ├── augen_test.dart
-│   ├── augen_animation_test.dart
-│   ├── augen_controller_test.dart
-│   ├── animation_blending_test.dart
-│   ├── animation_blend_tree_test.dart
-│   └── augen_method_channel_test.dart
-│
-└── Documentation/
-    ├── README.md                     # Main documentation
-    ├── Documentation.md              # Complete consolidated guide
-    ├── CONTRIBUTING.md               # Contribution guidelines
-    ├── CHANGELOG.md                  # Version history
-    └── LICENSE                       # MIT License
-```
-
-## Core Features Implemented
-
-### ✅ Dart API Layer
-- **AugenView**: Main AR view widget with platform view integration
-- **AugenController**: Complete AR session management
-- **Stream-based events**: Real-time updates for planes, anchors, errors, animations
-- **Type-safe models**: Vector3, Quaternion, ARNode, ARPlane, ARAnimation, etc.
-- **Configuration**: Flexible AR session configuration
-- **Advanced Animation System**: Blending, transitions, state machines, blend trees
-
-### ✅ Android (ARCore) Implementation
-- ARCore session initialization and configuration
-- Plane detection (horizontal and vertical)
-- 3D object placement (sphere, cube, cylinder, custom models)
-- Hit testing for surface detection
-- Anchor management
-- Light estimation
-- Depth data support
-- Camera permissions and manifest setup
-- Model animation support (GLTF/GLB)
-
-### ✅ iOS (RealityKit) Implementation
-- RealityKit/ARKit session initialization
-- Plane detection and tracking
-- 3D object rendering with ModelEntity
-- Hit testing with ARKit
-- Anchor management
-- Light estimation
-- Scene reconstruction support
-- Camera permissions and capabilities
-- Model animation support (USDZ)
-
-### ✅ Common Features
-- Check AR device support
-- Add/remove/update 3D nodes
-- Custom 3D model loading (GLTF, GLB, OBJ, USDZ)
-- Skeletal and morph target animations
-- Advanced animation blending and transitions
-- Animation state machines
-- Parameter-driven blend trees
-- Layered and additive animations
-- Bone masking
-- Anchor creation and management
-- Hit testing for object placement
-- Session pause/resume/reset
-- Error handling and reporting
-- Automatic plane tracking
-
-## API Highlights
-
-### Initialization
-```dart
-final controller = AugenController(viewId);
-await controller.initialize(ARSessionConfig(
-  planeDetection: true,
-  lightEstimation: true,
-));
-```
-
-### Object Placement
-```dart
-final results = await controller.hitTest(x, y);
-await controller.addNode(ARNode(
-  id: 'object_1',
-  type: NodeType.sphere,
-  position: results.first.position,
-));
-```
-
-### Custom Model Loading
-```dart
-await controller.addModelFromAsset(
-  id: 'character_1',
-  assetPath: 'assets/models/character.glb',
-  position: Vector3(0, 0, -1),
-  scale: Vector3(0.1, 0.1, 0.1),
-);
-```
-
-### Animation Control
-```dart
-await controller.playAnimation(
-  nodeId: 'character_1',
-  animationId: 'walk',
-  loopMode: AnimationLoopMode.loop,
-);
-```
-
-### Advanced Animation Blending
-```dart
-final blendSet = AnimationBlendSet(
-  id: 'movement',
-  animations: [
-    AnimationBlend(animationId: 'walk', weight: 0.7),
-    AnimationBlend(animationId: 'run', weight: 0.3),
-  ],
-);
-await controller.playBlendSet(nodeId: 'character_1', blendSet: blendSet);
-```
-
-### Plane Detection
-```dart
-controller.planesStream.listen((planes) {
-  print('Detected ${planes.length} planes');
-});
-```
-
-## Platform Requirements
-
-### Android
-- **Minimum SDK**: API 24 (Android 7.0)
-- **AR Framework**: ARCore 1.41.0
-- **Required**: Camera permission, OpenGL ES 3.0
-- **Device**: ARCore-compatible device
-
-### iOS
-- **Minimum Version**: iOS 13.0
-- **AR Framework**: RealityKit + ARKit
-- **Required**: Camera permission, ARKit capability
-- **Device**: iPhone 6s or newer (A9 chip+)
-
-## Example Application
-
-The example app demonstrates:
-- AR session initialization
-- Device compatibility checking
-- Real-time plane detection
-- Object placement at screen center
-- Custom 3D model loading
-- Animation playback and control
-- Advanced animation blending
-- State machine-based animations
-- Anchor creation
-- Session management (pause/resume/reset)
-- Error handling
-- UI feedback and status updates
-
-## File Count Summary
-
-- **Dart files**: 16 (API + models)
-- **Kotlin files**: 2 (Android implementation)
-- **Swift files**: 2 (iOS implementation)
-- **Test files**: 5 (177 tests)
-- **Documentation**: Complete consolidated guide
-- **Configuration**: 4 files (pubspec, podspec, gradle, manifests)
-
-## Key Technologies
-
-- **Flutter**: Platform-agnostic UI framework
-- **Method Channels**: Native-Dart communication
-- **Platform Views**: Native view embedding
-- **ARCore**: Android augmented reality
-- **RealityKit**: iOS augmented reality
-- **ARKit**: iOS AR foundation
-- **Filament**: Android 3D rendering engine
-- **GLTF/GLB**: Cross-platform 3D model format
-- **USDZ**: iOS-native 3D model format
-
-## What Makes This Plugin Special
-
-1. **Pure Dart API**: No need to write native code
-2. **Cross-Platform**: Single API for Android and iOS
-3. **Type-Safe**: Full Dart type safety with models
-4. **Stream-Based**: Reactive programming with streams
-5. **Well-Documented**: Comprehensive guides and API docs
-6. **Production-Ready**: Error handling, session management
-7. **Easy Setup**: Clear platform configuration steps
-8. **Example-Driven**: Working example app included
-9. **Custom Models**: Load your own 3D models and animations
-10. **Advanced Animation System**: Industry-standard animation features
-11. **Fully Tested**: 177 passing tests with 100% coverage
-12. **Professional Grade**: Comparable to game engine animation systems
-
-## 9. Multi-User AR
-
-### Overview
+## Overview
 
 Multi-user AR enables shared AR experiences where multiple users can interact with the same AR content in real-time. This feature allows for collaborative AR applications, shared virtual spaces, and synchronized AR experiences across multiple devices.
 
-### Setting Up Multi-User Sessions
+## Setting Up Multi-User Sessions
 
-#### Check Multi-User Support
+### Check Multi-User Support
 
 ```dart
 final supported = await controller.isMultiUserSupported();
@@ -5748,7 +4971,7 @@ if (supported) {
 }
 ```
 
-#### Create a Multi-User Session
+### Create a Multi-User Session
 
 ```dart
 final sessionId = await controller.createMultiUserSession(
@@ -5764,7 +4987,7 @@ final sessionId = await controller.createMultiUserSession(
 );
 ```
 
-#### Join an Existing Session
+### Join an Existing Session
 
 ```dart
 await controller.joinMultiUserSession(
@@ -5774,9 +4997,9 @@ await controller.joinMultiUserSession(
 );
 ```
 
-### Managing Participants
+## Managing Participants
 
-#### Get All Participants
+### Get All Participants
 
 ```dart
 final participants = await controller.getMultiUserParticipants();
@@ -5785,7 +5008,7 @@ for (final participant in participants) {
 }
 ```
 
-#### Set Participant Role
+### Set Participant Role
 
 ```dart
 await controller.setParticipantRole(
@@ -5794,7 +5017,7 @@ await controller.setParticipantRole(
 );
 ```
 
-#### Update Participant Display Name
+### Update Participant Display Name
 
 ```dart
 await controller.updateParticipantDisplayName(
@@ -5803,15 +5026,15 @@ await controller.updateParticipantDisplayName(
 );
 ```
 
-#### Kick a Participant
+### Kick a Participant
 
 ```dart
 await controller.kickParticipant('participant123');
 ```
 
-### Sharing Objects
+## Sharing Objects
 
-#### Share an Object
+### Share an Object
 
 ```dart
 final sharedObjectId = await controller.shareObject(
@@ -5821,7 +5044,7 @@ final sharedObjectId = await controller.shareObject(
 );
 ```
 
-#### Update Shared Object
+### Update Shared Object
 
 ```dart
 await controller.updateSharedObject(
@@ -5834,7 +5057,7 @@ await controller.updateSharedObject(
 );
 ```
 
-#### Get All Shared Objects
+### Get All Shared Objects
 
 ```dart
 final sharedObjects = await controller.getMultiUserSharedObjects();
@@ -5843,15 +5066,15 @@ for (final obj in sharedObjects) {
 }
 ```
 
-#### Unshare an Object
+## Unshare an Object
 
 ```dart
 await controller.unshareObject(sharedObjectId);
 ```
 
-### Monitoring Multi-User Status
+## Monitoring Multi-User Status
 
-#### Listen to Session Updates
+### Listen to Session Updates
 
 ```dart
 controller.multiUserSessionStream.listen((session) {
@@ -5859,7 +5082,7 @@ controller.multiUserSessionStream.listen((session) {
 });
 ```
 
-#### Listen to Participant Updates
+### Listen to Participant Updates
 
 ```dart
 controller.multiUserParticipantsStream.listen((participants) {
@@ -5867,7 +5090,7 @@ controller.multiUserParticipantsStream.listen((participants) {
 });
 ```
 
-#### Listen to Shared Object Updates
+### Listen to Shared Object Updates
 
 ```dart
 controller.multiUserSharedObjectsStream.listen((objects) {
@@ -5875,7 +5098,7 @@ controller.multiUserSharedObjectsStream.listen((objects) {
 });
 ```
 
-#### Listen to Session Status
+### Listen to Session Status
 
 ```dart
 controller.multiUserSessionStatusStream.listen((status) {
@@ -5883,9 +5106,9 @@ controller.multiUserSessionStatusStream.listen((status) {
 });
 ```
 
-### Session Capabilities
+## Session Capabilities
 
-#### Available Capabilities
+### Available Capabilities
 
 - **spatialSharing**: Share spatial understanding between devices
 - **objectSynchronization**: Synchronize 3D objects across devices
@@ -5894,9 +5117,9 @@ controller.multiUserSessionStatusStream.listen((status) {
 - **gestureSharing**: Share gesture recognition
 - **avatarDisplay**: Display user avatars
 
-### Best Practices
+## Best Practices
 
-#### Performance Optimization
+## Performance Optimization
 
 ```dart
 // Limit the number of shared objects
@@ -5906,7 +5129,7 @@ const maxSharedObjects = 50;
 const updateInterval = Duration(milliseconds: 100);
 ```
 
-#### Error Handling
+## Error Handling
 
 ```dart
 try {
@@ -5917,7 +5140,7 @@ try {
 }
 ```
 
-#### Session Management
+## Session Management
 
 ```dart
 // Always leave sessions when done
@@ -5932,7 +5155,7 @@ for (final obj in objects) {
 }
 ```
 
-### Complete Example
+## Complete Example
 
 ```dart
 class MultiUserARView extends StatefulWidget {
@@ -6044,7 +5267,7 @@ class _MultiUserARViewState extends State<MultiUserARView> {
 }
 ```
 
-# 10. Real-time Lighting and Shadows
+# 11. Real-time Lighting and Shadows
 
 ## Overview
 
@@ -6479,7 +5702,7 @@ class _LightingARExampleState extends State<LightingARExample> {
 }
 ```
 
-# 11. Environmental Probes and Reflections
+# 12. Environmental Probes and Reflections
 
 Environmental probes capture realistic environmental lighting and reflections, providing immersive AR experiences with accurate environmental reflections on virtual objects.
 
@@ -6897,20 +6120,7 @@ class _EnvironmentalProbesARExampleState extends State<EnvironmentalProbesARExam
 }
 ```
 
-## Next Steps for Users
-
-1. Install the plugin: `flutter pub add augen`
-2. Follow platform setup in section 1 (Getting Started)
-3. Explore API Reference in section 2
-4. Learn about custom models in section 3
-5. Master animations in sections 4 and 5
-6. Build amazing AR experiences!
-
 ---
 
-**Made with ❤️ for the Flutter community**
-
-**Version**: 1.0.0  
-**Platforms**: Android 7.0+ | iOS 13.0+  
-**License**: MIT
+**Version**: 1.0.3 | **Platforms**: Android 7.0+ | iOS 13.0+ | **License**: MIT
 
