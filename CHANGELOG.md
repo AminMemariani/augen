@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-03-26
+
+### Improved
+- **README** — Rewrote from 940 lines to ~200 lines. Removed duplicated code examples, completed roadmap, inline changelogs, and emoji clutter. Focused on installation, platform setup, quick-start examples, and architecture overview with pointers to Documentation.md for advanced topics.
+- **Documentation** — Fixed broken section numbering (duplicate sections 9 and 12), removed 790 lines of stale implementation logs, outdated test counts, and README-duplicated content. Merged duplicate animation sections, promoted Multi-User AR to its own top-level section, and rewrote the table of contents to match the corrected 12-section structure.
+
+### Fixed
+- Outdated version references in Documentation.md (was `^0.4.0`, now `^1.1.0`)
+- Footer version in Documentation.md (was `1.0.0`)
+
 ## [1.0.3] - 2026-03-20
 
 ### Fixed

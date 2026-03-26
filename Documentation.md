@@ -64,7 +64,7 @@ Open `pubspec.yaml` and add Augen:
 dependencies:
   flutter:
     sdk: flutter
-  augen: ^1.0.3
+  augen: ^1.1.0
 ```
 
 Then run:
@@ -6122,5 +6122,5 @@ class _EnvironmentalProbesARExampleState extends State<EnvironmentalProbesARExam
 
 ---
 
-**Version**: 1.0.3 | **Platforms**: Android 7.0+ | iOS 13.0+ | **License**: MIT
+**Version**: 1.1.0 | **Platforms**: Android 7.0+ | iOS 13.0+ | **License**: MIT
 

@@ -35,7 +35,7 @@ For detailed API docs and advanced usage, see [Documentation.md](Documentation.m
 
 ```yaml
 dependencies:
-  augen: ^1.0.3
+  augen: ^1.1.0
 ```
 
 ```bash
