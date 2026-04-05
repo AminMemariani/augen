@@ -274,6 +274,8 @@ MIT — see [LICENSE](LICENSE) for details.
 - [Full documentation](Documentation.md)
 - [Issue tracker](https://github.com/AminMemariani/augen/issues)
 
-To add my button to your site, copy this:
+# Support:
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/aminmemar)
+
+Solana Wallet: ApeGNaqfRM3HJocYHfdZ88GmFj2wqVCxUzm5MGvGNrWy
