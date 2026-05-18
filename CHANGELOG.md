@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-05-18
+
+### Fixed
+- iOS build error: `MeshResource.generateCylinder(height:radius:)` is only available in iOS 18.0+. Gated the call behind an `#available(iOS 18.0, *)` check with a box fallback for older deployment targets.
+
+## [1.2.0] - 2026-05-10 — Development Preview (Alpha)
+
+> **Note:** Web support in this release is a **development preview / alpha**.
+> The architecture is in place but several components are stubs or placeholders.
+
+### Added
+- Web platform support with marker-based AR (development preview)
+- ARMarkerTarget, ARTrackedMarker, ARMarkerDetectionOptions models
+- Vector2 model
+- Marker tracking API on AugenController
+- **JS bridge with placeholder contrast-based marker detector** for development and testing — real JSARToolKit5 Wasm integration is planned but not yet bundled
+- Web camera service with getUserMedia
+- **Web renderer with camera overlay and marker transform updates** — full 3D rendering via Three.js is planned but not yet integrated
+- Platform abstraction layer (AugenPlatformBackend)
+- Conditional imports for web/mobile separation
+- ARSessionConfig.markerTracking and markerDetectionOptions fields
+- Web plugin registration
+- Example web marker AR demo
+- 78 new tests for marker models and controller
+
+### Changed
+- AugenController now uses platform backend abstraction instead of direct MethodChannel
+- AugenView uses conditional imports for platform-specific implementations
+
+### Fixed
+- B2: `ARSessionConfig.markerTracking` now auto-enables marker tracking on web during `initialize()`
+- B6: Stream subscription is set up before the detection loop starts, preventing dropped events on broadcast streams
+- B7: `_processFrame` guards against adding to a closed stream controller
+- B8: Frame processing errors are now surfaced via `WasmMarkerDetector.errorStream` instead of being silently swallowed
+- Pattern file path injection prevented with validation in `WebAssetLoader.loadPatternFile`
+- `isSecureContext` check before `getUserMedia` with clear HTTPS error
+- Camera permission errors now throw typed exceptions with specific error codes
+- `pause()`/`resume()` on web now also pause/resume the video element
+- `_disposed` flag on web backend prevents operations after disposal
+- `maxDetectionFps` clamped to minimum 1 with assertion
+- `loadBridgeScript` race condition prevented with static `Completer`
+- `videoWidth === 0` and `readyState < 2` guard in `_processFrame`
+- Tab visibility listener pauses/resumes detection loop when tab is backgrounded
+
 ## [1.1.0] - 2026-03-26
 
 ### Improved

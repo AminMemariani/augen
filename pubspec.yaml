@@ -1,6 +1,6 @@
 name: augen
 description: A Flutter plugin for building AR applications using ARCore on Android and RealityKit on iOS. Enables pure Dart AR development without native code.
-version: 1.1.0
+version: 1.1.1
 homepage: https://github.com/AminMemariani/augen
 repository: https://github.com/AminMemariani/augen
 issue_tracker: https://github.com/AminMemariani/augen/issues
@@ -12,7 +12,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
   plugin_platform_interface: ^2.0.2
+  web: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +30,6 @@ flutter:
         pluginClass: AugenPlugin
       ios:
         pluginClass: AugenPlugin
+      web:
+        pluginClass: AugenWebPlugin
+        fileName: src/web/augen_web_plugin.dart

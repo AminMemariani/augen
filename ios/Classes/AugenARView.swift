@@ -197,7 +197,11 @@ class AugenARView: NSObject, FlutterPlatformView {
         case "cube":
             mesh = MeshResource.generateBox(size: 0.1)
         case "cylinder":
-            mesh = MeshResource.generateCylinder(height: 0.2, radius: 0.05)
+            if #available(iOS 18.0, *) {
+                mesh = MeshResource.generateCylinder(height: 0.2, radius: 0.05)
+            } else {
+                mesh = MeshResource.generateBox(size: [0.1, 0.2, 0.1])
+            }
         default:
             mesh = MeshResource.generateSphere(radius: 0.1)
         }

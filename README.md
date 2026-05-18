@@ -35,7 +35,7 @@ For detailed API docs and advanced usage, see [Documentation.md](Documentation.m
 
 ```yaml
 dependencies:
-  augen: ^1.1.0
+  augen: ^1.1.1
 ```
 
 ```bash
@@ -170,6 +170,110 @@ await _controller!.addModelFromUrl(
 
 **Recommended formats:** GLB for Android, USDZ for iOS. GLTF and OBJ are also supported.
 
+## Web Marker-Based AR (Development Preview)
+
+> **⚠️ Alpha:** Web support is a development preview. The JS bridge currently provides a **placeholder contrast-based detector** for development and testing — real JSARToolKit5 Wasm integration is planned but not yet bundled. The renderer provides **camera overlay and marker transform updates** but full 3D rendering via Three.js is not yet integrated. The architecture is in place; contributions welcome.
+
+Augen supports **marker-based AR on the web**. The architecture targets WebAssembly (JSARToolKit5) and Three.js, but the current release ships stub implementations for development/testing.
+
+### Browser Support
+
+| Browser | Support |
+| --- | --- |
+| Chrome (desktop & Android) | ✅ Full |
+| Edge | ✅ Full |
+| Safari | ⚠️ Partial (WebRTC limitations) |
+| Firefox | ⚠️ Partial (WebAssembly SIMD varies) |
+
+### Requirements
+
+- **Flutter Wasm:** `flutter run -d chrome --wasm`
+- **HTTPS** required for `getUserMedia` camera access (localhost is exempt)
+- Camera permission must be granted by the user
+- Server must serve `.wasm` files with `Content-Type: application/wasm`
+- For `SharedArrayBuffer` (optional perf boost): set `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers
+
+### Marker Target Types
+
+| Type | Description |
+| --- | --- |
+| `ARMarkerType.pattern` | Traditional ARToolKit pattern (e.g. Hiro) |
+| `ARMarkerType.barcode` | Numeric barcode markers |
+| `ARMarkerType.aruco` | ArUco dictionary markers |
+
+### Quick Start
+
+```dart
+AugenView(
+  config: const ARSessionConfig(
+    markerTracking: true,
+    planeDetection: false,
+  ),
+  onViewCreated: (controller) async {
+    await controller.initialize(
+      const ARSessionConfig(
+        markerTracking: true,
+        markerDetectionOptions: ARMarkerDetectionOptions(
+          maxDetectionFps: 20,
+          debug: true,
+        ),
+      ),
+    );
+
+    await controller.addMarkerTarget(
+      const ARMarkerTarget(
+        id: 'hiro',
+        name: 'Hiro marker',
+        type: ARMarkerType.pattern,
+        patternPath: 'assets/markers/hiro.patt',
+        physicalWidth: 0.08,
+      ),
+    );
+
+    await controller.setMarkerTrackingEnabled(true);
+
+    controller.trackedMarkersStream.listen((markers) {
+      for (final marker in markers) {
+        if (marker.isTracked && marker.isReliable) {
+          // Anchor content to the marker
+        }
+      }
+    });
+  },
+);
+```
+
+### Supported vs Unsupported Web Features
+
+| Feature | Web Support |
+| --- | --- |
+| Marker tracking (pattern/barcode/aruco) | ✅ |
+| Camera feed rendering | ✅ |
+| 3D node anchoring to markers | ✅ |
+| Plane detection | ❌ |
+| Image tracking (ARCore/ARKit style) | ❌ |
+| Face tracking | ❌ |
+| Cloud anchors | ❌ |
+| Occlusion | ❌ |
+| Physics | ❌ |
+| LiDAR / depth | ❌ |
+
+### Performance Tips
+
+- Set `maxDetectionFps` to 15–20 to balance accuracy and CPU usage
+- Use small marker pattern files (< 10 KB)
+- Print markers at the configured `physicalWidth` for correct scale
+- Prefer Chrome/Edge for best WebAssembly performance
+- Use `debug: false` in production to disable visual overlays
+
+### Troubleshooting
+
+- **Camera not starting:** Ensure HTTPS (or localhost) and that the user granted camera permission.
+- **Marker not detected:** Verify the `.patt` file path is correct and declared in `pubspec.yaml` assets. Ensure adequate lighting and print size.
+- **Wasm not loading:** Confirm the server serves `.wasm` with `Content-Type: application/wasm`.
+- **`SharedArrayBuffer` errors:** Add COOP/COEP headers to your web server.
+- **Low FPS:** Reduce `maxDetectionFps`, close other tabs, or use a device with better GPU.
+
 ## Architecture Overview
 
 ```
@@ -216,7 +320,7 @@ _controller.lightsStream          // light changes
 // ... and more — see Documentation.md for the full list
 ```
 
-## Example App
+## Example Apps
 
 The `example/` directory contains a complete demo app with tabs for every feature (planes, nodes, images, faces, cloud anchors, occlusion, physics, multi-user, lighting, probes, animations).
 
@@ -224,6 +328,17 @@ The `example/` directory contains a complete demo app with tabs for every featur
 cd example
 flutter run
 ```
+
+### Web Marker AR Example
+
+A standalone web example demonstrating marker-based AR is available at [`example/web_marker_ar/`](example/web_marker_ar/):
+
+```bash
+cd example/web_marker_ar
+flutter run -d chrome --wasm
+```
+
+See the [Web Marker AR README](example/web_marker_ar/README.md) for details on setup and usage.
 
 ## Testing
 
