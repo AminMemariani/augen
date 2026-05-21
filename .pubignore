@@ -1,0 +1,30 @@
+# Build artifacts — never publish these
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/Pods/
+**/Podfile.lock
+**/pubspec.lock
+
+# Generated / ephemeral
+**/.ehaye/
+**/flutter_*.log
+**/*.log
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Example sub-projects — keep only the main example/, not nested standalone demos
+example/web_marker_ar/build/
+example/web_marker_ar/.dart_tool/
+example/web_marker_ar/pubspec.lock
+
+# Test integration outputs
+example/integration_test_output/
+
+# Local dev files
+.mcp.json

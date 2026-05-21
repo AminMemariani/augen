@@ -17,6 +17,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.util.*
+import android.util.Log
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -30,14 +31,21 @@ class AugenARView(
     private val containerView: FrameLayout = FrameLayout(context)
     private val methodChannel: MethodChannel = MethodChannel(messenger, "augen_$viewId")
 
+    @Volatile
     private var arSession: Session? = null
-    private var isARSessionInitialized = false
+    @Volatile
+    private var isARSessionInitialized: Boolean = false
     private val nodes = mutableMapOf<String, ARNode>()
     private val anchors = mutableMapOf<String, Anchor>()
     private val detectedPlanes = mutableListOf<ARPlaneInfo>()
 
     private var glSurfaceView: GLSurfaceView? = null
     private var cameraTextureId = -1
+
+    // Plane event throttling
+    @Volatile private var lastPlaneNotifyTime: Long = 0L
+    private val planeNotifyIntervalMs: Long = 100L
+    @Volatile private var lastPlaneSignature: String = ""
 
     init {
         methodChannel.setMethodCallHandler(this)
@@ -204,30 +212,47 @@ class AugenARView(
                 val frame = session.update()
                 cameraBackgroundRenderer?.draw(frame)
 
-                // Report detected planes back to Flutter
-                val allPlanes = session.getAllTrackables(Plane::class.java)
-                val activePlanes = allPlanes.filter { it.trackingState == TrackingState.TRACKING }
-                if (activePlanes.isNotEmpty()) {
-                    val planeData = activePlanes.map { plane ->
-                        val pose = plane.centerPose
-                        mapOf(
-                            "id" to plane.hashCode().toString(),
-                            "type" to when (plane.type) {
-                                Plane.Type.HORIZONTAL_UPWARD_FACING -> "horizontal_up"
-                                Plane.Type.HORIZONTAL_DOWNWARD_FACING -> "horizontal_down"
-                                Plane.Type.VERTICAL -> "vertical"
-                                else -> "unknown"
-                            },
-                            "centerX" to pose.tx().toDouble(),
-                            "centerY" to pose.ty().toDouble(),
-                            "centerZ" to pose.tz().toDouble(),
-                            "width" to plane.extentX.toDouble(),
-                            "height" to plane.extentZ.toDouble()
-                        )
-                    }
-                    // Send plane data back to Dart on the main thread
-                    containerView.post {
-                        methodChannel.invokeMethod("onPlanesDetected", planeData)
+                // Report detected planes back to Flutter (throttled + dirty-flagged)
+                val now = System.currentTimeMillis()
+                if (now - lastPlaneNotifyTime >= planeNotifyIntervalMs) {
+                    val allPlanes = session.getAllTrackables(Plane::class.java)
+                    val activePlanes = allPlanes.filter { it.trackingState == TrackingState.TRACKING }
+                    if (activePlanes.isNotEmpty()) {
+                        // Build a signature to detect changes (count + sorted ids)
+                        val signature = activePlanes
+                            .map { it.hashCode().toString() }
+                            .sorted()
+                            .joinToString(",")
+                        if (signature != lastPlaneSignature) {
+                            lastPlaneSignature = signature
+                            lastPlaneNotifyTime = now
+                            val planeData = activePlanes.map { plane ->
+                                val pose = plane.centerPose
+                                mapOf(
+                                    "id" to plane.hashCode().toString(),
+                                    "type" to when (plane.type) {
+                                        Plane.Type.HORIZONTAL_UPWARD_FACING -> "horizontal"
+                                        Plane.Type.HORIZONTAL_DOWNWARD_FACING -> "horizontal"
+                                        Plane.Type.VERTICAL -> "vertical"
+                                        else -> "unknown"
+                                    },
+                                    "center" to mapOf(
+                                        "x" to pose.tx().toDouble(),
+                                        "y" to pose.ty().toDouble(),
+                                        "z" to pose.tz().toDouble()
+                                    ),
+                                    "extent" to mapOf(
+                                        "x" to plane.extentX.toDouble(),
+                                        "y" to 0.0,
+                                        "z" to plane.extentZ.toDouble()
+                                    )
+                                )
+                            }
+                            // Send plane data back to Dart on the main thread
+                            containerView.post {
+                                methodChannel.invokeMethod("onPlanesUpdated", planeData)
+                            }
+                        }
                     }
                 }
             } catch (_: Exception) {
@@ -406,6 +431,7 @@ class AugenARView(
     }
 
     private fun loadAndRender3DModel(node: ARNode) {
+        Log.w("AugenARView", "loadAndRender3DModel: custom 3D model loading is not yet implemented (nodeId=${node.id}, format=${node.modelFormat})")
         // Implementation for loading 3D models (GLB, GLTF, OBJ)
         // This would integrate with Filament or Sceneform for rendering
         // 
@@ -453,42 +479,53 @@ class AugenARView(
     }
 
     private fun hitTest(call: MethodCall, result: MethodChannel.Result) {
-        try {
-            val session = arSession
-            if (session == null || !isARSessionInitialized) {
-                result.success(emptyList<Map<String, Any>>())
-                return
-            }
-
-            val args = call.arguments as Map<String, Any>
-            val x = (args["x"] as Number).toFloat()
-            val y = (args["y"] as Number).toFloat()
-
-            val frame = session.update()
-            val hits = frame.hitTest(x, y)
-
-            val results = hits.map { hit ->
-                val pose = hit.hitPose
-                mapOf(
-                    "position" to mapOf(
-                        "x" to pose.tx(),
-                        "y" to pose.ty(),
-                        "z" to pose.tz()
-                    ),
-                    "rotation" to mapOf(
-                        "x" to pose.qx(),
-                        "y" to pose.qy(),
-                        "z" to pose.qz(),
-                        "w" to pose.qw()
-                    ),
-                    "distance" to hit.distance,
-                    "planeId" to (hit.trackable as? Plane)?.hashCode()?.toString()
-                )
-            }
-
-            result.success(results)
+        val gl = glSurfaceView
+        if (gl == null) {
+            result.error("NO_GL", "GL surface not ready", null)
+            return
+        }
+        val args = try {
+            @Suppress("UNCHECKED_CAST")
+            call.arguments as Map<String, Any>
         } catch (e: Exception) {
-            result.error("HIT_TEST_ERROR", "Failed to perform hit test: ${e.message}", null)
+            result.error("INVALID_ARGUMENTS", "hitTest expects a map", null)
+            return
+        }
+        val x = (args["x"] as Number).toDouble()
+        val y = (args["y"] as Number).toDouble()
+
+        // session.update() must run on the GL thread to avoid racing with onDrawFrame.
+        gl.queueEvent {
+            try {
+                val session = arSession
+                if (session == null || !isARSessionInitialized) {
+                    containerView.post { result.error("NO_SESSION", "AR session not ready", null) }
+                    return@queueEvent
+                }
+                val frame = session.update()
+                val hits = frame.hitTest(x.toFloat(), y.toFloat())
+                val hitResults = hits.map { hit ->
+                    val pose = hit.hitPose
+                    mapOf(
+                        "position" to mapOf(
+                            "x" to pose.tx(),
+                            "y" to pose.ty(),
+                            "z" to pose.tz()
+                        ),
+                        "rotation" to mapOf(
+                            "x" to pose.qx(),
+                            "y" to pose.qy(),
+                            "z" to pose.qz(),
+                            "w" to pose.qw()
+                        ),
+                        "distance" to hit.distance,
+                        "planeId" to (hit.trackable as? Plane)?.hashCode()?.toString()
+                    )
+                }
+                containerView.post { result.success(hitResults) }
+            } catch (e: Exception) {
+                containerView.post { result.error("HIT_TEST_FAILED", e.message, null) }
+            }
         }
     }
 
@@ -577,82 +614,23 @@ class AugenARView(
     }
 
     private fun playAnimation(call: MethodCall, result: MethodChannel.Result) {
-        try {
-            val args = call.arguments as Map<String, Any>
-            val nodeId = args["nodeId"] as String
-            val animationId = args["animationId"] as String
-            val speed = (args["speed"] as? Number)?.toFloat() ?: 1.0f
-            val loopMode = args["loopMode"] as? String ?: "loop"
-
-            // Implementation for playing animations on 3D models
-            // This would control the animation playback using Filament's Animator
-            // Example:
-            // val node = nodes[nodeId]
-            // if (node?.type == "model") {
-            //     val animator = modelAnimators[nodeId]
-            //     animator?.let {
-            //         it.applyAnimation(animationIndex)
-            //         it.updateBoneMatrices()
-            //     }
-            // }
-
-            result.success(null)
-        } catch (e: Exception) {
-            result.error("PLAY_ANIMATION_ERROR", "Failed to play animation: ${e.message}", null)
-        }
+        result.notImplemented()
     }
 
     private fun pauseAnimation(call: MethodCall, result: MethodChannel.Result) {
-        try {
-            val args = call.arguments as Map<String, Any>
-            val nodeId = args["nodeId"] as String
-            val animationId = args["animationId"] as String
-
-            // Pause animation playback
-            result.success(null)
-        } catch (e: Exception) {
-            result.error("PAUSE_ANIMATION_ERROR", "Failed to pause animation: ${e.message}", null)
-        }
+        result.notImplemented()
     }
 
     private fun stopAnimation(call: MethodCall, result: MethodChannel.Result) {
-        try {
-            val args = call.arguments as Map<String, Any>
-            val nodeId = args["nodeId"] as String
-            val animationId = args["animationId"] as String
-
-            // Stop animation and reset to first frame
-            result.success(null)
-        } catch (e: Exception) {
-            result.error("STOP_ANIMATION_ERROR", "Failed to stop animation: ${e.message}", null)
-        }
+        result.notImplemented()
     }
 
     private fun resumeAnimation(call: MethodCall, result: MethodChannel.Result) {
-        try {
-            val args = call.arguments as Map<String, Any>
-            val nodeId = args["nodeId"] as String
-            val animationId = args["animationId"] as String
-
-            // Resume paused animation
-            result.success(null)
-        } catch (e: Exception) {
-            result.error("RESUME_ANIMATION_ERROR", "Failed to resume animation: ${e.message}", null)
-        }
+        result.notImplemented()
     }
 
     private fun seekAnimation(call: MethodCall, result: MethodChannel.Result) {
-        try {
-            val args = call.arguments as Map<String, Any>
-            val nodeId = args["nodeId"] as String
-            val animationId = args["animationId"] as String
-            val time = (args["time"] as Number).toFloat()
-
-            // Seek to specific time in animation
-            result.success(null)
-        } catch (e: Exception) {
-            result.error("SEEK_ANIMATION_ERROR", "Failed to seek animation: ${e.message}", null)
-        }
+        result.notImplemented()
     }
 
     private fun getAvailableAnimations(call: MethodCall, result: MethodChannel.Result) {
@@ -673,24 +651,21 @@ class AugenARView(
     }
 
     private fun setAnimationSpeed(call: MethodCall, result: MethodChannel.Result) {
-        try {
-            val args = call.arguments as Map<String, Any>
-            val nodeId = args["nodeId"] as String
-            val animationId = args["animationId"] as String
-            val speed = (args["speed"] as Number).toFloat()
-
-            // Set playback speed for animation
-            result.success(null)
-        } catch (e: Exception) {
-            result.error("SET_SPEED_ERROR", "Failed to set animation speed: ${e.message}", null)
-        }
+        result.notImplemented()
     }
 
     override fun dispose() {
+        Log.d("AugenARView", "dispose — releasing AR session, GL, and channel")
         methodChannel.setMethodCallHandler(null)
-        glSurfaceView?.onPause()
-        arSession?.close()
+        try { glSurfaceView?.onPause() } catch (_: Exception) {}
+        try { anchors.values.forEach { it.detach() } } catch (_: Exception) {}
+        anchors.clear()
+        nodes.clear()
+        detectedPlanes.clear()
+        try { arSession?.pause() } catch (_: Exception) {}
+        try { arSession?.close() } catch (_: Exception) {}
         arSession = null
+        isARSessionInitialized = false
         glSurfaceView = null
     }
 

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Augen AR Demo — Complete Features">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Augen Demo">
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>Augen AR Demo</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!--
+    augen_web_ar.js — Augen's web AR JS bridge.
+    Loaded eagerly so window.AugenWebAR is available before any AugenView
+    initializes the camera or marker detector.
+  -->
+  <script src="augen_web_ar.js"></script>
+</head>
+<body>
+  <script>
+    window._capturedErrors = [];
+    window.addEventListener('error', function(e) {
+      window._capturedErrors.push('ERR: ' + e.message + ' @ ' + e.filename + ':' + e.lineno);
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      window._capturedErrors.push('REJ: ' + String(e.reason).substring(0, 200));
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

@@ -4,6 +4,8 @@ import 'package:augen/augen.dart' as augen;
 import 'dart:async';
 import 'dart:math';
 
+import 'web_marker_demo.dart';
+
 void main() {
   runApp(const MyApp());
 }
@@ -90,7 +92,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 11,
+      length: 12,
       vsync: this,
       initialIndex: _currentTabIndex,
     );
@@ -1448,6 +1450,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
             Tab(child: _buildTab(Icons.animation, 'Anim', 'Blending')),
             Tab(child: _buildTab(Icons.dashboard, 'Feature', 'Demos')),
             Tab(child: _buildTab(Icons.info, 'AR', 'Status')),
+            Tab(child: _buildTab(Icons.qr_code_scanner, 'Web Marker', 'AR')),
           ],
         ),
       ),
@@ -1465,6 +1468,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           _buildAnimationView(),
           _buildDemoView(),
           _buildStatusView(),
+          const WebMarkerDemo(),
         ],
       ),
     );

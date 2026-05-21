@@ -1,0 +1,24 @@
+name: web_marker_ar_example
+description: Web Marker AR demo for the Augen plugin
+publish_to: 'none'
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  augen:
+    path: ../../
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  integration_test:
+    sdk: flutter
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/markers/

@@ -31,6 +31,162 @@
 12. [Environmental Probes and Reflections](#12-environmental-probes-and-reflections)
     - Spherical, Box, and Planar Probes
 
+13. [Web Marker-Based AR](#13-web-marker-based-ar)
+    - Architecture, Setup, Marker Targets, Anchoring Nodes, Debug Mode, Detection Options, Coordinate System, Error Handling, Limitations
+
+---
+
+# 13. Web Marker-Based AR (Development Preview)
+
+> **⚠️ Alpha / Development Preview:** Web marker AR is functional for development and testing but ships with **stub implementations**:
+> - The JS bridge provides a **placeholder contrast-based detector** — real JSARToolKit5 Wasm integration is planned but not yet bundled.
+> - The renderer provides **camera overlay and marker transform updates** — full 3D rendering via Three.js is planned but not yet integrated.
+> - The architecture (platform abstraction, JS interop layer, camera service) is in place and ready for real engine integration.
+
+Augen supports marker-based AR on the **web platform**. The architecture targets a WebAssembly marker detection engine (JSARToolKit5/ARToolKit) and Three.js for 3D rendering, but the current release provides placeholder implementations for development/testing.
+
+## Architecture Overview
+
+```
+Flutter (Dart)
+  └─ AugenController  (platform-agnostic API)
+       └─ AugenPlatformBackend  (conditional import)
+            ├─ AugenPlatformMobile  (MethodChannel → ARCore / RealityKit)
+            └─ AugenPlatformWeb
+                 ├─ WebCameraService     (getUserMedia)
+                 ├─ WasmMarkerDetector   (JSARToolKit5 via dart:js_interop)
+                 └─ WebMarkerAnchorManager (Three.js scene graph)
+```
+
+The platform abstraction layer (`AugenPlatformBackend`) allows the same `AugenController` API to work on mobile and web. Conditional imports (`augen_view_stub.dart` / `augen_view_web.dart`) select the correct implementation at compile time.
+
+## Setting Up Web Marker AR
+
+1. **Add the Augen dependency** and run `flutter pub get`.
+2. **Declare marker assets** in your `pubspec.yaml`:
+   ```yaml
+   flutter:
+     assets:
+       - assets/markers/
+   ```
+3. **Place pattern files** (e.g. `hiro.patt`) in `assets/markers/`.
+4. **Run on web:** `flutter run -d chrome --wasm`
+
+### Server Requirements
+
+- HTTPS required for camera access (`getUserMedia`). Localhost is exempt.
+- Serve `.wasm` files with `Content-Type: application/wasm`.
+- For `SharedArrayBuffer` (optional performance boost): set `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`.
+
+## Adding Marker Targets
+
+Register markers before enabling tracking:
+
+```dart
+await controller.addMarkerTarget(
+  const ARMarkerTarget(
+    id: 'hiro',
+    name: 'Hiro marker',
+    type: ARMarkerType.pattern,        // pattern | barcode | aruco
+    patternPath: 'assets/markers/hiro.patt',
+    physicalWidth: 0.08,               // meters (8 cm)
+  ),
+);
+```
+
+- **`ARMarkerType.pattern`** — Traditional ARToolKit pattern files (`.patt`).
+- **`ARMarkerType.barcode`** — Numeric barcode markers. Set `barcodeId` instead of `patternPath`.
+- **`ARMarkerType.aruco`** — ArUco dictionary markers.
+
+## Anchoring Nodes to Markers
+
+Listen to `trackedMarkersStream` and add/update nodes based on marker pose:
+
+```dart
+controller.trackedMarkersStream.listen((markers) async {
+  for (final marker in markers) {
+    if (marker.isTracked && marker.isReliable) {
+      await controller.addNode(
+        ARNode(
+          id: 'cube_${marker.targetId}',
+          type: NodeType.cube,
+          position: marker.position,
+          rotation: marker.rotation,
+          scale: const Vector3(0.04, 0.04, 0.04),
+        ),
+      );
+    }
+  }
+});
+```
+
+`ARTrackedMarker` provides:
+- `position` (`Vector3`) — world-space position
+- `rotation` (`Quaternion`) — world-space orientation
+- `confidence` (`double`, 0.0–1.0) — detection confidence
+- `isTracked` / `isReliable` — convenience getters
+- `transformMatrix` (`List<double>`, 16 elements) — column-major 4×4 transform
+
+## Debug Mode
+
+Enable debug overlays for development:
+
+```dart
+ARMarkerDetectionOptions(
+  maxDetectionFps: 20,
+  debug: true,   // shows detection rectangle overlay
+)
+```
+
+Set `debug: false` in production.
+
+## Detection Options
+
+`ARMarkerDetectionOptions` fields:
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `maxDetectionFps` | `int` | `30` | Max detection frames per second |
+| `debug` | `bool` | `false` | Show debug overlays |
+| `minConfidence` | `double` | `0.5` | Minimum confidence to report a marker |
+| `smoothing` | `bool` | `true` | Temporal smoothing of pose |
+
+## Coordinate System
+
+- **Units:** 1 unit = 1 meter.
+- **Transform matrices:** 16-element `List<double>` in **column-major** order (OpenGL convention).
+- **Origin:** Camera position at session start.
+- **Axes:** X right, Y up, Z toward viewer (right-handed).
+
+## Error Handling
+
+Subscribe to `errorStream` for runtime errors:
+
+```dart
+controller.errorStream.listen((error) {
+  debugPrint('AR error: $error');
+});
+```
+
+Common error codes / messages:
+
+| Error | Cause |
+| --- | --- |
+| `camera_permission_denied` | User denied camera access |
+| `camera_not_available` | No camera found or already in use |
+| `wasm_load_failed` | WebAssembly module failed to load |
+| `marker_pattern_not_found` | Pattern file path is invalid or not in assets |
+| `detector_init_failed` | JSARToolKit5 initialization error |
+
+## Known Limitations
+
+- **Web only** — marker tracking is not available on iOS/Android (use image tracking instead).
+- **No plane detection** on web.
+- **No occlusion, physics, face tracking, or cloud anchors** on web.
+- **Single camera** — rear camera preferred; front camera fallback.
+- **Performance** varies by device GPU and browser WebAssembly support.
+- **Safari** has limited WebRTC support; marker tracking may be unreliable.
+
 ---
 
 # 1. Getting Started

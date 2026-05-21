@@ -35,7 +35,7 @@ For detailed API docs and advanced usage, see [Documentation.md](Documentation.m
 
 ```yaml
 dependencies:
-  augen: ^1.1.1
+  augen: ^1.2.0
 ```
 
 ```bash
@@ -170,11 +170,19 @@ await _controller!.addModelFromUrl(
 
 **Recommended formats:** GLB for Android, USDZ for iOS. GLTF and OBJ are also supported.
 
-## Web Marker-Based AR (Development Preview)
+## Web Marker-Based AR
 
-> **⚠️ Alpha:** Web support is a development preview. The JS bridge currently provides a **placeholder contrast-based detector** for development and testing — real JSARToolKit5 Wasm integration is planned but not yet bundled. The renderer provides **camera overlay and marker transform updates** but full 3D rendering via Three.js is not yet integrated. The architecture is in place; contributions welcome.
+Augen runs in the browser via Flutter Web (Wasm or JS) and detects square visual
+markers in the live camera feed using an **image-template matching detector**
+implemented in JavaScript with `dart:js_interop` bindings.
 
-Augen supports **marker-based AR on the web**. The architecture targets WebAssembly (JSARToolKit5) and Three.js, but the current release ships stub implementations for development/testing.
+> **Status:** The detector matches PNG/JPG marker templates with multi-scale
+> normalized cross-correlation (NCC). Pose translation is computed from
+> apparent marker size and the configured physical width; rotation is currently
+> identity. For full 6-DoF pose, a future release will bundle ARToolKit Wasm or
+> OpenCV.js POSIT. Three.js rendering integration is also planned — the
+> renderer already maintains scene state and marker transforms, but does not
+> yet draw geometry. Contributions welcome.
 
 ### Browser Support
 
@@ -195,11 +203,12 @@ Augen supports **marker-based AR on the web**. The architecture targets WebAssem
 
 ### Marker Target Types
 
-| Type | Description |
-| --- | --- |
-| `ARMarkerType.pattern` | Traditional ARToolKit pattern (e.g. Hiro) |
-| `ARMarkerType.barcode` | Numeric barcode markers |
-| `ARMarkerType.aruco` | ArUco dictionary markers |
+| Type | Description | Status |
+| --- | --- | --- |
+| `ARMarkerType.pattern` (with `imagePath`) | PNG/JPG image template matched via NCC | ✅ Implemented |
+| `ARMarkerType.pattern` (with `patternPath`) | Classic ARToolKit `.patt` file | ⚠️ Planned (ARToolKit Wasm) |
+| `ARMarkerType.barcode` | Numeric barcode markers | ⚠️ Planned |
+| `ARMarkerType.aruco` | ArUco dictionary markers | ⚠️ Planned |
 
 ### Quick Start
 
@@ -220,13 +229,14 @@ AugenView(
       ),
     );
 
+    // Use a PNG/JPG image as the marker template.
     await controller.addMarkerTarget(
       const ARMarkerTarget(
         id: 'hiro',
         name: 'Hiro marker',
         type: ARMarkerType.pattern,
-        patternPath: 'assets/markers/hiro.patt',
-        physicalWidth: 0.08,
+        imagePath: 'assets/markers/Hiro_marker.png',
+        physicalWidth: 0.08, // 8 cm
       ),
     );
 
@@ -243,20 +253,29 @@ AugenView(
 );
 ```
 
+A standalone runnable demo lives at `example/web_marker_ar/`:
+
+```bash
+cd example/web_marker_ar
+flutter run -d chrome --wasm
+```
+
 ### Supported vs Unsupported Web Features
 
 | Feature | Web Support |
 | --- | --- |
-| Marker tracking (pattern/barcode/aruco) | ✅ |
+| Marker tracking (PNG/JPG image templates) | ✅ |
 | Camera feed rendering | ✅ |
-| 3D node anchoring to markers | ✅ |
-| Plane detection | ❌ |
-| Image tracking (ARCore/ARKit style) | ❌ |
-| Face tracking | ❌ |
-| Cloud anchors | ❌ |
-| Occlusion | ❌ |
-| Physics | ❌ |
-| LiDAR / depth | ❌ |
+| `trackedMarkersStream` & marker pose updates | ✅ |
+| 3D node anchoring to markers (scene-graph state) | ✅ |
+| Three.js geometry rendering | ⚠️ Planned |
+| Full 6-DoF pose (rotation) | ⚠️ Planned (ARToolKit Wasm) |
+| `.patt` / barcode / ArUco marker types | ⚠️ Planned |
+| Plane detection | ❌ Mobile only |
+| Image tracking (ARCore/ARKit style) | ❌ Mobile only |
+| Face tracking | ❌ Mobile only |
+| Cloud anchors | ❌ Mobile only |
+| Occlusion / Physics / LiDAR | ❌ Mobile only |
 
 ### Performance Tips
 
@@ -269,7 +288,8 @@ AugenView(
 ### Troubleshooting
 
 - **Camera not starting:** Ensure HTTPS (or localhost) and that the user granted camera permission.
-- **Marker not detected:** Verify the `.patt` file path is correct and declared in `pubspec.yaml` assets. Ensure adequate lighting and print size.
+- **Marker not detected:** Verify the `imagePath` (PNG/JPG) is declared in `pubspec.yaml` assets and the printed marker matches `physicalWidth`. Ensure adequate lighting and that the marker fills a reasonable portion of the camera frame.
+- **Camera hangs at "Initializing…":** On laptops with no rear camera, `facingMode: 'environment'` falls back to any available camera automatically. If it still hangs, close other apps/tabs holding the webcam.
 - **Wasm not loading:** Confirm the server serves `.wasm` with `Content-Type: application/wasm`.
 - **`SharedArrayBuffer` errors:** Add COOP/COEP headers to your web server.
 - **Low FPS:** Reduce `maxDetectionFps`, close other tabs, or use a device with better GPU.

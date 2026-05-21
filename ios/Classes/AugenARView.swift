@@ -32,7 +32,21 @@ class AugenARView: NSObject, FlutterPlatformView {
         
         setupARSession(config: args)
     }
-    
+
+    deinit {
+        NSLog("AugenARView deinit — releasing AR session and channel")
+        methodChannel.setMethodCallHandler(nil)
+        arView.session.delegate = nil
+        arView.session.pause()
+        cancellables.forEach { $0.cancel() }
+        cancellables.removeAll()
+        nodes.values.forEach { arView.scene.removeAnchor($0) }
+        nodes.removeAll()
+        anchors.values.forEach { arView.scene.removeAnchor($0) }
+        anchors.removeAll()
+        detectedPlanes.removeAll()
+    }
+
     func view() -> UIView {
         return arView
     }
@@ -253,6 +267,7 @@ class AugenARView: NSObject, FlutterPlatformView {
         //     // Create temporary file and load from it
         // }
         
+        NSLog("AugenARView: loadCustomModel is not yet implemented — rendering placeholder cube. modelPath=\(modelPath ?? "nil") format=\(modelFormat ?? "nil")")
         // For now, add a placeholder cube to indicate custom model position
         let mesh = MeshResource.generateBox(size: 0.1)
         let material = SimpleMaterial(color: .orange, isMetallic: false)
@@ -455,83 +470,27 @@ class AugenARView: NSObject, FlutterPlatformView {
             return
         }
         
-        let speed = (arguments["speed"] as? NSNumber)?.floatValue ?? 1.0
-        let loopMode = arguments["loopMode"] as? String ?? "loop"
-        
-        // Implementation for playing animations
-        // RealityKit supports animations through AnimationResource
-        // Example:
-        // if let anchor = nodes[nodeId],
-        //    let modelEntity = anchor.children.first as? ModelEntity {
-        //     let animation = modelEntity.availableAnimations.first(where: { $0.name == animationId })
-        //     if let animation = animation {
-        //         let controller = modelEntity.playAnimation(animation.repeat(count: .infinity))
-        //         controller.speed = speed
-        //     }
-        // }
-        
-        result(nil)
+        let _ = (arguments["speed"] as? NSNumber)?.floatValue ?? 1.0
+        let _ = arguments["loopMode"] as? String ?? "loop"
+
+        // Animations are not yet implemented for primitive shapes / placeholder models.
+        result(FlutterMethodNotImplemented)
     }
-    
+
     private func pauseAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let nodeId = arguments["nodeId"] as? String,
-              let animationId = arguments["animationId"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing required parameters",
-                details: nil
-            ))
-            return
-        }
-        
-        // Pause animation
-        result(nil)
+        result(FlutterMethodNotImplemented)
     }
-    
+
     private func stopAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let nodeId = arguments["nodeId"] as? String,
-              let animationId = arguments["animationId"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing required parameters",
-                details: nil
-            ))
-            return
-        }
-        
-        // Stop animation and reset
-        result(nil)
+        result(FlutterMethodNotImplemented)
     }
-    
+
     private func resumeAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let nodeId = arguments["nodeId"] as? String,
-              let animationId = arguments["animationId"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing required parameters",
-                details: nil
-            ))
-            return
-        }
-        
-        // Resume animation
-        result(nil)
+        result(FlutterMethodNotImplemented)
     }
-    
+
     private func seekAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let nodeId = arguments["nodeId"] as? String,
-              let animationId = arguments["animationId"] as? String,
-              let time = arguments["time"] as? NSNumber else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing required parameters",
-                details: nil
-            ))
-            return
-        }
-        
-        // Seek to time
-        result(nil)
+        result(FlutterMethodNotImplemented)
     }
     
     private func getAvailableAnimations(arguments: [String: Any], result: @escaping FlutterResult) {
@@ -558,19 +517,7 @@ class AugenARView: NSObject, FlutterPlatformView {
     }
     
     private func setAnimationSpeed(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let nodeId = arguments["nodeId"] as? String,
-              let animationId = arguments["animationId"] as? String,
-              let speed = arguments["speed"] as? NSNumber else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing required parameters",
-                details: nil
-            ))
-            return
-        }
-        
-        // Set animation speed
-        result(nil)
+        result(FlutterMethodNotImplemented)
     }
 }
 
@@ -628,11 +575,16 @@ extension AugenARView: ARSessionDelegate {
             ]
         }
         
-        methodChannel.invokeMethod("onPlanesUpdated", arguments: planesData)
+        DispatchQueue.main.async { [weak self] in
+            self?.methodChannel.invokeMethod("onPlanesUpdated", arguments: planesData)
+        }
     }
-    
+
     func session(_ session: ARSession, didFailWithError error: Error) {
-        methodChannel.invokeMethod("onError", arguments: error.localizedDescription)
+        let message = error.localizedDescription
+        DispatchQueue.main.async { [weak self] in
+            self?.methodChannel.invokeMethod("onError", arguments: message)
+        }
     }
 }
 

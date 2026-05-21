@@ -2,49 +2,95 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-05-21
+
+> Augen now runs on **three platforms** — Android (ARCore), iOS (RealityKit/ARKit),
+> and **Web (WebAssembly + getUserMedia)**. Marker-based AR works in the browser
+> with an image-template detector that matches a PNG/JPG marker against the live
+> camera feed.
+
+### Added — Web platform
+- **Web marker-based AR** with `package:web` + `dart:js_interop` (no `dart:html`, `dart:js`, `dart:js_util`, or `package:js`)
+- `ARMarkerTarget`, `ARTrackedMarker`, `ARMarkerDetectionOptions`, `Vector2` models
+- `imagePath` field on `ARMarkerTarget` for PNG/JPG markers
+- `ARSessionConfig.markerTracking` and `ARSessionConfig.markerDetectionOptions`
+- Marker tracking API on `AugenController` — `addMarkerTarget`, `removeMarkerTarget`, `setMarkerTrackingEnabled`, `setMarkerDetectionOptions`, `addNodeToTrackedMarker`, `removeNodeFromTrackedMarker`, plus `markerTargetsStream` and `trackedMarkersStream`
+- `AugenWebPlugin` registration with platform-view factory for `augen_ar_view`
+- `WebCameraService` with `getUserMedia`, soft `facingMode` hint, automatic fallback to any camera, bounded permission timeout, typed exceptions for `NotAllowedError` / `NotFoundError` / `OverconstrainedError` / `SecurityError`
+- `WasmMarkerDetector` running on `requestAnimationFrame` with FPS gate, frame-in-flight guard, `visibilitychange` listener (pauses when tab is hidden), and `errorStream`
+- `WebSceneRenderer` with pooled `Float64List` transform buffer and typed `JSFloat64Array` JS interop
+- `WebMarkerAnchorManager` skips updates for markers with no attached nodes
+- `WebAssetLoader` with static `Completer` race guard, `window.AugenWebAR` auto-detection, and path-injection validation
+- **JS bridge `web/augen_web_ar.js`** — multi-scale **normalized cross-correlation (NCC)** template matching against PNG/JPG markers, with pose estimation from apparent marker size and configured physical width
+- Conditional imports for web/mobile separation (`dart.library.io` / `dart.library.js_interop`)
+- Standalone web demo project `example/web_marker_ar/` runnable with `flutter run -d chrome --wasm`
+- New "Web Marker AR" tab in the main example app
+
+### Added — Tests
+- **+103 new tests** (487 → **590** total)
+- Marker model coverage: `ARMarkerTarget`, `ARTrackedMarker`, `ARMarkerDetectionOptions`, `Vector2`, updated `ARSessionConfig`
+- Platform-backend abstraction tests
+- Marker stream fast-path / slow-path tests
+- Asset cache tests
+- Plane normalization tests (`onPlanesUpdated` shape)
+- E2E integration tests for the web example app via `flutter drive` + Chrome (`example/web_marker_ar/integration_test/`)
+
+### Changed — Architecture
+- `AugenController` now routes through `AugenPlatformBackend` instead of using `MethodChannel` directly
+- `AugenView` uses conditional imports for platform-specific implementations
+- 103 controller call sites converted from generic `invokeMethod` to typed backend methods (failing fast on unsupported platforms instead of `MissingPluginException`)
+- Animation method stubs on Android/iOS now return `FlutterMethodNotImplemented` instead of silently succeeding
+- Asset loading cached via static LRU (50 MB budget) — repeated `addNode(modelPath:)` no longer re-reads the bundle
+
+### Performance
+- **Web render loop**: `Timer.periodic` → `requestAnimationFrame` (vsync-aligned)
+- **Web frame allocations**: pooled `List<double>`/`List<Vector2>` in `_convertResult`, single `DateTime.now()` per batch instead of per marker
+- **Web transform interop**: pre-allocated `Float64List` reused per `updateMarkerTransform`; `JSArray<JSNumber>` → `JSFloat64Array` typed array
+- **Web fast path**: `List<ARTrackedMarker>` passes directly from web backend to controller, skipping the `toMap`/`fromMap` round-trip
+- **Android plane events**: throttled from 60 Hz → 10 Hz with dirty-flag suppression of unchanged states
+- **Skip empty anchors**: marker transforms with no attached nodes don't traverse the renderer
+
+### Fixed — Mobile critical bugs
+- **iOS memory leak**: added `deinit` releasing `ARSession`, anchors, planes, channel handler, and Combine subscriptions
+- **Android `hitTest` GL race**: `session.update()` + `frame.hitTest()` now run on the GL thread via `glSurfaceView.queueEvent`, results returned on the UI thread (fixes sporadic `SessionPausedException` and frame-state corruption)
+- **Android plane event name mismatch**: native side emitted `onPlanesDetected`, Dart listened for `onPlanesUpdated` (silently dropped events) — both platforms now agree on `onPlanesUpdated`
+- **Android plane payload mismatch with iOS**: payload normalized to `{center: {x,y,z}, extent: {x,y,z}, type: "horizontal"|"vertical"}`
+- **iOS channel calls from delegate thread**: `notifyPlanesUpdated` and `didFailWithError` now dispatch to main via `DispatchQueue.main.async`
+- **Android `arSession` data race**: marked `@Volatile`
+- **Android `dispose` ordering**: anchors detached, planes/nodes cleared, session paused before close — prevents resource leaks on hot-restart
+- **iOS `dispose`** clears scene anchors and nils the session delegate
+
+### Fixed — Web stability
+- `ARSessionConfig.markerTracking` now auto-enables marker tracking on web during `initialize()` (previously had to call `setMarkerTrackingEnabled(true)` manually)
+- Stream subscription is set up **before** the detection loop starts (prevents dropped events on broadcast streams)
+- `_processFrame` guards against adding to a closed stream controller
+- Detector frame errors surfaced via `errorStream` instead of being silently swallowed
+- Pattern/binary asset path injection prevented (`assets/` prefix, no `..`, no absolute URLs)
+- `isSecureContext` check before `getUserMedia` with clear HTTPS error
+- Typed exceptions for camera errors: `web_camera_permission_denied`, `web_camera_unavailable`, `web_camera_overconstrained`, `web_camera_permission_pending`, `web_camera_play_timeout`, `web_camera_fallback`
+- Camera-constraint fallback: if `facingMode: 'environment'` fails, retry with `{video: true}` (fixes desktops with only a front camera)
+- Bounded timeouts on `getUserMedia` (10s) and `video.play()` (5s) — never hangs indefinitely
+- Video element appended to container **before** `getUserMedia` (Safari requires attached element for `play()` to resolve)
+- `pause()`/`resume()` on web also pause/resume the video element
+- `_disposed` flag on web backend prevents operations after disposal
+- `maxDetectionFps` clamped to minimum 1 with assertion
+- `loadBridgeScript` race condition prevented with static `Completer`
+- Bridge auto-detection: skips loading if `window.AugenWebAR` is already defined (e.g. via `<script>` in `index.html`)
+- `videoWidth === 0` and `readyState < 2` guard in `_processFrame`
+- Tab visibility listener pauses/resumes detection loop when tab is backgrounded
+- `dispose()` idempotent on controller (safe to call twice)
+- `AugenWebPlugin.viewRegistry` cleared on backend disposal (no leak)
+- `addLight` / `addEnvironmentalProbe` return types aligned with backend interface
+
+### Limitations / Known Gaps
+- Web marker pose estimation is a **simplified template-matching implementation**, not full ARToolKit Wasm — translation is derived from apparent marker size; rotation is identity. Production-quality pose requires bundling ARToolKit Wasm or OpenCV.js POSIT.
+- Web 3D rendering via Three.js is **not yet integrated** — the renderer maintains scene state and marker transforms but does not draw geometry. Camera overlay and marker tracking work; visible 3D content requires Three.js wiring.
+- Roughly 88% of Dart-side AR methods (cloud anchors, face tracking, occlusion, physics, multi-user, lighting, environmental probes, advanced animation, image tracking) are **not yet implemented natively on Android/iOS** — they correctly return `FlutterMethodNotImplemented` rather than silently succeeding. Planes, anchors, hit-test, basic nodes, and marker tracking (web) work end-to-end.
+
 ## [1.1.1] - 2026-05-18
 
 ### Fixed
 - iOS build error: `MeshResource.generateCylinder(height:radius:)` is only available in iOS 18.0+. Gated the call behind an `#available(iOS 18.0, *)` check with a box fallback for older deployment targets.
-
-## [1.2.0] - 2026-05-10 — Development Preview (Alpha)
-
-> **Note:** Web support in this release is a **development preview / alpha**.
-> The architecture is in place but several components are stubs or placeholders.
-
-### Added
-- Web platform support with marker-based AR (development preview)
-- ARMarkerTarget, ARTrackedMarker, ARMarkerDetectionOptions models
-- Vector2 model
-- Marker tracking API on AugenController
-- **JS bridge with placeholder contrast-based marker detector** for development and testing — real JSARToolKit5 Wasm integration is planned but not yet bundled
-- Web camera service with getUserMedia
-- **Web renderer with camera overlay and marker transform updates** — full 3D rendering via Three.js is planned but not yet integrated
-- Platform abstraction layer (AugenPlatformBackend)
-- Conditional imports for web/mobile separation
-- ARSessionConfig.markerTracking and markerDetectionOptions fields
-- Web plugin registration
-- Example web marker AR demo
-- 78 new tests for marker models and controller
-
-### Changed
-- AugenController now uses platform backend abstraction instead of direct MethodChannel
-- AugenView uses conditional imports for platform-specific implementations
-
-### Fixed
-- B2: `ARSessionConfig.markerTracking` now auto-enables marker tracking on web during `initialize()`
-- B6: Stream subscription is set up before the detection loop starts, preventing dropped events on broadcast streams
-- B7: `_processFrame` guards against adding to a closed stream controller
-- B8: Frame processing errors are now surfaced via `WasmMarkerDetector.errorStream` instead of being silently swallowed
-- Pattern file path injection prevented with validation in `WebAssetLoader.loadPatternFile`
-- `isSecureContext` check before `getUserMedia` with clear HTTPS error
-- Camera permission errors now throw typed exceptions with specific error codes
-- `pause()`/`resume()` on web now also pause/resume the video element
-- `_disposed` flag on web backend prevents operations after disposal
-- `maxDetectionFps` clamped to minimum 1 with assertion
-- `loadBridgeScript` race condition prevented with static `Completer`
-- `videoWidth === 0` and `readyState < 2` guard in `_processFrame`
-- Tab visibility listener pauses/resumes detection loop when tab is backgrounded
 
 ## [1.1.0] - 2026-03-26
 

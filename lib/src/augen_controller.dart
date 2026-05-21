@@ -1,5 +1,7 @@
 import 'dart:async';
-import 'package:flutter/services.dart';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/services.dart' show PlatformException, rootBundle;
 import 'models/ar_anchor.dart';
 import 'models/ar_node.dart';
 import 'models/ar_plane.dart';
@@ -21,10 +23,15 @@ import 'models/ar_physics.dart';
 import 'models/ar_multi_user.dart';
 import 'models/ar_lighting.dart';
 import 'models/ar_environmental_probes.dart';
+import 'models/ar_marker_target.dart';
+import 'models/ar_tracked_marker.dart';
+import 'models/ar_marker_config.dart';
+import 'platform/augen_platform_backend.dart';
+import 'platform/augen_platform_factory.dart';
 
 /// Controller for managing AR session
 class AugenController {
-  final MethodChannel _channel;
+  final AugenPlatformBackend _backend;
   final int viewId;
 
   final StreamController<List<ARPlane>> _planesController =
@@ -90,10 +97,16 @@ class AugenController {
   final StreamController<AREnvironmentalProbeStatus> _probeStatusController =
       StreamController<AREnvironmentalProbeStatus>.broadcast();
 
+  // Marker tracking stream controllers
+  final StreamController<List<ARMarkerTarget>> _markerTargetsController =
+      StreamController<List<ARMarkerTarget>>.broadcast();
+  final StreamController<List<ARTrackedMarker>> _trackedMarkersController =
+      StreamController<List<ARTrackedMarker>>.broadcast();
+
   bool _isDisposed = false;
 
-  AugenController(this.viewId) : _channel = MethodChannel('augen_$viewId') {
-    _channel.setMethodCallHandler(_handleMethodCall);
+  AugenController(this.viewId) : _backend = createPlatformBackend(viewId) {
+    _backend.onPlatformCallback = _handlePlatformCallback;
   }
 
   /// Stream of detected planes
@@ -186,11 +199,19 @@ class AugenController {
   Stream<AREnvironmentalProbeStatus> get probeStatusStream =>
       _probeStatusController.stream;
 
+  /// Stream of marker targets
+  Stream<List<ARMarkerTarget>> get markerTargetsStream =>
+      _markerTargetsController.stream;
+
+  /// Stream of tracked markers
+  Stream<List<ARTrackedMarker>> get trackedMarkersStream =>
+      _trackedMarkersController.stream;
+
   /// Initialize AR session with configuration
   Future<void> initialize(ARSessionConfig config) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('initialize', config.toMap());
+      await _backend.initialize(config.toMap());
     } on PlatformException catch (e) {
       _errorController.add('Failed to initialize AR: ${e.message}');
       rethrow;
@@ -201,8 +222,7 @@ class AugenController {
   Future<bool> isARSupported() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<bool>('isARSupported');
-      return result ?? false;
+      return await _backend.isARSupported();
     } on PlatformException catch (e) {
       _errorController.add('Failed to check AR support: ${e.message}');
       return false;
@@ -223,17 +243,50 @@ class AugenController {
         nodeData['modelData'] = modelBytes;
       }
 
-      await _channel.invokeMethod('addNode', nodeData);
+      await _backend.addNode(nodeData);
     } on PlatformException catch (e) {
       _errorController.add('Failed to add node: ${e.message}');
       rethrow;
     }
   }
 
-  /// Load asset file as bytes
+  // X5: Process-wide LRU-ish asset cache. Static so it survives across
+  // controllers and view recreations (the common AR re-init case).
+  static final Map<String, Uint8List> _assetCache = <String, Uint8List>{};
+  static const int _assetCacheMaxBytes = 50 * 1024 * 1024; // 50 MB
+  static int _assetCacheCurrentBytes = 0;
+
+  /// Load asset file as bytes, with an in-memory cache to avoid repeated
+  /// `rootBundle.load` decoding for the same asset path.
   Future<Uint8List> _loadAsset(String assetPath) async {
+    final cached = _assetCache[assetPath];
+    if (cached != null) {
+      // Touch for simple LRU-ish behavior.
+      _assetCache.remove(assetPath);
+      _assetCache[assetPath] = cached;
+      return cached;
+    }
+
     final ByteData data = await rootBundle.load(assetPath);
-    return data.buffer.asUint8List();
+    final bytes = data.buffer.asUint8List();
+
+    // Evict oldest entries until there is room for the new asset.
+    while (_assetCache.isNotEmpty &&
+        _assetCacheCurrentBytes + bytes.length > _assetCacheMaxBytes) {
+      final oldestKey = _assetCache.keys.first;
+      final removed = _assetCache.remove(oldestKey);
+      if (removed != null) {
+        _assetCacheCurrentBytes -= removed.length;
+        if (_assetCacheCurrentBytes < 0) _assetCacheCurrentBytes = 0;
+      }
+    }
+
+    if (bytes.length <= _assetCacheMaxBytes) {
+      _assetCache[assetPath] = bytes;
+      _assetCacheCurrentBytes += bytes.length;
+    }
+
+    return bytes;
   }
 
   /// Add a custom 3D model from asset
@@ -284,7 +337,7 @@ class AugenController {
   Future<void> removeNode(String nodeId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removeNode', {'nodeId': nodeId});
+      await _backend.removeNode(nodeId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to remove node: ${e.message}');
       rethrow;
@@ -295,7 +348,7 @@ class AugenController {
   Future<void> updateNode(ARNode node) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateNode', node.toMap());
+      await _backend.updateNode(node.toMap());
     } on PlatformException catch (e) {
       _errorController.add('Failed to update node: ${e.message}');
       rethrow;
@@ -306,11 +359,8 @@ class AugenController {
   Future<List<ARHitResult>> hitTest(double x, double y) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<List>('hitTest', {
-        'x': x,
-        'y': y,
-      });
-      return result?.map((e) => ARHitResult.fromMap(e as Map)).toList() ?? [];
+      final result = await _backend.hitTest(x, y);
+      return result.map((e) => ARHitResult.fromMap(e)).toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to perform hit test: ${e.message}');
       return [];
@@ -321,10 +371,7 @@ class AugenController {
   Future<ARAnchor?> addAnchor(Vector3 position) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<Map>(
-        'addAnchor',
-        position.toMap(),
-      );
+      final result = await _backend.addAnchor(position.toMap());
       return result != null ? ARAnchor.fromMap(result) : null;
     } on PlatformException catch (e) {
       _errorController.add('Failed to add anchor: ${e.message}');
@@ -336,7 +383,7 @@ class AugenController {
   Future<void> removeAnchor(String anchorId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removeAnchor', {'anchorId': anchorId});
+      await _backend.removeAnchor(anchorId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to remove anchor: ${e.message}');
       rethrow;
@@ -347,7 +394,7 @@ class AugenController {
   Future<void> pause() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('pause');
+      await _backend.pause();
     } on PlatformException catch (e) {
       _errorController.add('Failed to pause AR: ${e.message}');
       rethrow;
@@ -358,7 +405,7 @@ class AugenController {
   Future<void> resume() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('resume');
+      await _backend.resume();
     } on PlatformException catch (e) {
       _errorController.add('Failed to resume AR: ${e.message}');
       rethrow;
@@ -369,126 +416,155 @@ class AugenController {
   Future<void> reset() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('reset');
+      await _backend.reset();
     } on PlatformException catch (e) {
       _errorController.add('Failed to reset AR: ${e.message}');
       rethrow;
     }
   }
 
-  Future<void> _handleMethodCall(MethodCall call) async {
+  /// Test-only hook to invoke the platform callback dispatcher directly,
+  /// without going through the MethodChannel codec. This lets tests exercise
+  /// the W14 fast-path where the web backend passes a typed
+  /// `List<ARTrackedMarker>` straight through.
+  @visibleForTesting
+  void debugHandlePlatformCallback(String method, dynamic arguments) {
+    _handlePlatformCallback(method, arguments);
+  }
+
+  /// Test-only view of the static asset cache size, in bytes.
+  @visibleForTesting
+  static int debugAssetCacheSizeBytes() => _assetCacheCurrentBytes;
+
+  /// Test-only view of the static asset cache key count.
+  @visibleForTesting
+  static int debugAssetCacheEntryCount() => _assetCache.length;
+
+  /// Test-only: clear the static asset cache.
+  @visibleForTesting
+  static void debugClearAssetCache() {
+    _assetCache.clear();
+    _assetCacheCurrentBytes = 0;
+  }
+
+  /// Test-only: load an asset through the cache. Mirrors the internal path
+  /// used by [addNode] / [addNodeToTrackedImage].
+  @visibleForTesting
+  Future<Uint8List> debugLoadAsset(String assetPath) => _loadAsset(assetPath);
+
+  void _handlePlatformCallback(String method, dynamic arguments) {
     if (_isDisposed) return;
 
-    switch (call.method) {
+    switch (method) {
       case 'onPlanesUpdated':
-        final planesData = call.arguments as List;
+        final planesData = arguments as List;
         final planes = planesData
             .map((e) => ARPlane.fromMap(e as Map))
             .toList();
         _planesController.add(planes);
         break;
       case 'onAnchorsUpdated':
-        final anchorsData = call.arguments as List;
+        final anchorsData = arguments as List;
         final anchors = anchorsData
             .map((e) => ARAnchor.fromMap(e as Map))
             .toList();
         _anchorsController.add(anchors);
         break;
       case 'onError':
-        final error = call.arguments as String;
+        final error = arguments as String;
         _errorController.add(error);
         break;
       case 'onAnimationStatus':
-        final statusData = call.arguments as Map;
+        final statusData = arguments as Map;
         final status = AnimationStatus.fromMap(statusData);
         _animationStatusController.add(status);
         break;
       case 'onTransitionStatus':
-        final statusData = call.arguments as Map;
+        final statusData = arguments as Map;
         final status = TransitionStatus.fromMap(statusData);
         _transitionStatusController.add(status);
         break;
       case 'onStateMachineStatus':
-        final statusData = call.arguments as Map;
+        final statusData = arguments as Map;
         final status = StateMachineStatus.fromMap(statusData);
         _stateMachineStatusController.add(status);
         break;
       case 'onImageTargetsUpdated':
-        final targetsData = call.arguments as List;
+        final targetsData = arguments as List;
         final targets = targetsData
             .map((e) => ARImageTarget.fromMap(e as Map))
             .toList();
         _imageTargetsController.add(targets);
         break;
       case 'onTrackedImagesUpdated':
-        final trackedData = call.arguments as List;
+        final trackedData = arguments as List;
         final trackedImages = trackedData
             .map((e) => ARTrackedImage.fromMap(e as Map))
             .toList();
         _trackedImagesController.add(trackedImages);
         break;
       case 'onFacesUpdated':
-        final facesData = call.arguments as List;
+        final facesData = arguments as List;
         final faces = facesData.map((e) => ARFace.fromMap(e as Map)).toList();
         _facesController.add(faces);
         break;
       case 'onCloudAnchorsUpdated':
-        final anchorsData = call.arguments as List;
+        final anchorsData = arguments as List;
         final anchors = anchorsData
             .map((e) => ARCloudAnchor.fromMap(e as Map))
             .toList();
         _cloudAnchorsController.add(anchors);
         break;
       case 'onCloudAnchorStatusUpdated':
-        final statusData = call.arguments as Map;
+        final statusData = arguments as Map;
         final status = CloudAnchorStatus.fromMap(statusData);
         _cloudAnchorStatusController.add(status);
         break;
       case 'onOcclusionsUpdated':
-        final occlusionsData = call.arguments as List;
+        final occlusionsData = arguments as List;
         final occlusions = occlusionsData
             .map((e) => AROcclusion.fromMap(e as Map<String, dynamic>))
             .toList();
         _occlusionsController.add(occlusions);
         break;
       case 'onOcclusionStatusUpdated':
-        final statusData = call.arguments as Map<String, dynamic>;
+        final statusData = arguments as Map<String, dynamic>;
         final status = OcclusionStatus.fromMap(statusData);
         _occlusionStatusController.add(status);
         break;
       case 'onPhysicsBodiesUpdated':
-        final bodiesData = call.arguments as List;
+        final bodiesData = arguments as List;
         final bodies = bodiesData
             .map((e) => ARPhysicsBody.fromMap(e as Map<String, dynamic>))
             .toList();
         _physicsBodiesController.add(bodies);
         break;
       case 'onPhysicsConstraintsUpdated':
-        final constraintsData = call.arguments as List;
+        final constraintsData = arguments as List;
         final constraints = constraintsData
             .map((e) => PhysicsConstraint.fromMap(e as Map<String, dynamic>))
             .toList();
         _physicsConstraintsController.add(constraints);
         break;
       case 'onPhysicsStatusUpdated':
-        final statusData = call.arguments as Map<String, dynamic>;
+        final statusData = arguments as Map<String, dynamic>;
         final status = PhysicsStatus.fromMap(statusData);
         _physicsStatusController.add(status);
         break;
       case 'onMultiUserSessionUpdated':
-        final sessionData = call.arguments as Map<String, dynamic>;
+        final sessionData = arguments as Map<String, dynamic>;
         final session = ARMultiUserSession.fromMap(sessionData);
         _multiUserSessionController.add(session);
         break;
       case 'onMultiUserParticipantsUpdated':
-        final participantsData = call.arguments as List;
+        final participantsData = arguments as List;
         final participants = participantsData
             .map((e) => MultiUserParticipant.fromMap(e as Map<String, dynamic>))
             .toList();
         _multiUserParticipantsController.add(participants);
         break;
       case 'onMultiUserSharedObjectsUpdated':
-        final objectsData = call.arguments as List;
+        final objectsData = arguments as List;
         final objects = objectsData
             .map(
               (e) => MultiUserSharedObject.fromMap(e as Map<String, dynamic>),
@@ -497,12 +573,12 @@ class AugenController {
         _multiUserSharedObjectsController.add(objects);
         break;
       case 'onMultiUserSessionStatusUpdated':
-        final statusData = call.arguments as Map<String, dynamic>;
+        final statusData = arguments as Map<String, dynamic>;
         final status = MultiUserSessionStatus.fromMap(statusData);
         _multiUserSessionStatusController.add(status);
         break;
       case 'onLightsUpdated':
-        final lightsData = call.arguments as List<dynamic>;
+        final lightsData = arguments as List<dynamic>;
         final lights = lightsData
             .map(
               (light) =>
@@ -512,17 +588,17 @@ class AugenController {
         _lightsController.add(lights);
         break;
       case 'onLightingConfigUpdated':
-        final configData = call.arguments as Map<String, dynamic>;
+        final configData = arguments as Map<String, dynamic>;
         final config = ARLightingConfig.fromMap(configData);
         _lightingConfigController.add(config);
         break;
       case 'onLightingStatusUpdated':
-        final statusData = call.arguments as Map<String, dynamic>;
+        final statusData = arguments as Map<String, dynamic>;
         final status = ARLightingStatus.fromMap(statusData);
         _lightingStatusController.add(status);
         break;
       case 'onProbesUpdated':
-        final probesData = call.arguments as List<dynamic>;
+        final probesData = arguments as List<dynamic>;
         final probes = probesData
             .map(
               (probe) => AREnvironmentalProbe.fromMap(
@@ -533,14 +609,34 @@ class AugenController {
         _probesController.add(probes);
         break;
       case 'onProbeConfigUpdated':
-        final configData = call.arguments as Map<String, dynamic>;
+        final configData = arguments as Map<String, dynamic>;
         final config = AREnvironmentalProbeConfig.fromMap(configData);
         _probeConfigController.add(config);
         break;
       case 'onProbeStatusUpdated':
-        final statusData = call.arguments as Map<String, dynamic>;
+        final statusData = arguments as Map<String, dynamic>;
         final status = AREnvironmentalProbeStatus.fromMap(statusData);
         _probeStatusController.add(status);
+        break;
+      case 'onMarkerTargetsUpdated':
+        final targetsData = arguments as List;
+        final targets = targetsData
+            .map((e) => ARMarkerTarget.fromMap(e as Map))
+            .toList();
+        _markerTargetsController.add(targets);
+        break;
+      case 'onTrackedMarkersUpdated':
+        // W14: Fast-path for web — backend passes List<ARTrackedMarker>
+        // directly so we skip a wasteful toMap/fromMap round-trip.
+        if (arguments is List<ARTrackedMarker>) {
+          _trackedMarkersController.add(arguments);
+        } else {
+          final markersData = arguments as List;
+          final markers = markersData
+              .map((e) => ARTrackedMarker.fromMap(e as Map))
+              .toList();
+          _trackedMarkersController.add(markers);
+        }
         break;
     }
   }
@@ -554,7 +650,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('playAnimation', {
+      await _backend.playAnimation({
         'nodeId': nodeId,
         'animationId': animationId,
         'speed': speed,
@@ -573,7 +669,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('pauseAnimation', {
+      await _backend.pauseAnimation({
         'nodeId': nodeId,
         'animationId': animationId,
       });
@@ -590,7 +686,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('stopAnimation', {
+      await _backend.stopAnimation({
         'nodeId': nodeId,
         'animationId': animationId,
       });
@@ -607,7 +703,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('resumeAnimation', {
+      await _backend.resumeAnimation({
         'nodeId': nodeId,
         'animationId': animationId,
       });
@@ -625,7 +721,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('seekAnimation', {
+      await _backend.seekAnimation({
         'nodeId': nodeId,
         'animationId': animationId,
         'time': time,
@@ -640,11 +736,8 @@ class AugenController {
   Future<List<String>> getAvailableAnimations(String nodeId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<List>(
-        'getAvailableAnimations',
-        {'nodeId': nodeId},
-      );
-      return result?.cast<String>() ?? [];
+      final result = await _backend.getAvailableAnimations(nodeId);
+      return result;
     } on PlatformException catch (e) {
       _errorController.add('Failed to get animations: ${e.message}');
       return [];
@@ -659,7 +752,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setAnimationSpeed', {
+      await _backend.setAnimationSpeed({
         'nodeId': nodeId,
         'animationId': animationId,
         'speed': speed,
@@ -679,7 +772,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('playBlendSet', {
+      await _backend.playBlendSet({
         'nodeId': nodeId,
         'blendSet': blendSet.toMap(),
       });
@@ -696,7 +789,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('stopBlendSet', {
+      await _backend.stopBlendSet({
         'nodeId': nodeId,
         'blendSetId': blendSetId,
       });
@@ -714,7 +807,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateBlendWeights', {
+      await _backend.updateBlendWeights({
         'nodeId': nodeId,
         'blendSetId': blendSetId,
         'weights': weights,
@@ -732,7 +825,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('startCrossfadeTransition', {
+      await _backend.startCrossfadeTransition({
         'nodeId': nodeId,
         'transition': transition.toMap(),
       });
@@ -751,7 +844,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('stopTransition', {
+      await _backend.stopTransition({
         'nodeId': nodeId,
         'transitionId': transitionId,
       });
@@ -769,7 +862,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('startStateMachine', {
+      await _backend.startStateMachine({
         'nodeId': nodeId,
         'stateMachine': stateMachine.toMap(),
         if (initialParameters != null) 'initialParameters': initialParameters,
@@ -787,7 +880,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('stopStateMachine', {
+      await _backend.stopStateMachine({
         'nodeId': nodeId,
         'stateMachineId': stateMachineId,
       });
@@ -805,7 +898,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateStateMachineParameters', {
+      await _backend.updateStateMachineParameters({
         'nodeId': nodeId,
         'stateMachineId': stateMachineId,
         'parameters': parameters,
@@ -827,7 +920,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('triggerStateMachineTransition', {
+      await _backend.triggerStateMachineTransition({
         'nodeId': nodeId,
         'stateMachineId': stateMachineId,
         'targetStateId': targetStateId,
@@ -849,7 +942,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('startBlendTree', {
+      await _backend.startBlendTree({
         'nodeId': nodeId,
         'blendTree': blendTree.toMap(),
         if (initialParameters != null) 'initialParameters': initialParameters,
@@ -867,7 +960,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('stopBlendTree', {
+      await _backend.stopBlendTree({
         'nodeId': nodeId,
         'blendTreeId': blendTreeId,
       });
@@ -885,7 +978,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateBlendTreeParameters', {
+      await _backend.updateBlendTreeParameters({
         'nodeId': nodeId,
         'blendTreeId': blendTreeId,
         'parameters': parameters,
@@ -906,7 +999,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setAnimationLayerWeight', {
+      await _backend.setAnimationLayerWeight({
         'nodeId': nodeId,
         'layer': layer,
         'weight': weight,
@@ -923,11 +1016,8 @@ class AugenController {
   Future<List<Map<String, dynamic>>> getAnimationLayers(String nodeId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<List>('getAnimationLayers', {
-        'nodeId': nodeId,
-      });
-      return result?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ??
-          [];
+      final result = await _backend.getAnimationLayers(nodeId);
+      return result;
     } on PlatformException catch (e) {
       _errorController.add('Failed to get animation layers: ${e.message}');
       return [];
@@ -945,7 +1035,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('playAdditiveAnimation', {
+      await _backend.playAdditiveAnimation({
         'nodeId': nodeId,
         'animationId': animationId,
         'targetLayer': targetLayer,
@@ -967,7 +1057,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setAnimationBoneMask', {
+      await _backend.setAnimationBoneMask({
         'nodeId': nodeId,
         'layer': layer,
         'boneMask': boneMask,
@@ -982,10 +1072,8 @@ class AugenController {
   Future<List<String>> getBoneHierarchy(String nodeId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<List>('getBoneHierarchy', {
-        'nodeId': nodeId,
-      });
-      return result?.cast<String>() ?? [];
+      final result = await _backend.getBoneHierarchy(nodeId);
+      return result;
     } on PlatformException catch (e) {
       _errorController.add('Failed to get bone hierarchy: ${e.message}');
       return [];
@@ -1039,7 +1127,7 @@ class AugenController {
   Future<void> addImageTarget(ARImageTarget target) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('addImageTarget', target.toMap());
+      await _backend.addImageTarget(target.toMap());
     } on PlatformException catch (e) {
       _errorController.add('Failed to add image target: ${e.message}');
       rethrow;
@@ -1050,7 +1138,7 @@ class AugenController {
   Future<void> removeImageTarget(String targetId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removeImageTarget', {'targetId': targetId});
+      await _backend.removeImageTarget(targetId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to remove image target: ${e.message}');
       rethrow;
@@ -1061,8 +1149,8 @@ class AugenController {
   Future<List<ARImageTarget>> getImageTargets() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<List>('getImageTargets');
-      return result?.map((e) => ARImageTarget.fromMap(e as Map)).toList() ?? [];
+      final result = await _backend.getImageTargets();
+      return result.map((e) => ARImageTarget.fromMap(e)).toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get image targets: ${e.message}');
       return [];
@@ -1073,9 +1161,8 @@ class AugenController {
   Future<List<ARTrackedImage>> getTrackedImages() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<List>('getTrackedImages');
-      return result?.map((e) => ARTrackedImage.fromMap(e as Map)).toList() ??
-          [];
+      final result = await _backend.getTrackedImages();
+      return result.map((e) => ARTrackedImage.fromMap(e)).toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get tracked images: ${e.message}');
       return [];
@@ -1086,9 +1173,7 @@ class AugenController {
   Future<void> setImageTrackingEnabled(bool enabled) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setImageTrackingEnabled', {
-        'enabled': enabled,
-      });
+      await _backend.setImageTrackingEnabled(enabled);
     } on PlatformException catch (e) {
       _errorController.add('Failed to set image tracking: ${e.message}');
       rethrow;
@@ -1099,10 +1184,7 @@ class AugenController {
   Future<bool> isImageTrackingEnabled() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<bool>(
-        'isImageTrackingEnabled',
-      );
-      return result ?? false;
+      return await _backend.isImageTrackingEnabled();
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to check image tracking status: ${e.message}',
@@ -1130,7 +1212,7 @@ class AugenController {
         nodeData['modelData'] = modelBytes;
       }
 
-      await _channel.invokeMethod('addNodeToTrackedImage', {
+      await _backend.addNodeToTrackedImage({
         'nodeId': nodeId,
         'nodeData': nodeData,
       });
@@ -1144,9 +1226,7 @@ class AugenController {
   Future<void> removeNodeFromTrackedImage(String nodeId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removeNodeFromTrackedImage', {
-        'nodeId': nodeId,
-      });
+      await _backend.removeNodeFromTrackedImage(nodeId);
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to remove node from tracked image: ${e.message}',
@@ -1161,9 +1241,7 @@ class AugenController {
   Future<void> setFaceTrackingEnabled(bool enabled) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setFaceTrackingEnabled', {
-        'enabled': enabled,
-      });
+      await _backend.setFaceTrackingEnabled(enabled);
     } on PlatformException catch (e) {
       _errorController.add('Failed to set face tracking: ${e.message}');
       rethrow;
@@ -1174,8 +1252,7 @@ class AugenController {
   Future<bool> isFaceTrackingEnabled() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<bool>('isFaceTrackingEnabled');
-      return result ?? false;
+      return await _backend.isFaceTrackingEnabled();
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to check face tracking status: ${e.message}',
@@ -1188,8 +1265,8 @@ class AugenController {
   Future<List<ARFace>> getTrackedFaces() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<List>('getTrackedFaces');
-      return result?.map((e) => ARFace.fromMap(e as Map)).toList() ?? [];
+      final result = await _backend.getTrackedFaces();
+      return result.map((e) => ARFace.fromMap(e)).toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get tracked faces: ${e.message}');
       return [];
@@ -1204,7 +1281,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('addNodeToTrackedFace', {
+      await _backend.addNodeToTrackedFace({
         'nodeId': nodeId,
         'faceId': faceId,
         'node': node.toMap(),
@@ -1222,7 +1299,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removeNodeFromTrackedFace', {
+      await _backend.removeNodeFromTrackedFace({
         'nodeId': nodeId,
         'faceId': faceId,
       });
@@ -1238,10 +1315,8 @@ class AugenController {
   Future<List<FaceLandmark>> getFaceLandmarks(String faceId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod<List>('getFaceLandmarks', {
-        'faceId': faceId,
-      });
-      return result?.map((e) => FaceLandmark.fromMap(e as Map)).toList() ?? [];
+      final result = await _backend.getFaceLandmarks(faceId);
+      return result.map((e) => FaceLandmark.fromMap(e)).toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get face landmarks: ${e.message}');
       return [];
@@ -1257,7 +1332,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setFaceTrackingConfig', {
+      await _backend.setFaceTrackingConfig({
         'detectLandmarks': detectLandmarks,
         'detectExpressions': detectExpressions,
         'minFaceSize': minFaceSize,
@@ -1275,10 +1350,7 @@ class AugenController {
   Future<String> createCloudAnchor(String localAnchorId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('createCloudAnchor', {
-        'localAnchorId': localAnchorId,
-      });
-      return result as String;
+      return await _backend.createCloudAnchor(localAnchorId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to create cloud anchor: ${e.message}');
       rethrow;
@@ -1289,9 +1361,7 @@ class AugenController {
   Future<void> resolveCloudAnchor(String cloudAnchorId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('resolveCloudAnchor', {
-        'cloudAnchorId': cloudAnchorId,
-      });
+      await _backend.resolveCloudAnchor(cloudAnchorId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to resolve cloud anchor: ${e.message}');
       rethrow;
@@ -1302,9 +1372,8 @@ class AugenController {
   Future<List<ARCloudAnchor>> getCloudAnchors() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getCloudAnchors');
-      final anchorsData = result as List;
-      return anchorsData.map((e) => ARCloudAnchor.fromMap(e as Map)).toList();
+      final result = await _backend.getCloudAnchors();
+      return result.map((e) => ARCloudAnchor.fromMap(e)).toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get cloud anchors: ${e.message}');
       rethrow;
@@ -1315,11 +1384,9 @@ class AugenController {
   Future<ARCloudAnchor?> getCloudAnchor(String cloudAnchorId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getCloudAnchor', {
-        'cloudAnchorId': cloudAnchorId,
-      });
+      final result = await _backend.getCloudAnchor(cloudAnchorId);
       if (result == null) return null;
-      return ARCloudAnchor.fromMap(result as Map);
+      return ARCloudAnchor.fromMap(result);
     } on PlatformException catch (e) {
       _errorController.add('Failed to get cloud anchor: ${e.message}');
       rethrow;
@@ -1330,9 +1397,7 @@ class AugenController {
   Future<void> deleteCloudAnchor(String cloudAnchorId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('deleteCloudAnchor', {
-        'cloudAnchorId': cloudAnchorId,
-      });
+      await _backend.deleteCloudAnchor(cloudAnchorId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to delete cloud anchor: ${e.message}');
       rethrow;
@@ -1343,8 +1408,7 @@ class AugenController {
   Future<bool> isCloudAnchorsSupported() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('isCloudAnchorsSupported');
-      return result as bool;
+      return await _backend.isCloudAnchorsSupported();
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to check cloud anchors support: ${e.message}',
@@ -1361,7 +1425,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setCloudAnchorConfig', {
+      await _backend.setCloudAnchorConfig({
         'maxCloudAnchors': maxCloudAnchors,
         'timeoutMs': timeout.inMilliseconds,
         'enableSharing': enableSharing,
@@ -1376,10 +1440,7 @@ class AugenController {
   Future<String> shareCloudAnchor(String cloudAnchorId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('shareCloudAnchor', {
-        'cloudAnchorId': cloudAnchorId,
-      });
-      return result as String;
+      return await _backend.shareCloudAnchor(cloudAnchorId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to share cloud anchor: ${e.message}');
       rethrow;
@@ -1390,9 +1451,7 @@ class AugenController {
   Future<void> joinCloudAnchorSession(String sessionId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('joinCloudAnchorSession', {
-        'sessionId': sessionId,
-      });
+      await _backend.joinCloudAnchorSession(sessionId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to join cloud anchor session: ${e.message}');
       rethrow;
@@ -1403,7 +1462,7 @@ class AugenController {
   Future<void> leaveCloudAnchorSession() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('leaveCloudAnchorSession');
+      await _backend.leaveCloudAnchorSession();
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to leave cloud anchor session: ${e.message}',
@@ -1418,7 +1477,7 @@ class AugenController {
   Future<void> setOcclusionEnabled(bool enabled) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setOcclusionEnabled', {'enabled': enabled});
+      await _backend.setOcclusionEnabled(enabled);
     } on PlatformException catch (e) {
       _errorController.add('Failed to set occlusion enabled: ${e.message}');
       rethrow;
@@ -1429,8 +1488,7 @@ class AugenController {
   Future<bool> isOcclusionEnabled() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('isOcclusionEnabled');
-      return result as bool;
+      return await _backend.isOcclusionEnabled();
     } on PlatformException catch (e) {
       _errorController.add('Failed to check occlusion enabled: ${e.message}');
       rethrow;
@@ -1447,7 +1505,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setOcclusionConfig', {
+      await _backend.setOcclusionConfig({
         'type': type.name,
         'confidence': confidence,
         'enablePersonOcclusion': enablePersonOcclusion,
@@ -1464,10 +1522,9 @@ class AugenController {
   Future<List<AROcclusion>> getOcclusions() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getOcclusions');
-      final occlusionsData = result as List;
-      return occlusionsData
-          .map((e) => AROcclusion.fromMap(Map<String, dynamic>.from(e as Map)))
+      final result = await _backend.getOcclusions();
+      return result
+          .map((e) => AROcclusion.fromMap(e))
           .toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get occlusions: ${e.message}');
@@ -1479,11 +1536,9 @@ class AugenController {
   Future<AROcclusion?> getOcclusion(String occlusionId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getOcclusion', {
-        'occlusionId': occlusionId,
-      });
+      final result = await _backend.getOcclusion(occlusionId);
       if (result == null) return null;
-      return AROcclusion.fromMap(Map<String, dynamic>.from(result as Map));
+      return AROcclusion.fromMap(result);
     } on PlatformException catch (e) {
       _errorController.add('Failed to get occlusion: ${e.message}');
       rethrow;
@@ -1500,14 +1555,13 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('createOcclusion', {
+      return await _backend.createOcclusion({
         'type': type.name,
         'position': position.toMap(),
         'rotation': rotation.toMap(),
         'scale': scale.toMap(),
         'metadata': metadata ?? {},
       });
-      return result as String;
     } on PlatformException catch (e) {
       _errorController.add('Failed to create occlusion: ${e.message}');
       rethrow;
@@ -1524,7 +1578,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateOcclusion', {
+      await _backend.updateOcclusion({
         'occlusionId': occlusionId,
         if (position != null) 'position': position.toMap(),
         if (rotation != null) 'rotation': rotation.toMap(),
@@ -1541,9 +1595,7 @@ class AugenController {
   Future<void> removeOcclusion(String occlusionId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removeOcclusion', {
-        'occlusionId': occlusionId,
-      });
+      await _backend.removeOcclusion(occlusionId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to remove occlusion: ${e.message}');
       rethrow;
@@ -1554,7 +1606,7 @@ class AugenController {
   Future<bool> isOcclusionSupported() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('isOcclusionSupported');
+      final result = await _backend.invokeMethod('isOcclusionSupported');
       return result as bool;
     } on PlatformException catch (e) {
       _errorController.add('Failed to check occlusion support: ${e.message}');
@@ -1566,7 +1618,7 @@ class AugenController {
   Future<Map<String, dynamic>> getOcclusionCapabilities() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getOcclusionCapabilities');
+      final result = await _backend.invokeMethod('getOcclusionCapabilities');
       return Map<String, dynamic>.from(result as Map);
     } on PlatformException catch (e) {
       _errorController.add(
@@ -1581,7 +1633,7 @@ class AugenController {
   Future<bool> isPhysicsSupported() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('isPhysicsSupported');
+      final result = await _backend.invokeMethod('isPhysicsSupported');
       return result as bool;
     } on PlatformException catch (e) {
       _errorController.add('Failed to check physics support: ${e.message}');
@@ -1593,7 +1645,7 @@ class AugenController {
   Future<void> initializePhysics(PhysicsWorldConfig config) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('initializePhysics', config.toMap());
+      await _backend.invokeMethod('initializePhysics', config.toMap());
     } on PlatformException catch (e) {
       _errorController.add('Failed to initialize physics: ${e.message}');
       rethrow;
@@ -1604,7 +1656,7 @@ class AugenController {
   Future<void> startPhysics() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('startPhysics');
+      await _backend.invokeMethod('startPhysics');
     } on PlatformException catch (e) {
       _errorController.add('Failed to start physics: ${e.message}');
       rethrow;
@@ -1615,7 +1667,7 @@ class AugenController {
   Future<void> stopPhysics() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('stopPhysics');
+      await _backend.invokeMethod('stopPhysics');
     } on PlatformException catch (e) {
       _errorController.add('Failed to stop physics: ${e.message}');
       rethrow;
@@ -1626,7 +1678,7 @@ class AugenController {
   Future<void> pausePhysics() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('pausePhysics');
+      await _backend.invokeMethod('pausePhysics');
     } on PlatformException catch (e) {
       _errorController.add('Failed to pause physics: ${e.message}');
       rethrow;
@@ -1637,7 +1689,7 @@ class AugenController {
   Future<void> resumePhysics() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('resumePhysics');
+      await _backend.invokeMethod('resumePhysics');
     } on PlatformException catch (e) {
       _errorController.add('Failed to resume physics: ${e.message}');
       rethrow;
@@ -1656,7 +1708,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('createPhysicsBody', {
+      return await _backend.addPhysicsBody({
         'nodeId': nodeId,
         'type': type.name,
         'material': material.toMap(),
@@ -1665,7 +1717,6 @@ class AugenController {
         if (scale != null) 'scale': scale.toMap(),
         if (mass != null) 'mass': mass,
       });
-      return result as String;
     } on PlatformException catch (e) {
       _errorController.add('Failed to create physics body: ${e.message}');
       rethrow;
@@ -1676,7 +1727,7 @@ class AugenController {
   Future<void> removePhysicsBody(String bodyId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removePhysicsBody', {'bodyId': bodyId});
+      await _backend.removePhysicsBody(bodyId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to remove physics body: ${e.message}');
       rethrow;
@@ -1691,7 +1742,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('applyForce', {
+      await _backend.applyForce({
         'bodyId': bodyId,
         'force': force.toMap(),
         if (point != null) 'point': point.toMap(),
@@ -1710,7 +1761,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('applyImpulse', {
+      await _backend.applyImpulse({
         'bodyId': bodyId,
         'impulse': impulse.toMap(),
         if (point != null) 'point': point.toMap(),
@@ -1728,7 +1779,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setVelocity', {
+      await _backend.invokeMethod('setVelocity', {
         'bodyId': bodyId,
         'velocity': velocity.toMap(),
       });
@@ -1745,7 +1796,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setAngularVelocity', {
+      await _backend.invokeMethod('setAngularVelocity', {
         'bodyId': bodyId,
         'angularVelocity': angularVelocity.toMap(),
       });
@@ -1769,7 +1820,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('createPhysicsConstraint', {
+      return await _backend.addPhysicsConstraint({
         'bodyAId': bodyAId,
         'bodyBId': bodyBId,
         'type': type.name,
@@ -1780,7 +1831,6 @@ class AugenController {
         if (lowerLimit != null) 'lowerLimit': lowerLimit,
         if (upperLimit != null) 'upperLimit': upperLimit,
       });
-      return result as String;
     } on PlatformException catch (e) {
       _errorController.add('Failed to create physics constraint: ${e.message}');
       rethrow;
@@ -1791,9 +1841,7 @@ class AugenController {
   Future<void> removePhysicsConstraint(String constraintId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removePhysicsConstraint', {
-        'constraintId': constraintId,
-      });
+      await _backend.removePhysicsConstraint(constraintId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to remove physics constraint: ${e.message}');
       rethrow;
@@ -1804,12 +1852,9 @@ class AugenController {
   Future<List<ARPhysicsBody>> getPhysicsBodies() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getPhysicsBodies');
-      final bodiesData = result as List;
-      return bodiesData
-          .map(
-            (e) => ARPhysicsBody.fromMap(Map<String, dynamic>.from(e as Map)),
-          )
+      final result = await _backend.getPhysicsBodies();
+      return result
+          .map((e) => ARPhysicsBody.fromMap(e))
           .toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get physics bodies: ${e.message}');
@@ -1821,13 +1866,9 @@ class AugenController {
   Future<List<PhysicsConstraint>> getPhysicsConstraints() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getPhysicsConstraints');
-      final constraintsData = result as List;
-      return constraintsData
-          .map(
-            (e) =>
-                PhysicsConstraint.fromMap(Map<String, dynamic>.from(e as Map)),
-          )
+      final result = await _backend.getPhysicsConstraints();
+      return result
+          .map((e) => PhysicsConstraint.fromMap(e))
           .toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get physics constraints: ${e.message}');
@@ -1839,7 +1880,7 @@ class AugenController {
   Future<PhysicsWorldConfig> getPhysicsWorldConfig() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getPhysicsWorldConfig');
+      final result = await _backend.invokeMethod('getPhysicsWorldConfig');
       return PhysicsWorldConfig.fromMap(
         Map<String, dynamic>.from(result as Map),
       );
@@ -1853,7 +1894,7 @@ class AugenController {
   Future<void> updatePhysicsWorldConfig(PhysicsWorldConfig config) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updatePhysicsWorldConfig', config.toMap());
+      await _backend.invokeMethod('updatePhysicsWorldConfig', config.toMap());
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to update physics world config: ${e.message}',
@@ -1868,7 +1909,7 @@ class AugenController {
   Future<bool> isMultiUserSupported() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('isMultiUserSupported');
+      final result = await _backend.invokeMethod('isMultiUserSupported');
       return result as bool;
     } on PlatformException catch (e) {
       _errorController.add('Failed to check multi-user support: ${e.message}');
@@ -1890,7 +1931,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('createMultiUserSession', {
+      final result = await _backend.invokeMethod('createMultiUserSession', {
         'name': name,
         'maxParticipants': maxParticipants,
         'isPrivate': isPrivate,
@@ -1912,11 +1953,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('joinMultiUserSession', {
-        'sessionId': sessionId,
-        'password': password,
-        'displayName': displayName,
-      });
+      await _backend.joinMultiUserSession(sessionId, displayName: displayName, password: password);
     } on PlatformException catch (e) {
       _errorController.add('Failed to join multi-user session: ${e.message}');
       rethrow;
@@ -1927,7 +1964,7 @@ class AugenController {
   Future<void> leaveMultiUserSession() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('leaveMultiUserSession');
+      await _backend.leaveMultiUserSession();
     } on PlatformException catch (e) {
       _errorController.add('Failed to leave multi-user session: ${e.message}');
       rethrow;
@@ -1938,11 +1975,9 @@ class AugenController {
   Future<ARMultiUserSession?> getMultiUserSession() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getMultiUserSession');
+      final result = await _backend.getMultiUserSession();
       if (result == null) return null;
-      return ARMultiUserSession.fromMap(
-        Map<String, dynamic>.from(result as Map),
-      );
+      return ARMultiUserSession.fromMap(result);
     } on PlatformException catch (e) {
       _errorController.add('Failed to get multi-user session: ${e.message}');
       rethrow;
@@ -1953,14 +1988,9 @@ class AugenController {
   Future<List<MultiUserParticipant>> getMultiUserParticipants() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getMultiUserParticipants');
-      final participantsData = result as List;
-      return participantsData
-          .map(
-            (e) => MultiUserParticipant.fromMap(
-              Map<String, dynamic>.from(e as Map),
-            ),
-          )
+      final result = await _backend.getMultiUserParticipants();
+      return result
+          .map((e) => MultiUserParticipant.fromMap(e))
           .toList();
     } on PlatformException catch (e) {
       _errorController.add(
@@ -1978,7 +2008,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('shareObject', {
+      final result = await _backend.invokeMethod('shareObject', {
         'nodeId': nodeId,
         'isLocked': isLocked,
         'isVisible': isVisible,
@@ -1994,9 +2024,7 @@ class AugenController {
   Future<void> unshareObject(String sharedObjectId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('unshareObject', {
-        'sharedObjectId': sharedObjectId,
-      });
+      await _backend.unshareObject(sharedObjectId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to unshare object: ${e.message}');
       rethrow;
@@ -2014,7 +2042,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateSharedObject', {
+      await _backend.invokeMethod('updateSharedObject', {
         'sharedObjectId': sharedObjectId,
         'position': position?.toMap(),
         'rotation': rotation?.toMap(),
@@ -2032,14 +2060,9 @@ class AugenController {
   Future<List<MultiUserSharedObject>> getMultiUserSharedObjects() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getMultiUserSharedObjects');
-      final objectsData = result as List;
-      return objectsData
-          .map(
-            (e) => MultiUserSharedObject.fromMap(
-              Map<String, dynamic>.from(e as Map),
-            ),
-          )
+      final result = await _backend.getSharedObjects();
+      return result
+          .map((e) => MultiUserSharedObject.fromMap(e))
           .toList();
     } on PlatformException catch (e) {
       _errorController.add(
@@ -2056,7 +2079,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setParticipantRole', {
+      await _backend.invokeMethod('setParticipantRole', {
         'participantId': participantId,
         'role': role.name,
       });
@@ -2070,7 +2093,7 @@ class AugenController {
   Future<void> kickParticipant(String participantId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('kickParticipant', {
+      await _backend.invokeMethod('kickParticipant', {
         'participantId': participantId,
       });
     } on PlatformException catch (e) {
@@ -2086,7 +2109,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateParticipantDisplayName', {
+      await _backend.invokeMethod('updateParticipantDisplayName', {
         'participantId': participantId,
         'displayName': displayName,
       });
@@ -2104,7 +2127,7 @@ class AugenController {
   Future<bool> isLightingSupported() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('isLightingSupported');
+      final result = await _backend.invokeMethod('isLightingSupported');
       return result as bool;
     } on PlatformException catch (e) {
       _errorController.add('Failed to check lighting support: ${e.message}');
@@ -2116,7 +2139,7 @@ class AugenController {
   Future<Map<String, dynamic>> getLightingCapabilities() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getLightingCapabilities');
+      final result = await _backend.invokeMethod('getLightingCapabilities');
       return Map<String, dynamic>.from(result as Map);
     } on PlatformException catch (e) {
       _errorController.add('Failed to get lighting capabilities: ${e.message}');
@@ -2128,8 +2151,14 @@ class AugenController {
   Future<ARLight> addLight(ARLight light) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('addLight', light.toMap());
-      return ARLight.fromMap(Map<String, dynamic>.from(result as Map));
+      final result = await _backend.addLight(light.toMap());
+      // Backend may return a map or a string ID
+      if (result is Map) {
+        return ARLight.fromMap(Map<String, dynamic>.from(result));
+      }
+      final lightMap = light.toMap();
+      lightMap['id'] = result;
+      return ARLight.fromMap(lightMap);
     } on PlatformException catch (e) {
       _errorController.add('Failed to add light: ${e.message}');
       rethrow;
@@ -2140,7 +2169,7 @@ class AugenController {
   Future<void> removeLight(String lightId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removeLight', {'lightId': lightId});
+      await _backend.removeLight(lightId);
     } on PlatformException catch (e) {
       _errorController.add('Failed to remove light: ${e.message}');
       rethrow;
@@ -2151,8 +2180,8 @@ class AugenController {
   Future<ARLight> updateLight(ARLight light) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('updateLight', light.toMap());
-      return ARLight.fromMap(Map<String, dynamic>.from(result as Map));
+      await _backend.updateLight(light.toMap());
+      return light;
     } on PlatformException catch (e) {
       _errorController.add('Failed to update light: ${e.message}');
       rethrow;
@@ -2163,12 +2192,9 @@ class AugenController {
   Future<List<ARLight>> getLights() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getLights');
-      final List<dynamic> lightsList = result as List;
-      return lightsList
-          .map(
-            (light) => ARLight.fromMap(Map<String, dynamic>.from(light as Map)),
-          )
+      final result = await _backend.getLights();
+      return result
+          .map((light) => ARLight.fromMap(light))
           .toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get lights: ${e.message}');
@@ -2180,11 +2206,9 @@ class AugenController {
   Future<ARLight?> getLight(String lightId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getLight', {
-        'lightId': lightId,
-      });
+      final result = await _backend.getLight(lightId);
       if (result == null) return null;
-      return ARLight.fromMap(Map<String, dynamic>.from(result as Map));
+      return ARLight.fromMap(result);
     } on PlatformException catch (e) {
       _errorController.add('Failed to get light: ${e.message}');
       rethrow;
@@ -2195,7 +2219,7 @@ class AugenController {
   Future<void> setLightingConfig(ARLightingConfig config) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setLightingConfig', config.toMap());
+      await _backend.setLightingConfig(config.toMap());
     } on PlatformException catch (e) {
       _errorController.add('Failed to set lighting config: ${e.message}');
       rethrow;
@@ -2206,8 +2230,9 @@ class AugenController {
   Future<ARLightingConfig> getLightingConfig() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getLightingConfig');
-      return ARLightingConfig.fromMap(Map<String, dynamic>.from(result as Map));
+      final result = await _backend.getLightingConfig();
+      if (result == null) throw PlatformException(code: 'NOT_FOUND', message: 'No lighting config');
+      return ARLightingConfig.fromMap(result);
     } on PlatformException catch (e) {
       _errorController.add('Failed to get lighting config: ${e.message}');
       rethrow;
@@ -2218,7 +2243,7 @@ class AugenController {
   Future<void> setShadowsEnabled(bool enabled) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setShadowsEnabled', {'enabled': enabled});
+      await _backend.invokeMethod('setShadowsEnabled', {'enabled': enabled});
     } on PlatformException catch (e) {
       _errorController.add('Failed to set shadows enabled: ${e.message}');
       rethrow;
@@ -2229,7 +2254,7 @@ class AugenController {
   Future<void> setShadowQuality(ShadowQuality quality) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setShadowQuality', {
+      await _backend.invokeMethod('setShadowQuality', {
         'quality': quality.name,
       });
     } on PlatformException catch (e) {
@@ -2245,7 +2270,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setAmbientLighting', {
+      await _backend.invokeMethod('setAmbientLighting', {
         'intensity': intensity,
         'color': color.toMap(),
       });
@@ -2262,7 +2287,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateLightPosition', {
+      await _backend.invokeMethod('updateLightPosition', {
         'lightId': lightId,
         'position': position.toMap(),
       });
@@ -2279,7 +2304,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateLightRotation', {
+      await _backend.invokeMethod('updateLightRotation', {
         'lightId': lightId,
         'rotation': rotation.toMap(),
       });
@@ -2296,7 +2321,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateLightIntensity', {
+      await _backend.invokeMethod('updateLightIntensity', {
         'lightId': lightId,
         'intensity': intensity,
       });
@@ -2313,7 +2338,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateLightColor', {
+      await _backend.invokeMethod('updateLightColor', {
         'lightId': lightId,
         'color': color.toMap(),
       });
@@ -2330,7 +2355,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setLightEnabled', {
+      await _backend.invokeMethod('setLightEnabled', {
         'lightId': lightId,
         'enabled': enabled,
       });
@@ -2347,7 +2372,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setLightCastShadows', {
+      await _backend.invokeMethod('setLightCastShadows', {
         'lightId': lightId,
         'castShadows': castShadows,
       });
@@ -2361,7 +2386,7 @@ class AugenController {
   Future<void> clearLights() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('clearLights');
+      await _backend.invokeMethod('clearLights');
     } on PlatformException catch (e) {
       _errorController.add('Failed to clear lights: ${e.message}');
       rethrow;
@@ -2374,7 +2399,7 @@ class AugenController {
   Future<bool> isEnvironmentalProbesSupported() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod(
+      final result = await _backend.invokeMethod(
         'isEnvironmentalProbesSupported',
       );
       return result as bool;
@@ -2390,7 +2415,7 @@ class AugenController {
   Future<Map<String, dynamic>> getEnvironmentalProbesCapabilities() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod(
+      final result = await _backend.invokeMethod(
         'getEnvironmentalProbesCapabilities',
       );
       return Map<String, dynamic>.from(result as Map);
@@ -2408,13 +2433,13 @@ class AugenController {
   ) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod(
-        'addEnvironmentalProbe',
-        probe.toMap(),
-      );
-      return AREnvironmentalProbe.fromMap(
-        Map<String, dynamic>.from(result as Map),
-      );
+      final result = await _backend.addEnvironmentalProbe(probe.toMap());
+      if (result is Map) {
+        return AREnvironmentalProbe.fromMap(Map<String, dynamic>.from(result));
+      }
+      final probeMap = probe.toMap();
+      probeMap['id'] = result;
+      return AREnvironmentalProbe.fromMap(probeMap);
     } on PlatformException catch (e) {
       _errorController.add('Failed to add environmental probe: ${e.message}');
       rethrow;
@@ -2425,9 +2450,7 @@ class AugenController {
   Future<void> removeEnvironmentalProbe(String probeId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('removeEnvironmentalProbe', {
-        'probeId': probeId,
-      });
+      await _backend.removeEnvironmentalProbe(probeId);
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to remove environmental probe: ${e.message}',
@@ -2442,13 +2465,8 @@ class AugenController {
   ) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod(
-        'updateEnvironmentalProbe',
-        probe.toMap(),
-      );
-      return AREnvironmentalProbe.fromMap(
-        Map<String, dynamic>.from(result as Map),
-      );
+      await _backend.updateEnvironmentalProbe(probe.toMap());
+      return probe;
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to update environmental probe: ${e.message}',
@@ -2461,14 +2479,9 @@ class AugenController {
   Future<List<AREnvironmentalProbe>> getEnvironmentalProbes() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getEnvironmentalProbes');
-      final List<dynamic> probesList = result as List;
-      return probesList
-          .map(
-            (probe) => AREnvironmentalProbe.fromMap(
-              Map<String, dynamic>.from(probe as Map),
-            ),
-          )
+      final result = await _backend.getEnvironmentalProbes();
+      return result
+          .map((probe) => AREnvironmentalProbe.fromMap(probe))
           .toList();
     } on PlatformException catch (e) {
       _errorController.add('Failed to get environmental probes: ${e.message}');
@@ -2480,13 +2493,9 @@ class AugenController {
   Future<AREnvironmentalProbe?> getEnvironmentalProbe(String probeId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getEnvironmentalProbe', {
-        'probeId': probeId,
-      });
+      final result = await _backend.getEnvironmentalProbe(probeId);
       if (result == null) return null;
-      return AREnvironmentalProbe.fromMap(
-        Map<String, dynamic>.from(result as Map),
-      );
+      return AREnvironmentalProbe.fromMap(result);
     } on PlatformException catch (e) {
       _errorController.add('Failed to get environmental probe: ${e.message}');
       return null;
@@ -2499,10 +2508,7 @@ class AugenController {
   ) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod(
-        'setEnvironmentalProbeConfig',
-        config.toMap(),
-      );
+      await _backend.setEnvironmentalProbeConfig(config.toMap());
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to set environmental probe config: ${e.message}',
@@ -2515,10 +2521,9 @@ class AugenController {
   Future<AREnvironmentalProbeConfig> getEnvironmentalProbeConfig() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      final result = await _channel.invokeMethod('getEnvironmentalProbeConfig');
-      return AREnvironmentalProbeConfig.fromMap(
-        Map<String, dynamic>.from(result as Map),
-      );
+      final result = await _backend.getEnvironmentalProbeConfig();
+      if (result == null) throw PlatformException(code: 'NOT_FOUND', message: 'No probe config');
+      return AREnvironmentalProbeConfig.fromMap(result);
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to get environmental probe config: ${e.message}',
@@ -2534,7 +2539,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateEnvironmentalProbePosition', {
+      await _backend.invokeMethod('updateEnvironmentalProbePosition', {
         'probeId': probeId,
         'position': position.toMap(),
       });
@@ -2553,7 +2558,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateEnvironmentalProbeRotation', {
+      await _backend.invokeMethod('updateEnvironmentalProbeRotation', {
         'probeId': probeId,
         'rotation': rotation.toMap(),
       });
@@ -2572,7 +2577,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateEnvironmentalProbeInfluenceRadius', {
+      await _backend.invokeMethod('updateEnvironmentalProbeInfluenceRadius', {
         'probeId': probeId,
         'influenceRadius': influenceRadius,
       });
@@ -2591,7 +2596,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateEnvironmentalProbeQuality', {
+      await _backend.invokeMethod('updateEnvironmentalProbeQuality', {
         'probeId': probeId,
         'quality': quality.name,
       });
@@ -2610,7 +2615,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('setEnvironmentalProbeEnabled', {
+      await _backend.invokeMethod('setEnvironmentalProbeEnabled', {
         'probeId': probeId,
         'enabled': enabled,
       });
@@ -2630,7 +2635,7 @@ class AugenController {
   }) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('updateEnvironmentalProbeCaptureSettings', {
+      await _backend.invokeMethod('updateEnvironmentalProbeCaptureSettings', {
         'probeId': probeId,
         'captureReflections': captureReflections,
         'captureLighting': captureLighting,
@@ -2647,9 +2652,7 @@ class AugenController {
   Future<void> forceEnvironmentalProbeUpdate(String probeId) async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('forceEnvironmentalProbeUpdate', {
-        'probeId': probeId,
-      });
+      await _backend.forceEnvironmentalProbeUpdate(probeId);
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to force environmental probe update: ${e.message}',
@@ -2662,7 +2665,7 @@ class AugenController {
   Future<void> clearEnvironmentalProbes() async {
     if (_isDisposed) throw StateError('Controller is disposed');
     try {
-      await _channel.invokeMethod('clearEnvironmentalProbes');
+      await _backend.clearEnvironmentalProbes();
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to clear environmental probes: ${e.message}',
@@ -2701,6 +2704,128 @@ class AugenController {
     _probesController.close();
     _probeConfigController.close();
     _probeStatusController.close();
-    _channel.setMethodCallHandler(null);
+    _markerTargetsController.close();
+    _trackedMarkersController.close();
+    _backend.dispose();
+  }
+
+  // ===== MARKER TRACKING METHODS =====
+
+  /// Add a marker target for tracking
+  Future<void> addMarkerTarget(ARMarkerTarget target) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _backend.addMarkerTarget(target.toMap());
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to add marker target: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove a marker target
+  Future<void> removeMarkerTarget(String targetId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _backend.removeMarkerTarget(targetId);
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to remove marker target: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Get all registered marker targets
+  Future<List<ARMarkerTarget>> getMarkerTargets() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _backend.getMarkerTargets();
+      return result.map((e) => ARMarkerTarget.fromMap(e)).toList();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get marker targets: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Enable or disable marker tracking
+  Future<void> setMarkerTrackingEnabled(bool enabled) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _backend.setMarkerTrackingEnabled(enabled);
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set marker tracking: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Check if marker tracking is enabled
+  Future<bool> isMarkerTrackingEnabled() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      return await _backend.isMarkerTrackingEnabled();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to check marker tracking status: ${e.message}');
+      return false;
+    }
+  }
+
+  /// Get currently tracked markers
+  Future<List<ARTrackedMarker>> getTrackedMarkers() async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final result = await _backend.getTrackedMarkers();
+      return result.map((e) => ARTrackedMarker.fromMap(e)).toList();
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to get tracked markers: ${e.message}');
+      return [];
+    }
+  }
+
+  /// Set marker detection options
+  Future<void> setMarkerDetectionOptions(ARMarkerDetectionOptions options) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _backend.setMarkerDetectionOptions(options.toMap());
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to set marker detection options: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Add a node anchored to a tracked marker
+  Future<void> addNodeToTrackedMarker({
+    required String nodeId,
+    required String trackedMarkerId,
+    required ARNode node,
+  }) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      final nodeData = node.toMap();
+      nodeData['trackedMarkerId'] = trackedMarkerId;
+
+      if (node.type == NodeType.model &&
+          node.modelPath != null &&
+          !node.modelPath!.startsWith('http')) {
+        final modelBytes = await _loadAsset(node.modelPath!);
+        nodeData['modelData'] = modelBytes;
+      }
+
+      await _backend.addNodeToTrackedMarker({
+        'nodeId': nodeId,
+        'nodeData': nodeData,
+      });
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to add node to tracked marker: ${e.message}');
+      rethrow;
+    }
+  }
+
+  /// Remove a node from a tracked marker
+  Future<void> removeNodeFromTrackedMarker(String nodeId) async {
+    if (_isDisposed) throw StateError('Controller is disposed');
+    try {
+      await _backend.removeNodeFromTrackedMarker(nodeId);
+    } on PlatformException catch (e) {
+      _errorController.add('Failed to remove node from tracked marker: ${e.message}');
+      rethrow;
+    }
   }
 }

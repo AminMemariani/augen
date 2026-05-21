@@ -31,3 +31,20 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 /build/
 /coverage/
+**/build/
+**/.dart_tool/
+**/Pods/
+**/Podfile.lock
+
+# Example sub-projects
+example/web_marker_ar/build/
+example/web_marker_ar/.dart_tool/
+example/web_marker_ar/pubspec.lock
+
+# Logs
+*.log
+flutter_*.log
+.mcp.json
+
+# ehAye artifacts
+.ehaye/artifacts/

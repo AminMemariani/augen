@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Augen Web Marker AR Demo</title>
+
+  <!--
+    augen_web_ar.js — the Augen web AR bridge.
+    Flutter's plugin system should auto-serve this from the augen package's
+    web/ directory during `flutter run`. If it does not, copy it manually:
+      cp ../../web/augen_web_ar.js web/
+  -->
+  <script src="augen_web_ar.js"></script>
+</head>
+<body>
+  <script>
+    window._capturedErrors = [];
+    window.addEventListener('error', function(e) { window._capturedErrors.push('ERR: ' + e.message + ' @ ' + e.filename + ':' + e.lineno); });
+    window.addEventListener('unhandledrejection', function(e) { window._capturedErrors.push('REJ: ' + String(e.reason).substring(0, 200)); });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
