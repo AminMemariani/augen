@@ -409,8 +409,17 @@ MIT — see [LICENSE](LICENSE) for details.
 - [Full documentation](Documentation.md)
 - [Issue tracker](https://github.com/AminMemariani/augen/issues)
 
-# Support:
+## Support
 
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Donate-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/aminmemar)
+If Augen has helped your project, you can support continued development with a
+tip on Solana:
 
-Solana Wallet: ApeGNaqfRM3HJocYHfdZ88GmFj2wqVCxUzm5MGvGNrWy
+[![Solana](https://img.shields.io/badge/Solana-Donate-9945FF?style=for-the-badge&logo=solana&logoColor=white)](https://solscan.io/account/ApeGNaqfRM3HJocYHfdZ88GmFj2wqVCxUzm5MGvGNrWy)
+
+**Solana wallet address:**
+
+```
+ApeGNaqfRM3HJocYHfdZ88GmFj2wqVCxUzm5MGvGNrWy
+```
+
+SOL and SPL tokens (USDC, etc.) on Solana mainnet are welcome. Thanks for your support! 🙏
