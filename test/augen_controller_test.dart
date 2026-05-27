@@ -360,14 +360,15 @@ void main() {
       expect(error, 'Test error message');
     });
 
-    test('throws StateError when used after dispose', () async {
+    test('mutation methods throw StateError when used after dispose', () async {
       controller.dispose();
 
+      // Mutation methods that change AR state still throw — callers are
+      // expected to guard with `controller.isDisposed`.
       expect(
         () => controller.initialize(ARSessionConfig()),
         throwsA(isA<StateError>()),
       );
-      expect(() => controller.isARSupported(), throwsA(isA<StateError>()));
       expect(
         () => controller.addNode(
           ARNode(id: 'n1', type: NodeType.sphere, position: Vector3.zero()),
@@ -390,6 +391,10 @@ void main() {
       expect(() => controller.pause(), throwsA(isA<StateError>()));
       expect(() => controller.resume(), throwsA(isA<StateError>()));
       expect(() => controller.reset(), throwsA(isA<StateError>()));
+
+      // But support checks must NOT throw — they degrade gracefully so UI
+      // callbacks fired after a tab switch don't crash the app.
+      expect(await controller.isARSupported(), isFalse);
     });
 
     test('handles PlatformException gracefully', () async {

@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-05-27
+
+> Bug-fix release focused on iOS demo crashes reported by early adopters.
+> The plugin now degrades gracefully when a capability is missing on the
+> running platform or when the controller has been disposed.
+
+### Fixed
+- **`MissingPluginException` on iOS** — `isEnvironmentalProbesSupported`,
+  `isCloudAnchorsSupported`, `isOcclusionSupported`, and the other support
+  checks no longer crash when the native side has no handler. They now
+  return `false` and log a debug-only warning.
+- **`Bad state: Controller is disposed`** — `setImageTrackingEnabled` and
+  `setFaceTrackingEnabled` no longer throw when fired during tab switches
+  or widget rebuilds. They return `false` and push a user-friendly message
+  to `errorStream` instead.
+- **iOS native handlers** — added explicit support-check handlers in
+  `AugenARView.swift` using real ARKit capability APIs
+  (`ARImageTrackingConfiguration.isSupported`,
+  `ARFaceTrackingConfiguration.isSupported`,
+  `supportsFrameSemantics(.personSegmentation)`, etc.) instead of
+  hard-coded `true`. Cloud anchors and multi-user honestly report `false`
+  because no backend ships with Augen.
+- **Android native handlers** — mirrored the new support-check method
+  names so the channel contract matches across platforms.
+- **iOS Podspec** — bumped from `0.1.0` to `1.2.1`, fixed placeholder
+  author / homepage metadata, and aligned the iOS deployment target.
+- **Example Podfile** — uncommented `platform :ios, '13.0'` so the demo
+  app builds against the documented minimum iOS version.
+
+### Added
+- `AugenController.isDisposed` — public getter so callers can guard before
+  invoking mutation methods (which still throw `StateError` after dispose
+  by design).
+
+### Changed (non-breaking)
+- `setImageTrackingEnabled` and `setFaceTrackingEnabled` now return
+  `Future<bool>` instead of `Future<void>`. Existing `await` call sites
+  continue to compile without changes; new code can use the return value
+  to drive UI state.
+
+### Tests
+- **+13 new tests** covering `MissingPluginException`, `PlatformException`,
+  and `UnsupportedError` paths for all 7 support checks and both toggle
+  methods, plus `isDisposed` getter behavior and dispose idempotency.
+
 ## [1.2.0] - 2026-05-21
 
 > Augen now runs on **three platforms** — Android (ARCore), iOS (RealityKit/ARKit),

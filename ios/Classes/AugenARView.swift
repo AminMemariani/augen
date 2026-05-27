@@ -94,6 +94,47 @@ class AugenARView: NSObject, FlutterPlatformView {
             getAvailableAnimations(arguments: call.arguments as? [String: Any] ?? [:], result: result)
         case "setAnimationSpeed":
             setAnimationSpeed(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+
+        // ===== Feature support checks =====
+        // These must NEVER throw or notImplemented — the Dart side relies on
+        // them for graceful UI degradation. iOS reports what ARKit/RealityKit
+        // actually supports; everything else returns false.
+        case "isImageTrackingSupported":
+            result(ARImageTrackingConfiguration.isSupported)
+        case "isFaceTrackingSupported":
+            result(ARFaceTrackingConfiguration.isSupported)
+        case "isEnvironmentalProbesSupported":
+            // iOS exposes environment texturing on ARWorldTrackingConfiguration.
+            // RealityKit auto-generates env probes when environmentTexturing
+            // is set to .automatic on iOS 14+.
+            if #available(iOS 14.0, *) {
+                result(ARWorldTrackingConfiguration.isSupported)
+            } else {
+                result(false)
+            }
+        case "isOcclusionSupported":
+            // People occlusion is supported on iOS 13+ on devices with an A12+ chip
+            // exposing personSegmentation. Scene reconstruction needs LiDAR.
+            if #available(iOS 13.0, *) {
+                result(ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation))
+            } else {
+                result(false)
+            }
+        case "isLightingSupported":
+            // ARKit always provides light estimation when running.
+            result(ARWorldTrackingConfiguration.isSupported)
+        case "isCloudAnchorsSupported":
+            // Cloud anchors require a backend (ARCore Cloud Anchors or custom).
+            // Augen does not ship one for iOS — report false honestly.
+            result(false)
+        case "isPhysicsSupported":
+            // RealityKit has physics built in; report based on AR support.
+            result(ARWorldTrackingConfiguration.isSupported)
+        case "isMultiUserSupported":
+            // ARKit collaborative sessions exist (iOS 13+) but Augen does not
+            // ship the networking/sync layer — report false honestly.
+            result(false)
+
         default:
             result(FlutterMethodNotImplemented)
         }

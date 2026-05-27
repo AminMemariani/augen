@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show visibleForTesting;
-import 'package:flutter/services.dart' show PlatformException, rootBundle;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, visibleForTesting;
+import 'package:flutter/services.dart'
+    show MissingPluginException, PlatformException, rootBundle;
 import 'models/ar_anchor.dart';
 import 'models/ar_node.dart';
 import 'models/ar_plane.dart';
@@ -107,6 +108,89 @@ class AugenController {
 
   AugenController(this.viewId) : _backend = createPlatformBackend(viewId) {
     _backend.onPlatformCallback = _handlePlatformCallback;
+  }
+
+  /// Whether this controller has been disposed.
+  ///
+  /// Use this to guard UI toggle callbacks that may fire after the AR view
+  /// has been torn down (e.g. tab switches, navigation pops):
+  ///
+  /// ```dart
+  /// if (controller.isDisposed) return;
+  /// await controller.setImageTrackingEnabled(enabled);
+  /// ```
+  bool get isDisposed => _isDisposed;
+
+  /// Run a feature support check that **never throws** when the native
+  /// implementation is missing or the controller has been disposed.
+  ///
+  /// Returns `false` for any of:
+  /// - controller already disposed
+  /// - native method not implemented on the current platform
+  /// - `PlatformException` from the platform side
+  ///
+  /// Errors are reported once (debug-only) to avoid log spam.
+  Future<bool> _safeSupportCheck(
+    String name,
+    Future<bool> Function() check,
+  ) async {
+    if (_isDisposed) return false;
+    try {
+      return await check();
+    } on MissingPluginException catch (e) {
+      if (kDebugMode) {
+        debugPrint('[augen] $name is not implemented on this platform: ${e.message}');
+      }
+      return false;
+    } on PlatformException catch (e) {
+      if (kDebugMode) {
+        debugPrint('[augen] $name platform error: ${e.message}');
+      }
+      return false;
+    } on UnsupportedError catch (e) {
+      if (kDebugMode) {
+        debugPrint('[augen] $name unsupported on this platform: ${e.message}');
+      }
+      return false;
+    }
+    // Note: programming errors (TypeError, AssertionError, StateError, etc.)
+    // intentionally propagate so they show up in tests and crash reports.
+  }
+
+  /// Like [_safeSupportCheck] but for `void`-returning toggle operations
+  /// (e.g. `setImageTrackingEnabled`). Silently no-ops if the controller is
+  /// disposed; surfaces real failures through [errorStream] without
+  /// crashing the caller.
+  Future<bool> _safeToggle(
+    String name,
+    Future<void> Function() op,
+  ) async {
+    if (_isDisposed) {
+      if (kDebugMode) {
+        debugPrint('[augen] $name ignored — controller is disposed');
+      }
+      return false;
+    }
+    try {
+      await op();
+      return true;
+    } on MissingPluginException catch (e) {
+      _errorController.add(
+        '$name is not supported on this platform.',
+      );
+      if (kDebugMode) {
+        debugPrint('[augen] $name MissingPluginException: ${e.message}');
+      }
+      return false;
+    } on PlatformException catch (e) {
+      _errorController.add('$name failed: ${e.message}');
+      return false;
+    } on UnsupportedError catch (e) {
+      _errorController.add('$name is not supported: ${e.message}');
+      return false;
+    }
+    // Programming errors (TypeError, AssertionError, StateError, etc.)
+    // propagate so they're caught in tests rather than silently swallowed.
   }
 
   /// Stream of detected planes
@@ -218,16 +302,12 @@ class AugenController {
     }
   }
 
-  /// Check if AR is supported on this device
-  Future<bool> isARSupported() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
-      return await _backend.isARSupported();
-    } on PlatformException catch (e) {
-      _errorController.add('Failed to check AR support: ${e.message}');
-      return false;
-    }
-  }
+  /// Check if AR is supported on this device.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isARSupported() =>
+      _safeSupportCheck('isARSupported', _backend.isARSupported);
 
   /// Add a node to the AR scene
   Future<void> addNode(ARNode node) async {
@@ -1169,29 +1249,25 @@ class AugenController {
     }
   }
 
-  /// Enable or disable image tracking
-  Future<void> setImageTrackingEnabled(bool enabled) async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
-      await _backend.setImageTrackingEnabled(enabled);
-    } on PlatformException catch (e) {
-      _errorController.add('Failed to set image tracking: ${e.message}');
-      rethrow;
-    }
-  }
+  /// Enable or disable image tracking.
+  ///
+  /// Safe to call after disposal — silently no-ops. Returns `true` on
+  /// success, `false` if the platform doesn't support it, the controller
+  /// is disposed, or an error occurred (which is also surfaced through
+  /// [errorStream]).
+  Future<bool> setImageTrackingEnabled(bool enabled) => _safeToggle(
+    'Image tracking',
+    () => _backend.setImageTrackingEnabled(enabled),
+  );
 
-  /// Check if image tracking is enabled
-  Future<bool> isImageTrackingEnabled() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
-      return await _backend.isImageTrackingEnabled();
-    } on PlatformException catch (e) {
-      _errorController.add(
-        'Failed to check image tracking status: ${e.message}',
-      );
-      return false;
-    }
-  }
+  /// Check if image tracking is enabled.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isImageTrackingEnabled() => _safeSupportCheck(
+    'isImageTrackingEnabled',
+    _backend.isImageTrackingEnabled,
+  );
 
   /// Add a node anchored to a tracked image
   Future<void> addNodeToTrackedImage({
@@ -1237,29 +1313,25 @@ class AugenController {
 
   // Face Tracking Methods
 
-  /// Enable or disable face tracking
-  Future<void> setFaceTrackingEnabled(bool enabled) async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
-      await _backend.setFaceTrackingEnabled(enabled);
-    } on PlatformException catch (e) {
-      _errorController.add('Failed to set face tracking: ${e.message}');
-      rethrow;
-    }
-  }
+  /// Enable or disable face tracking.
+  ///
+  /// Safe to call after disposal — silently no-ops. Returns `true` on
+  /// success, `false` if the platform doesn't support it, the controller
+  /// is disposed, or an error occurred (also surfaced through
+  /// [errorStream]).
+  Future<bool> setFaceTrackingEnabled(bool enabled) => _safeToggle(
+    'Face tracking',
+    () => _backend.setFaceTrackingEnabled(enabled),
+  );
 
-  /// Check if face tracking is enabled
-  Future<bool> isFaceTrackingEnabled() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
-      return await _backend.isFaceTrackingEnabled();
-    } on PlatformException catch (e) {
-      _errorController.add(
-        'Failed to check face tracking status: ${e.message}',
-      );
-      return false;
-    }
-  }
+  /// Check if face tracking is enabled.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isFaceTrackingEnabled() => _safeSupportCheck(
+    'isFaceTrackingEnabled',
+    _backend.isFaceTrackingEnabled,
+  );
 
   /// Get currently tracked faces
   Future<List<ARFace>> getTrackedFaces() async {
@@ -1404,18 +1476,14 @@ class AugenController {
     }
   }
 
-  /// Check if cloud anchors are supported
-  Future<bool> isCloudAnchorsSupported() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
-      return await _backend.isCloudAnchorsSupported();
-    } on PlatformException catch (e) {
-      _errorController.add(
-        'Failed to check cloud anchors support: ${e.message}',
-      );
-      return false;
-    }
-  }
+  /// Check if cloud anchors are supported.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isCloudAnchorsSupported() => _safeSupportCheck(
+    'isCloudAnchorsSupported',
+    _backend.isCloudAnchorsSupported,
+  );
 
   /// Set cloud anchor configuration
   Future<void> setCloudAnchorConfig({
@@ -1602,17 +1670,17 @@ class AugenController {
     }
   }
 
-  /// Check if occlusion is supported on the current device
-  Future<bool> isOcclusionSupported() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
+  /// Check if occlusion is supported on the current device.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isOcclusionSupported() => _safeSupportCheck(
+    'isOcclusionSupported',
+    () async {
       final result = await _backend.invokeMethod('isOcclusionSupported');
-      return result as bool;
-    } on PlatformException catch (e) {
-      _errorController.add('Failed to check occlusion support: ${e.message}');
-      rethrow;
-    }
-  }
+      return result is bool ? result : false;
+    },
+  );
 
   /// Get occlusion capabilities
   Future<Map<String, dynamic>> getOcclusionCapabilities() async {
@@ -1629,17 +1697,17 @@ class AugenController {
   }
 
   // ===== Physics Methods =====
-  /// Check if physics simulation is supported
-  Future<bool> isPhysicsSupported() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
+  /// Check if physics simulation is supported.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isPhysicsSupported() => _safeSupportCheck(
+    'isPhysicsSupported',
+    () async {
       final result = await _backend.invokeMethod('isPhysicsSupported');
-      return result as bool;
-    } on PlatformException catch (e) {
-      _errorController.add('Failed to check physics support: ${e.message}');
-      rethrow;
-    }
-  }
+      return result is bool ? result : false;
+    },
+  );
 
   /// Initialize physics world with configuration
   Future<void> initializePhysics(PhysicsWorldConfig config) async {
@@ -1905,17 +1973,17 @@ class AugenController {
 
   // ===== Multi-User Methods =====
 
-  /// Check if multi-user AR is supported
-  Future<bool> isMultiUserSupported() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
+  /// Check if multi-user AR is supported.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isMultiUserSupported() => _safeSupportCheck(
+    'isMultiUserSupported',
+    () async {
       final result = await _backend.invokeMethod('isMultiUserSupported');
-      return result as bool;
-    } on PlatformException catch (e) {
-      _errorController.add('Failed to check multi-user support: ${e.message}');
-      rethrow;
-    }
-  }
+      return result is bool ? result : false;
+    },
+  );
 
   /// Create a new multi-user session
   Future<String> createMultiUserSession({
@@ -2123,17 +2191,17 @@ class AugenController {
 
   // ===== LIGHTING METHODS =====
 
-  /// Check if lighting and shadows are supported
-  Future<bool> isLightingSupported() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
+  /// Check if lighting and shadows are supported.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isLightingSupported() => _safeSupportCheck(
+    'isLightingSupported',
+    () async {
       final result = await _backend.invokeMethod('isLightingSupported');
-      return result as bool;
-    } on PlatformException catch (e) {
-      _errorController.add('Failed to check lighting support: ${e.message}');
-      rethrow;
-    }
-  }
+      return result is bool ? result : false;
+    },
+  );
 
   /// Get lighting capabilities
   Future<Map<String, dynamic>> getLightingCapabilities() async {
@@ -2395,21 +2463,19 @@ class AugenController {
 
   // Environmental Probes Methods
 
-  /// Check if environmental probes are supported
-  Future<bool> isEnvironmentalProbesSupported() async {
-    if (_isDisposed) throw StateError('Controller is disposed');
-    try {
+  /// Check if environmental probes are supported.
+  ///
+  /// Never throws — returns `false` if the controller is disposed, the
+  /// native method is missing, or the platform reports an error.
+  Future<bool> isEnvironmentalProbesSupported() => _safeSupportCheck(
+    'isEnvironmentalProbesSupported',
+    () async {
       final result = await _backend.invokeMethod(
         'isEnvironmentalProbesSupported',
       );
-      return result as bool;
-    } on PlatformException catch (e) {
-      _errorController.add(
-        'Failed to check environmental probes support: ${e.message}',
-      );
-      return false;
-    }
-  }
+      return result is bool ? result : false;
+    },
+  );
 
   /// Get environmental probes capabilities
   Future<Map<String, dynamic>> getEnvironmentalProbesCapabilities() async {

@@ -4,24 +4,28 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'augen'
-  s.version          = '0.1.0'
-  s.summary          = 'A Flutter plugin for building AR applications using RealityKit on iOS and ARCore on Android.'
+  s.version          = '1.2.1'
+  s.summary          = 'Flutter AR plugin using ARCore (Android), RealityKit/ARKit (iOS), and WebAssembly (web).'
   s.description      = <<-DESC
-Augen is a Flutter plugin that enables pure Dart AR development without native code.
-Uses RealityKit on iOS and ARCore on Android.
+Augen is a Flutter plugin that enables pure-Dart AR development across mobile and web.
+Uses RealityKit/ARKit on iOS, ARCore on Android, and a WebAssembly marker-detection
+bridge on Flutter Web.
                        DESC
-  s.homepage         = 'https://github.com/yourusername/augen'
+  s.homepage         = 'https://github.com/AminMemariani/augen'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Your Name' => 'email@example.com' }
+  s.author           = { 'Amin Memariani' => 'amin.memariani@gmail.com' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
   s.platform = :ios, '13.0'
 
-  # Flutter.framework does not contain a i386 slice.
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
+  # Flutter.framework does not contain an i386 slice.
+  s.pod_target_xcconfig = {
+    'DEFINES_MODULE' => 'YES',
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+  }
   s.swift_version = '5.0'
-  
-  # RealityKit and ARKit frameworks
+
+  # ARKit, RealityKit, and Combine are required.
   s.frameworks = 'ARKit', 'RealityKit', 'Combine'
 end

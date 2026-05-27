@@ -51,10 +51,12 @@ void main() {
       await errorsDone.future.timeout(const Duration(seconds: 1));
     });
 
-    test('calling methods after dispose throws StateError', () {
+    test('mutation methods after dispose throw StateError', () {
       final controller = AugenController(104);
       controller.dispose();
 
+      // Mutation methods that change AR state still throw — callers should
+      // guard with `controller.isDisposed` first.
       expect(
         () => controller.initialize(const ARSessionConfig()),
         throwsA(isA<StateError>()),
@@ -62,7 +64,6 @@ void main() {
       expect(() => controller.pause(), throwsA(isA<StateError>()));
       expect(() => controller.resume(), throwsA(isA<StateError>()));
       expect(() => controller.reset(), throwsA(isA<StateError>()));
-      expect(() => controller.isARSupported(), throwsA(isA<StateError>()));
       expect(
         () => controller.addNode(
           ARNode(id: 'n', type: NodeType.sphere, position: Vector3.zero()),
@@ -79,6 +80,53 @@ void main() {
         () => controller.removeAnchor('a'),
         throwsA(isA<StateError>()),
       );
+    });
+
+    test(
+      'support checks after dispose return false safely (no throw)',
+      () async {
+        final controller = AugenController(105);
+        controller.dispose();
+
+        expect(controller.isDisposed, isTrue);
+
+        // All support-check methods must gracefully return false instead of
+        // throwing — UI toggle callbacks rely on this when racing dispose.
+        expect(await controller.isARSupported(), isFalse);
+        expect(await controller.isCloudAnchorsSupported(), isFalse);
+        expect(await controller.isPhysicsSupported(), isFalse);
+        expect(await controller.isOcclusionSupported(), isFalse);
+        expect(await controller.isLightingSupported(), isFalse);
+        expect(await controller.isEnvironmentalProbesSupported(), isFalse);
+        expect(await controller.isMultiUserSupported(), isFalse);
+        expect(await controller.isFaceTrackingEnabled(), isFalse);
+        expect(await controller.isImageTrackingEnabled(), isFalse);
+      },
+    );
+
+    test(
+      'feature toggles after dispose return false safely (no throw)',
+      () async {
+        final controller = AugenController(106);
+        controller.dispose();
+
+        // Toggle methods are user-facing UI callbacks — must never throw
+        // when fired after a tab switch / widget disposal.
+        expect(await controller.setImageTrackingEnabled(true), isFalse);
+        expect(await controller.setImageTrackingEnabled(false), isFalse);
+        expect(await controller.setFaceTrackingEnabled(true), isFalse);
+        expect(await controller.setFaceTrackingEnabled(false), isFalse);
+      },
+    );
+
+    test('isDisposed is true after dispose and false before', () {
+      final controller = AugenController(107);
+      expect(controller.isDisposed, isFalse);
+      controller.dispose();
+      expect(controller.isDisposed, isTrue);
+      // Idempotent
+      controller.dispose();
+      expect(controller.isDisposed, isTrue);
     });
 
     test('multiple controllers with different viewIds work independently',

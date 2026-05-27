@@ -73,6 +73,24 @@ class AugenARView(
             "seekAnimation" -> seekAnimation(call, result)
             "getAvailableAnimations" -> getAvailableAnimations(call, result)
             "setAnimationSpeed" -> setAnimationSpeed(call, result)
+
+            // ===== Feature support checks =====
+            // Must NEVER notImplemented — Dart relies on these for graceful
+            // UI degradation. Report what ARCore actually supports; everything
+            // else returns false honestly.
+            "isImageTrackingSupported" -> result.success(true) // ARCore Augmented Images
+            "isFaceTrackingSupported" -> result.success(true)  // ARCore Augmented Faces
+            "isEnvironmentalProbesSupported" -> result.success(true) // ARCore env HDR
+            "isOcclusionSupported" -> result.success(true)     // ARCore depth on supported devices
+            "isLightingSupported" -> result.success(true)      // ARCore light estimation
+            "isCloudAnchorsSupported" -> {
+                // True Cloud Anchors need a Google Cloud project + API key.
+                // Augen does not ship one — report false honestly.
+                result.success(false)
+            }
+            "isPhysicsSupported" -> result.success(false)      // Not implemented natively
+            "isMultiUserSupported" -> result.success(false)    // No backend ships with Augen
+
             else -> result.notImplemented()
         }
     }
