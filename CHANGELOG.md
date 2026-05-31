@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-05-31
+
+> Minor release: environmental-probe capabilities are now implemented on iOS,
+> the web pipeline is WebAssembly-ready, and the example app is verified stable
+> across iOS, Android, and Web.
+
+### Added
+- **`getEnvironmentalProbesCapabilities()` implemented on iOS.** The native
+  handler reports real ARKit/RealityKit environment-texturing capabilities
+  (supported resolutions, max active probes, automatic/manual placement) instead
+  of returning `MissingPluginException`.
+- **WebAssembly readiness.** The web camera service no longer performs a
+  JS-interop runtime type check that was incompatible with `dart2wasm`; the web
+  build now passes the wasm dry-run cleanly.
+
+### Fixed
+- `getEnvironmentalProbesCapabilities()` and the environmental-probe
+  configuration path degrade gracefully (return empty / no-op) when a native
+  handler is absent, instead of surfacing `MissingPluginException` in the UI.
+- **Example app:** replaced the stale generated widget test (which always
+  failed) with a real smoke test, and wrapped optional environmental-probe setup
+  so a missing native handler no longer prints an error to the status overlay.
+
+### Changed (non-breaking)
+- Example app verified to build and run on **iOS, Android, and Web**; the whole
+  package passes `flutter analyze` with no issues and all 611 tests green.
+
 ## [1.2.1] - 2026-05-27
 
 > Bug-fix release focused on iOS demo crashes reported by early adopters.

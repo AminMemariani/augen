@@ -2485,6 +2485,10 @@ class AugenController {
         'getEnvironmentalProbesCapabilities',
       );
       return Map<String, dynamic>.from(result as Map);
+    } on MissingPluginException {
+      // Native side doesn't implement this handler (e.g. older build or
+      // unsupported platform) — degrade gracefully instead of throwing.
+      return {};
     } on PlatformException catch (e) {
       _errorController.add(
         'Failed to get environmental probes capabilities: ${e.message}',

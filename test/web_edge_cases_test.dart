@@ -77,7 +77,7 @@ void main() {
   });
 
   group('ARTrackedMarker isTracked / isReliable', () {
-    ARTrackedMarker _makeMarker({
+    ARTrackedMarker makeMarker({
       required ARMarkerTrackingState state,
       required double confidence,
     }) {
@@ -101,7 +101,7 @@ void main() {
     }
 
     test('isTracked returns true for tracked state', () {
-      final m = _makeMarker(
+      final m = makeMarker(
         state: ARMarkerTrackingState.tracked,
         confidence: 0.9,
       );
@@ -109,7 +109,7 @@ void main() {
     });
 
     test('isTracked returns false for notTracked state', () {
-      final m = _makeMarker(
+      final m = makeMarker(
         state: ARMarkerTrackingState.notTracked,
         confidence: 0.9,
       );
@@ -117,7 +117,7 @@ void main() {
     });
 
     test('isTracked returns false for paused state', () {
-      final m = _makeMarker(
+      final m = makeMarker(
         state: ARMarkerTrackingState.paused,
         confidence: 0.9,
       );
@@ -125,7 +125,7 @@ void main() {
     });
 
     test('isTracked returns false for failed state', () {
-      final m = _makeMarker(
+      final m = makeMarker(
         state: ARMarkerTrackingState.failed,
         confidence: 0.9,
       );
@@ -133,7 +133,7 @@ void main() {
     });
 
     test('isReliable requires tracked AND confidence > 0.7', () {
-      final m = _makeMarker(
+      final m = makeMarker(
         state: ARMarkerTrackingState.tracked,
         confidence: 0.9,
       );
@@ -141,7 +141,7 @@ void main() {
     });
 
     test('isReliable false when not tracked even with high confidence', () {
-      final m = _makeMarker(
+      final m = makeMarker(
         state: ARMarkerTrackingState.notTracked,
         confidence: 0.9,
       );
@@ -149,7 +149,7 @@ void main() {
     });
 
     test('confidence exactly 0.7 is NOT reliable (> not >=)', () {
-      final m = _makeMarker(
+      final m = makeMarker(
         state: ARMarkerTrackingState.tracked,
         confidence: 0.7,
       );
@@ -157,7 +157,7 @@ void main() {
     });
 
     test('confidence 0.71 IS reliable', () {
-      final m = _makeMarker(
+      final m = makeMarker(
         state: ARMarkerTrackingState.tracked,
         confidence: 0.71,
       );

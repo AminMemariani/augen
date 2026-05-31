@@ -112,6 +112,32 @@ class AugenARView: NSObject, FlutterPlatformView {
             } else {
                 result(false)
             }
+        case "getEnvironmentalProbesCapabilities":
+            // Report what ARKit/RealityKit can actually do for environment
+            // probes. iOS 14+ supports automatic environment texturing; on
+            // anything older we report no capabilities rather than throwing,
+            // so the Dart side can degrade gracefully.
+            if #available(iOS 14.0, *), ARWorldTrackingConfiguration.isSupported {
+                result([
+                    "supported": true,
+                    "automaticPlacement": true,
+                    "manualPlacement": true,
+                    "realTimeUpdates": true,
+                    "maxActiveProbes": 8,
+                    "supportedResolutions": [256, 512, 1024],
+                    "maxTextureResolution": 1024,
+                ])
+            } else {
+                result([
+                    "supported": false,
+                    "automaticPlacement": false,
+                    "manualPlacement": false,
+                    "realTimeUpdates": false,
+                    "maxActiveProbes": 0,
+                    "supportedResolutions": [Int](),
+                    "maxTextureResolution": 0,
+                ])
+            }
         case "isOcclusionSupported":
             // People occlusion is supported on iOS 13+ on devices with an A12+ chip
             // exposing personSegmentation. Scene reconstruction needs LiDAR.

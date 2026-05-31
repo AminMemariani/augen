@@ -1,27 +1,31 @@
-// This is a basic Flutter widget test.
+// Smoke test for the Augen AR demo app.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Verifies the app boots and renders its home scaffold. The AR view itself is
+// a platform view that cannot be instantiated in a widget test, so we force a
+// non-AR target platform — AugenView then renders its plain fallback and the
+// rest of the UI (app bar, tabs, status overlay) builds normally.
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:augen_example/main.dart';
 
 void main() {
-  testWidgets('Verify Platform version', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('App renders the AR demo home page', (WidgetTester tester) async {
+    // Reset inside the body (not addTearDown) so the framework's end-of-test
+    // invariant check sees the debug variable restored.
+    debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
+    try {
+      await tester.pumpWidget(const MyApp());
+      await tester.pump();
 
-    // Verify that platform version is retrieved.
-    expect(
-      find.byWidgetPredicate(
-        (Widget widget) =>
-            widget is Text && widget.data!.startsWith('Running on:'),
-      ),
-      findsOneWidget,
-    );
+      // App bar title renders.
+      expect(find.text('Augen AR Demo - Complete Features'), findsOneWidget);
+
+      // The first feature tab is present.
+      expect(find.text('AR View'), findsWidgets);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }

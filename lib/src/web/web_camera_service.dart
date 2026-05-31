@@ -195,22 +195,19 @@ class WebCameraService {
   }
 
   String _getErrorName(dynamic error) {
-    // Try to extract DOMException name from JS error
-    try {
-      if (error is web.DOMException) {
-        return error.name;
-      }
-      final str = error.toString();
-      // Common pattern: "DOMException: ..., name: NotAllowedError"
-      for (final name in [
-        'NotAllowedError',
-        'NotFoundError',
-        'OverconstrainedError',
-        'SecurityError',
-      ]) {
-        if (str.contains(name)) return name;
-      }
-    } catch (_) {}
+    // A DOMException stringifies as "<name>: <message>", so we read the name
+    // from the string form rather than doing a JS-interop runtime type check
+    // (`error is web.DOMException`), which is not WebAssembly-safe and keeps
+    // the JS and wasm builds behaving consistently.
+    final str = error?.toString() ?? '';
+    for (final name in [
+      'NotAllowedError',
+      'NotFoundError',
+      'OverconstrainedError',
+      'SecurityError',
+    ]) {
+      if (str.contains(name)) return name;
+    }
     return '';
   }
 }

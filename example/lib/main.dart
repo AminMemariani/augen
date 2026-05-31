@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:augen/augen.dart' hide AnimationStatus;
 import 'package:augen/augen.dart' as augen;
 import 'dart:async';
@@ -44,12 +45,12 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   List<AROcclusion> _occlusions = [];
   List<ARPhysicsBody> _physicsBodies = [];
   List<PhysicsConstraint> _physicsConstraints = [];
-  List<ARLight> _lights = [];
+  final List<ARLight> _lights = [];
   ARLightingConfig? _lightingConfig;
   bool _lightingSupported = false;
   bool _shadowsEnabled = true;
   ShadowQuality _shadowQuality = ShadowQuality.medium;
-  List<AREnvironmentalProbe> _environmentalProbes = [];
+  final List<AREnvironmentalProbe> _environmentalProbes = [];
   AREnvironmentalProbeConfig? _probeConfig;
   bool _environmentalProbesSupported = false;
   int _nodeCounter = 0;
@@ -109,6 +110,23 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   void _onARViewCreated(AugenController controller) {
     _controller = controller;
     _initializeAR();
+  }
+
+  /// Runs [action], returning null instead of throwing when the feature isn't
+  /// available on the current platform. A missing native handler surfaces as a
+  /// [MissingPluginException]; a disposed controller or a platform view caught
+  /// mid-recreation (e.g. right after a hot restart) surfaces as a
+  /// [PlatformException] with a known code. All other errors propagate so real
+  /// bugs stay visible.
+  Future<T?> _safeCall<T>(Future<T> Function() action) async {
+    try {
+      return await action();
+    } on MissingPluginException {
+      return null;
+    } on PlatformException catch (e) {
+      if (e.code == 'disposed' || e.code == 'recreating_view') return null;
+      rethrow;
+    }
   }
 
   Future<void> _initializeAR() async {
@@ -779,7 +797,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       if (_lightingSupported) {
         // Get lighting capabilities
         final capabilities = await _controller!.getLightingCapabilities();
-        print('Lighting capabilities: $capabilities');
+        debugPrint('Lighting capabilities: $capabilities');
 
         // Set up default lighting configuration
         const config = ARLightingConfig(
@@ -863,10 +881,16 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
 
       if (_environmentalProbesSupported) {
-        // Get environmental probes capabilities
-        final capabilities = await _controller!
-            .getEnvironmentalProbesCapabilities();
-        print('Environmental probes capabilities: $capabilities');
+        // Capabilities and probe configuration are optional. On iOS the system
+        // manages environment probes automatically and the manual config/probe
+        // APIs may have no native handler — use _safeCall so a missing handler
+        // degrades gracefully instead of surfacing an error to the user.
+        final capabilities = await _safeCall(
+          () => _controller!.getEnvironmentalProbesCapabilities(),
+        );
+        if (capabilities != null) {
+          debugPrint('Environmental probes capabilities: $capabilities');
+        }
 
         // Set up default environmental probes configuration
         const config = AREnvironmentalProbeConfig(
@@ -882,8 +906,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           optimizePlacement: true,
         );
 
-        await _controller!.setEnvironmentalProbeConfig(config);
-        _probeConfig = config;
+        final applied = await _safeCall<bool>(() async {
+          await _controller!.setEnvironmentalProbeConfig(config);
+          return true;
+        });
+        if (applied == true) {
+          _probeConfig = config;
+        }
 
         if (!mounted) return;
         setState(() {});
@@ -902,7 +931,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     try {
       final now = DateTime.now();
       final light = ARLight(
-        id: 'point_light_${_nodeCounter}',
+        id: 'point_light_$_nodeCounter',
         type: ARLightType.point,
         position: Vector3(
           (Random().nextDouble() - 0.5) * 4,
@@ -946,7 +975,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     try {
       final now = DateTime.now();
       final light = ARLight(
-        id: 'spot_light_${_nodeCounter}',
+        id: 'spot_light_$_nodeCounter',
         type: ARLightType.spot,
         position: Vector3(
           (Random().nextDouble() - 0.5) * 4,
@@ -1044,7 +1073,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     try {
       final now = DateTime.now();
       final probe = AREnvironmentalProbe(
-        id: 'spherical_probe_${_nodeCounter}',
+        id: 'spherical_probe_$_nodeCounter',
         type: ARProbeType.spherical,
         position: Vector3(
           (Random().nextDouble() - 0.5) * 4,
@@ -1087,7 +1116,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     try {
       final now = DateTime.now();
       final probe = AREnvironmentalProbe(
-        id: 'box_probe_${_nodeCounter}',
+        id: 'box_probe_$_nodeCounter',
         type: ARProbeType.box,
         position: Vector3(
           (Random().nextDouble() - 0.5) * 4,
@@ -1130,7 +1159,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     try {
       final now = DateTime.now();
       final probe = AREnvironmentalProbe(
-        id: 'planar_probe_${_nodeCounter}',
+        id: 'planar_probe_$_nodeCounter',
         type: ARProbeType.planar,
         position: Vector3(
           (Random().nextDouble() - 0.5) * 4,
