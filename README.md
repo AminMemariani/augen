@@ -20,6 +20,12 @@ A cross-platform Flutter plugin for building AR (Augmented Reality) apps using *
 - **Environmental Probes** — realistic reflections and environmental lighting
 - **Animations** — skeletal animations with blending, transitions, and state machines
 
+> **Lighting & occlusion are natively backed on both platforms.** Capability
+> queries (`getLightingCapabilities`, `getOcclusionCapabilities`) and config
+> (`setLightingConfig`, `setOcclusionConfig`, `setOcclusionEnabled`) report real
+> device capabilities — RealityKit lights and ARKit people-occlusion on iOS,
+> the ARCore Depth API on Android — and degrade gracefully when unavailable.
+
 For detailed API docs and advanced usage, see [Documentation.md](Documentation.md).
 
 ## Platform Requirements

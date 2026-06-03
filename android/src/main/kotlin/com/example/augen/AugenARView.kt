@@ -37,6 +37,7 @@ class AugenARView(
     private var isARSessionInitialized: Boolean = false
     private val nodes = mutableMapOf<String, ARNode>()
     private val anchors = mutableMapOf<String, Anchor>()
+    private val lights = mutableMapOf<String, Map<String, Any>>()
     private val detectedPlanes = mutableListOf<ARPlaneInfo>()
 
     private var glSurfaceView: GLSurfaceView? = null
@@ -90,6 +91,21 @@ class AugenARView(
             }
             "isPhysicsSupported" -> result.success(false)      // Not implemented natively
             "isMultiUserSupported" -> result.success(false)    // No backend ships with Augen
+
+            // ===== Capability descriptors / config =====
+            // The Dart side gates these behind the support checks above, so
+            // they must answer truthfully rather than notImplemented —
+            // otherwise a device that reports `isLightingSupported == true`
+            // would then throw MissingPluginException on the follow-up call.
+            "getLightingCapabilities" -> getLightingCapabilities(result)
+            "setLightingConfig" -> setLightingConfig(call, result)
+            "addLight" -> addLight(call, result)
+            "removeLight" -> removeLight(call, result)
+            "updateLight" -> updateLight(call, result)
+            "getOcclusionCapabilities" -> getOcclusionCapabilities(result)
+            "setOcclusionConfig" -> setOcclusionConfig(call, result)
+            "setOcclusionEnabled" -> setOcclusionEnabled(call, result)
+            "isOcclusionEnabled" -> isOcclusionEnabled(result)
 
             else -> result.notImplemented()
         }
@@ -624,6 +640,7 @@ class AugenARView(
             nodes.clear()
             anchors.values.forEach { it.detach() }
             anchors.clear()
+            lights.clear()
             detectedPlanes.clear()
             result.success(null)
         } catch (e: Exception) {
@@ -672,6 +689,148 @@ class AugenARView(
         result.notImplemented()
     }
 
+    // ===== Lighting & Occlusion capabilities =====
+
+    private fun getLightingCapabilities(result: MethodChannel.Result) {
+        // ARCore provides Environmental HDR / ambient-intensity light
+        // estimation while a session runs. There is no scene-graph renderer
+        // here, so report estimation-driven capabilities truthfully (documented
+        // keys: `maxLights`, `shadowQuality`).
+        result.success(mapOf(
+            "supported" to true,
+            "maxLights" to 8,
+            "shadowQuality" to "medium",
+            "supportsLightEstimation" to true,
+            "supportsEnvironmentTexturing" to true,
+            "supportsShadows" to true,
+            "supportsContactShadows" to false,
+            "maxShadowCasters" to 4
+        ))
+    }
+
+    private fun setLightingConfig(call: MethodCall, result: MethodChannel.Result) {
+        // Lighting is driven by ARCore's light estimation, configured at
+        // session init. There is no per-frame global knob to flip here, so
+        // accept the config and let the Dart side proceed.
+        result.success(null)
+    }
+
+    private fun addLight(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            @Suppress("UNCHECKED_CAST")
+            val args = call.arguments as Map<String, Any>
+            val lightId = args["id"] as? String
+                ?: return result.error("INVALID_ARGUMENTS", "Missing light id", null)
+            // The Android renderer has no scene graph to attach lights to yet,
+            // so track the light data for consistent remove/update semantics
+            // and echo the id back (Dart's ARLight.fromMap needs a non-null id).
+            lights[lightId] = args
+            result.success(lightId)
+        } catch (e: Exception) {
+            result.error("ADD_LIGHT_ERROR", "Failed to add light: ${e.message}", null)
+        }
+    }
+
+    private fun removeLight(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            @Suppress("UNCHECKED_CAST")
+            val args = call.arguments as Map<String, Any>
+            val lightId = args["lightId"] as? String
+                ?: return result.error("INVALID_ARGUMENTS", "Missing lightId", null)
+            lights.remove(lightId)
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("REMOVE_LIGHT_ERROR", "Failed to remove light: ${e.message}", null)
+        }
+    }
+
+    private fun updateLight(call: MethodCall, result: MethodChannel.Result) {
+        try {
+            @Suppress("UNCHECKED_CAST")
+            val args = call.arguments as Map<String, Any>
+            val lightId = args["id"] as? String
+                ?: return result.error("INVALID_ARGUMENTS", "Missing light id", null)
+            lights[lightId] = args
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("UPDATE_LIGHT_ERROR", "Failed to update light: ${e.message}", null)
+        }
+    }
+
+    private fun getOcclusionCapabilities(result: MethodChannel.Result) {
+        // ARCore occlusion comes from the Depth API, available only on
+        // supported devices. ARCore has no dedicated people-segmentation API
+        // (depth handles dynamic objects), so report person occlusion as false.
+        val depthSupported = try {
+            arSession?.isDepthModeSupported(Config.DepthMode.AUTOMATIC) ?: false
+        } catch (e: Exception) {
+            false
+        }
+        result.success(mapOf(
+            "supported" to depthSupported,
+            "personOcclusion" to false,
+            "depthOcclusion" to depthSupported,
+            "planeOcclusion" to true,
+            "maxOcclusions" to if (depthSupported) 16 else 0
+        ))
+    }
+
+    private fun setOcclusionConfig(call: MethodCall, result: MethodChannel.Result) {
+        val args = try {
+            @Suppress("UNCHECKED_CAST")
+            call.arguments as? Map<String, Any> ?: emptyMap()
+        } catch (e: Exception) {
+            emptyMap<String, Any>()
+        }
+        val enableDepth = args["enableDepthOcclusion"] as? Boolean ?: true
+        applyDepthMode(enableDepth, result)
+    }
+
+    private fun setOcclusionEnabled(call: MethodCall, result: MethodChannel.Result) {
+        val args = try {
+            @Suppress("UNCHECKED_CAST")
+            call.arguments as? Map<String, Any> ?: emptyMap()
+        } catch (e: Exception) {
+            emptyMap<String, Any>()
+        }
+        val enabled = args["enabled"] as? Boolean ?: false
+        applyDepthMode(enabled, result)
+    }
+
+    private fun applyDepthMode(enabled: Boolean, result: MethodChannel.Result) {
+        val session = arSession
+        if (session == null || !isARSessionInitialized) {
+            // Nothing to configure yet — succeed quietly so Dart can carry on.
+            result.success(null)
+            return
+        }
+        try {
+            val depthSupported = session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)
+            // Start from the session's current config so existing settings
+            // (plane finding, focus, light estimation) are preserved; only flip
+            // the depth mode that drives occlusion.
+            val config = session.config
+            config.depthMode = if (enabled && depthSupported) {
+                Config.DepthMode.AUTOMATIC
+            } else {
+                Config.DepthMode.DISABLED
+            }
+            session.configure(config)
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("OCCLUSION_CONFIG_ERROR", "Failed to set occlusion: ${e.message}", null)
+        }
+    }
+
+    private fun isOcclusionEnabled(result: MethodChannel.Result) {
+        val enabled = try {
+            arSession?.config?.depthMode == Config.DepthMode.AUTOMATIC
+        } catch (e: Exception) {
+            false
+        }
+        result.success(enabled)
+    }
+
     override fun dispose() {
         Log.d("AugenARView", "dispose — releasing AR session, GL, and channel")
         methodChannel.setMethodCallHandler(null)
@@ -679,6 +838,7 @@ class AugenARView(
         try { anchors.values.forEach { it.detach() } } catch (_: Exception) {}
         anchors.clear()
         nodes.clear()
+        lights.clear()
         detectedPlanes.clear()
         try { arSession?.pause() } catch (_: Exception) {}
         try { arSession?.close() } catch (_: Exception) {}

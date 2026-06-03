@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'augen'
-  s.version          = '1.3.0'
+  s.version          = '1.4.0'
   s.summary          = 'Flutter AR plugin using ARCore (Android), RealityKit/ARKit (iOS), and WebAssembly (web).'
   s.description      = <<-DESC
 Augen is a Flutter plugin that enables pure-Dart AR development across mobile and web.
