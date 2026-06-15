@@ -41,7 +41,7 @@ For detailed API docs and advanced usage, see [Documentation.md](Documentation.m
 
 ```yaml
 dependencies:
-  augen: ^1.3.0
+  augen: ^1.4.1
 ```
 
 ```bash
@@ -79,6 +79,12 @@ Add to your `ios/Runner/Info.plist`:
 ```
 
 Set the deployment target to at least **iOS 13.0**.
+
+**Swift Package Manager:** Augen ships with both Swift Package Manager and
+CocoaPods support, so it works whether or not your app has migrated to SPM. No
+extra steps are required — the Flutter tool wires up the correct integration
+automatically. If you have enabled SPM (`flutter config --enable-swift-package-manager`),
+`augen` is resolved as a Swift Package; otherwise it is installed via CocoaPods.
 
 ## Quick Start
 
