@@ -2571,6 +2571,15 @@ Occlusion enables virtual objects to be properly hidden behind real-world object
 - **Plane Occlusion**: Uses detected planes to create occlusion boundaries
 - **None**: Disables occlusion (virtual objects appear in front of everything)
 
+> **Native support (since 1.4.0):** `getOcclusionCapabilities()`,
+> `setOcclusionConfig()`, `setOcclusionEnabled()`, and `isOcclusionEnabled()` are
+> implemented natively on both platforms. On iOS they toggle ARKit people
+> occlusion (`personSegmentation`, plus `personSegmentationWithDepth` on LiDAR
+> devices); on Android they toggle the ARCore Depth API
+> (`Config.DepthMode.AUTOMATIC`) on supported devices. Capabilities are reported
+> from real device queries, and all calls degrade gracefully (no-op / `false`)
+> when occlusion is unavailable or no session is running.
+
 ## Setting Up Occlusion
 
 ### 1. Check Occlusion Support
@@ -5458,6 +5467,15 @@ final capabilities = await controller.getLightingCapabilities();
 print('Max lights: ${capabilities['maxLights']}');
 print('Shadow quality: ${capabilities['shadowQuality']}');
 ```
+
+> **Native support (since 1.4.0):** `getLightingCapabilities()`,
+> `setLightingConfig()`, `addLight()`, `removeLight()`, and `updateLight()` are
+> implemented natively. iOS creates real RealityKit `DirectionalLight` /
+> `PointLight` / `SpotLight` entities and reports environment-texturing
+> capabilities; Android reports ARCore light-estimation capabilities. On Android
+> the renderer does not yet draw added lights (camera background + plane
+> detection only) — the calls succeed and track light state, but full
+> scene-graph rendering on Android remains future work.
 
 ## Light Types
 

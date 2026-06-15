@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-06-03
+
+> Minor release: the lighting and occlusion method channels are now fully
+> implemented on **iOS** and **Android**. Calls that previously slipped past the
+> support checks and then threw `MissingPluginException` now return real,
+> platform-truthful data.
+
+### Added
+- **Lighting native handlers (iOS + Android).** `getLightingCapabilities()`,
+  `setLightingConfig()`, `addLight()`, `removeLight()`, and `updateLight()` are
+  now handled natively. iOS creates real RealityKit `DirectionalLight` /
+  `PointLight` / `SpotLight` entities; both platforms report a truthful lighting
+  capability map (`maxLights`, `shadowQuality`, light-estimation flags).
+- **Occlusion native handlers (iOS + Android).** `getOcclusionCapabilities()`,
+  `setOcclusionConfig()`, `setOcclusionEnabled()`, and `isOcclusionEnabled()` are
+  now handled natively. iOS toggles people-occlusion frame semantics
+  (`personSegmentation`, plus `personSegmentationWithDepth` on LiDAR devices);
+  Android toggles the ARCore Depth API (`Config.DepthMode.AUTOMATIC`) on
+  supported devices. Capabilities are reported from real device queries rather
+  than hard-coded values.
+
+### Fixed
+- **`MissingPluginException` on `getLightingCapabilities` and
+  `setOcclusionConfig`** (and the rest of the lighting/occlusion surface). These
+  methods previously had no native handler, so once a device reported
+  `isLightingSupported == true` / `isOcclusionSupported == true`, the follow-up
+  capability and config calls crashed the demo. They now answer truthfully and
+  degrade gracefully (return empty / no-op) on older OS versions or when no
+  session is running.
+
+### Changed (non-breaking)
+- All new handlers degrade gracefully instead of throwing: iOS guards behind
+  `#available` and a running `ARWorldTrackingConfiguration`; Android guards
+  behind ARCore depth-support checks and an initialized session.
+
+> **Note:** On Android the renderer does not yet draw added lights or placed
+> nodes (ARCore here renders the camera background and plane detection only).
+> These handlers stop the crashes and report honest capabilities; full
+> scene-graph rendering on Android remains future work.
+
 ## [1.3.0] - 2026-05-31
 
 > Minor release: environmental-probe capabilities are now implemented on iOS,

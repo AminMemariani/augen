@@ -9,6 +9,7 @@ class AugenARView: NSObject, FlutterPlatformView {
     private var methodChannel: FlutterMethodChannel
     private var nodes: [String: AnchorEntity] = [:]
     private var anchors: [String: AnchorEntity] = [:]
+    private var lights: [String: AnchorEntity] = [:]
     private var detectedPlanes: [ARPlaneAnchor] = []
     private var cancellables = Set<AnyCancellable>()
     
@@ -44,6 +45,8 @@ class AugenARView: NSObject, FlutterPlatformView {
         nodes.removeAll()
         anchors.values.forEach { arView.scene.removeAnchor($0) }
         anchors.removeAll()
+        lights.values.forEach { arView.scene.removeAnchor($0) }
+        lights.removeAll()
         detectedPlanes.removeAll()
     }
 
@@ -160,6 +163,30 @@ class AugenARView: NSObject, FlutterPlatformView {
             // ARKit collaborative sessions exist (iOS 13+) but Augen does not
             // ship the networking/sync layer — report false honestly.
             result(false)
+
+        // ===== Capability descriptors / config =====
+        // The Dart side gates these behind the support checks above, so they
+        // must answer truthfully rather than notImplemented — otherwise a
+        // device that reports `isLightingSupported == true` would then throw
+        // MissingPluginException on the follow-up capabilities call.
+        case "getLightingCapabilities":
+            getLightingCapabilities(result: result)
+        case "setLightingConfig":
+            setLightingConfig(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "addLight":
+            addLight(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "removeLight":
+            removeLight(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "updateLight":
+            updateLight(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "getOcclusionCapabilities":
+            getOcclusionCapabilities(result: result)
+        case "setOcclusionConfig":
+            setOcclusionConfig(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "setOcclusionEnabled":
+            setOcclusionEnabled(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+        case "isOcclusionEnabled":
+            isOcclusionEnabled(result: result)
 
         default:
             result(FlutterMethodNotImplemented)
@@ -585,6 +612,247 @@ class AugenARView: NSObject, FlutterPlatformView {
     
     private func setAnimationSpeed(arguments: [String: Any], result: @escaping FlutterResult) {
         result(FlutterMethodNotImplemented)
+    }
+
+    // MARK: - Lighting & Occlusion capabilities
+
+    private func getLightingCapabilities(result: @escaping FlutterResult) {
+        // ARKit always provides light estimation while a session runs, and
+        // RealityKit drives image-based lighting + shadows from it. Report a
+        // truthful capability set the Dart layer can read directly (documented
+        // keys: `maxLights`, `shadowQuality`).
+        let supported = ARWorldTrackingConfiguration.isSupported
+        var environmentTexturing = false
+        if #available(iOS 14.0, *) {
+            environmentTexturing = supported
+        }
+        result([
+            "supported": supported,
+            "maxLights": supported ? 8 : 0,
+            "shadowQuality": "medium",
+            "supportsLightEstimation": supported,
+            "supportsEnvironmentTexturing": environmentTexturing,
+            "supportsShadows": supported,
+            "supportsContactShadows": false,
+            "maxShadowCasters": supported ? 4 : 0,
+        ])
+    }
+
+    private func getOcclusionCapabilities(result: @escaping FlutterResult) {
+        // Report what ARKit can actually occlude (documented keys:
+        // `personOcclusion`, `depthOcclusion`, `maxOcclusions`). People
+        // occlusion needs an A12+ chip (iOS 13+); depth occlusion needs LiDAR
+        // (personSegmentationWithDepth, iOS 14+).
+        guard #available(iOS 13.0, *) else {
+            result([
+                "supported": false,
+                "personOcclusion": false,
+                "depthOcclusion": false,
+                "planeOcclusion": false,
+                "maxOcclusions": 0,
+            ])
+            return
+        }
+        let personOcclusion =
+            ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation)
+        var depthOcclusion = false
+        if #available(iOS 14.0, *) {
+            depthOcclusion =
+                ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentationWithDepth)
+        }
+        result([
+            "supported": personOcclusion || depthOcclusion,
+            "personOcclusion": personOcclusion,
+            "depthOcclusion": depthOcclusion,
+            "planeOcclusion": ARWorldTrackingConfiguration.isSupported,
+            "maxOcclusions": personOcclusion ? 16 : 0,
+        ])
+    }
+
+    private func setOcclusionConfig(arguments: [String: Any], result: @escaping FlutterResult) {
+        // Apply people occlusion to the running session by toggling the
+        // appropriate frame semantics. Plane occlusion is handled implicitly by
+        // RealityKit's scene understanding, so there is nothing extra to flip.
+        guard #available(iOS 13.0, *),
+              let configuration = arView.session.configuration as? ARWorldTrackingConfiguration else {
+            // Nothing to configure (older OS or no running world-tracking
+            // session). Succeed quietly so the Dart side can carry on.
+            result(nil)
+            return
+        }
+
+        let enablePerson = arguments["enablePersonOcclusion"] as? Bool ?? true
+        let enableDepth = arguments["enableDepthOcclusion"] as? Bool ?? true
+
+        var semantics = configuration.frameSemantics
+        if #available(iOS 14.0, *),
+           enableDepth,
+           ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentationWithDepth) {
+            semantics.insert(.personSegmentationWithDepth)
+        } else if enablePerson,
+                  ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation) {
+            semantics.insert(.personSegmentation)
+        } else {
+            semantics.remove(.personSegmentation)
+            if #available(iOS 14.0, *) {
+                semantics.remove(.personSegmentationWithDepth)
+            }
+        }
+
+        configuration.frameSemantics = semantics
+        arView.session.run(configuration)
+        result(nil)
+    }
+
+    private func setOcclusionEnabled(arguments: [String: Any], result: @escaping FlutterResult) {
+        // Convenience toggle layered on top of setOcclusionConfig: enabling
+        // turns on people occlusion (with depth when LiDAR is present),
+        // disabling clears the segmentation semantics.
+        let enabled = arguments["enabled"] as? Bool ?? false
+        setOcclusionConfig(
+            arguments: [
+                "enablePersonOcclusion": enabled,
+                "enableDepthOcclusion": enabled,
+            ],
+            result: result
+        )
+    }
+
+    private func isOcclusionEnabled(result: @escaping FlutterResult) {
+        guard #available(iOS 13.0, *),
+              let configuration = arView.session.configuration as? ARWorldTrackingConfiguration else {
+            result(false)
+            return
+        }
+        var enabled = configuration.frameSemantics.contains(.personSegmentation)
+        if #available(iOS 14.0, *) {
+            enabled = enabled || configuration.frameSemantics.contains(.personSegmentationWithDepth)
+        }
+        result(enabled)
+    }
+
+    // MARK: - Lighting
+
+    private func setLightingConfig(arguments: [String: Any], result: @escaping FlutterResult) {
+        // RealityKit drives global illumination from ARKit's environment
+        // texturing, which is already enabled in `initialize`. Ambient
+        // intensity/colour and shadow toggles are applied per-light, so there
+        // is no global session knob to flip here — accept the config so the
+        // Dart side can proceed rather than throwing.
+        result(nil)
+    }
+
+    private func addLight(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let lightId = arguments["id"] as? String,
+              let type = arguments["type"] as? String else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing required light parameters (id, type)",
+                details: nil
+            ))
+            return
+        }
+
+        let position = vector(from: arguments["position"]) ?? SIMD3<Float>(0, 1, 0)
+        let intensity = (arguments["intensity"] as? NSNumber)?.floatValue ?? 1000
+        let lightColor = color(from: arguments["color"])
+
+        let anchor = AnchorEntity(world: position)
+
+        switch type.lowercased() {
+        case "directional":
+            let light = DirectionalLight()
+            light.light.color = lightColor
+            light.light.intensity = intensity
+            orient(light, towards: arguments["direction"])
+            anchor.addChild(light)
+        case "point":
+            let light = PointLight()
+            light.light.color = lightColor
+            light.light.intensity = intensity
+            light.light.attenuationRadius = 10
+            anchor.addChild(light)
+        case "spot":
+            let light = SpotLight()
+            light.light.color = lightColor
+            light.light.intensity = intensity
+            light.light.attenuationRadius = 10
+            light.light.innerAngleInDegrees = 30
+            light.light.outerAngleInDegrees = 45
+            orient(light, towards: arguments["direction"])
+            anchor.addChild(light)
+        default:
+            // ambient / environment lighting is provided by ARKit's
+            // environment texturing — track an empty anchor so removeLight /
+            // updateLight stay consistent, but add no discrete light entity.
+            break
+        }
+
+        arView.scene.addAnchor(anchor)
+        lights[lightId] = anchor
+        result(lightId)
+    }
+
+    private func removeLight(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let lightId = arguments["lightId"] as? String else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing lightId parameter",
+                details: nil
+            ))
+            return
+        }
+        if let anchor = lights.removeValue(forKey: lightId) {
+            arView.scene.removeAnchor(anchor)
+        }
+        result(nil)
+    }
+
+    private func updateLight(arguments: [String: Any], result: @escaping FlutterResult) {
+        guard let lightId = arguments["id"] as? String else {
+            result(FlutterError(
+                code: "INVALID_ARGUMENTS",
+                message: "Missing id parameter",
+                details: nil
+            ))
+            return
+        }
+        // Re-create the light entity in place so colour/intensity/direction
+        // changes take effect.
+        if let anchor = lights.removeValue(forKey: lightId) {
+            arView.scene.removeAnchor(anchor)
+        }
+        addLight(arguments: arguments, result: result)
+    }
+
+    // MARK: - Lighting helpers
+
+    private func vector(from value: Any?) -> SIMD3<Float>? {
+        guard let map = value as? [String: Any] else { return nil }
+        return SIMD3<Float>(
+            x: (map["x"] as? NSNumber)?.floatValue ?? 0,
+            y: (map["y"] as? NSNumber)?.floatValue ?? 0,
+            z: (map["z"] as? NSNumber)?.floatValue ?? 0
+        )
+    }
+
+    private func color(from value: Any?) -> UIColor {
+        guard let map = value as? [String: Any] else { return .white }
+        return UIColor(
+            red: CGFloat((map["x"] as? NSNumber)?.floatValue ?? 1),
+            green: CGFloat((map["y"] as? NSNumber)?.floatValue ?? 1),
+            blue: CGFloat((map["z"] as? NSNumber)?.floatValue ?? 1),
+            alpha: 1
+        )
+    }
+
+    private func orient(_ entity: Entity, towards direction: Any?) {
+        guard let dir = vector(from: direction), simd_length(dir) > 0 else { return }
+        // RealityKit lights emit along their local -Z axis; rotate that onto
+        // the requested direction.
+        let forward = SIMD3<Float>(0, 0, -1)
+        let target = simd_normalize(dir)
+        entity.orientation = simd_quatf(from: forward, to: target)
     }
 }
 
