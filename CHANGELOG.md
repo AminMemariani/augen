@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-06-15
+
+> Patch release: the iOS plugin now ships with **Swift Package Manager** support
+> alongside CocoaPods, and the Android build is compatible with **16 KB memory
+> page sizes** (required by Google Play for apps targeting Android 15+).
+
+### Added
+- **Swift Package Manager support (iOS).** Added `ios/augen/Package.swift` and
+  relocated the Swift sources to `ios/augen/Sources/augen/`, so the plugin
+  resolves as a Swift Package while continuing to work with CocoaPods. The
+  `PrivacyInfo.xcprivacy` manifest is now bundled by both build systems. See
+  [#9](https://github.com/AminMemariani/augen/issues/9).
+
+### Changed
+- **Android 16 KB page size support.** Upgraded the Android toolchain so native
+  libraries are 16 KB-aligned: Kotlin `2.2.0`, Android Gradle Plugin `8.12.1`,
+  Gradle `8.13`, Java `17`, and ARCore `1.54.0`. See
+  [#7](https://github.com/AminMemariani/augen/issues/7).
+
 ## [1.4.0] - 2026-06-03
 
 > Minor release: the lighting and occlusion method channels are now fully

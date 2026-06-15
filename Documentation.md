@@ -220,7 +220,7 @@ Open `pubspec.yaml` and add Augen:
 dependencies:
   flutter:
     sdk: flutter
-  augen: ^1.3.0
+  augen: ^1.4.1
 ```
 
 Then run:
@@ -280,6 +280,21 @@ Ensure your deployment target is iOS 13.0+. Open `ios/Podfile` and check:
 ```ruby
 platform :ios, '13.0'
 ```
+
+#### Dependency manager: Swift Package Manager & CocoaPods
+
+Since **1.4.1**, the iOS plugin ships with both **Swift Package Manager (SPM)**
+and **CocoaPods** integrations and shares a single set of Swift sources between
+them. You do not need to do anything special:
+
+- If Swift Package Manager is enabled in your Flutter tooling
+  (`flutter config --enable-swift-package-manager`), `augen` is resolved as a
+  Swift Package.
+- Otherwise, `augen` continues to install through CocoaPods exactly as before.
+
+The plugin's privacy manifest (`PrivacyInfo.xcprivacy`) is bundled by both build
+systems, so no additional configuration is required for App Store privacy
+reporting.
 
 ## Your First AR App
 
