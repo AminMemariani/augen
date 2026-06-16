@@ -223,6 +223,7 @@ class AugenARView(
 
             arSession?.setCameraTextureName(cameraTextureId)
             cameraBackgroundRenderer = CameraBackgroundRenderer()
+            cameraBackgroundRenderer?.cameraTextureId = cameraTextureId
 
             // Resume session now that GL is ready
             try {
@@ -299,6 +300,8 @@ class AugenARView(
      * Renders the ARCore camera background using OpenGL ES 2.0.
      */
     private class CameraBackgroundRenderer {
+        var cameraTextureId: Int = -1
+
         private val vertexShaderCode = """
             attribute vec4 aPosition;
             attribute vec2 aTexCoord;
@@ -386,6 +389,11 @@ class AugenARView(
 
             quadTexCoords.position(0)
             GLES20.glVertexAttribPointer(texCoordHandle, 2, GLES20.GL_FLOAT, false, 0, quadTexCoords)
+
+            val textureUniformHandle = GLES20.glGetUniformLocation(program, "sTexture")
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, cameraTextureId)
+            GLES20.glUniform1i(textureUniformHandle, 0)
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
 
