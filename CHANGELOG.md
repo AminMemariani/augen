@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.2] - 2026-06-17
+
+> Patch release: fixes the **Android AR camera preview** not rendering. The
+> live camera background now displays correctly during AR sessions.
+
+### Fixed
+- **Android camera background rendering.** The ARCore camera background is now
+  drawn each frame by binding the external OES texture and setting the
+  `sTexture` sampler uniform — previously the background could appear black
+  because the camera texture was never bound during the draw pass. Thanks
+  [@deandreamatias](https://github.com/deandreamatias). See
+  [#12](https://github.com/AminMemariani/augen/issues/12) /
+  [#13](https://github.com/AminMemariani/augen/pull/13).
+
+### Changed
+- **Renderer micro-optimization.** `CameraBackgroundRenderer` now resolves its
+  shader attribute/uniform handles once after the program links instead of
+  querying them on every frame.
+
 ## [1.4.1] - 2026-06-15
 
 > Patch release: the iOS plugin now ships with **Swift Package Manager** support

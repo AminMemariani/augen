@@ -220,7 +220,7 @@ Open `pubspec.yaml` and add Augen:
 dependencies:
   flutter:
     sdk: flutter
-  augen: ^1.4.1
+  augen: ^1.4.2
 ```
 
 Then run:
