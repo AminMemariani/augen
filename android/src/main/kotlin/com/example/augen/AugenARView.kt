@@ -223,6 +223,7 @@ class AugenARView(
 
             arSession?.setCameraTextureName(cameraTextureId)
             cameraBackgroundRenderer = CameraBackgroundRenderer()
+            cameraBackgroundRenderer?.cameraTextureId = cameraTextureId
 
             // Resume session now that GL is ready
             try {
@@ -299,6 +300,8 @@ class AugenARView(
      * Renders the ARCore camera background using OpenGL ES 2.0.
      */
     private class CameraBackgroundRenderer {
+        var cameraTextureId: Int = -1
+
         private val vertexShaderCode = """
             attribute vec4 aPosition;
             attribute vec2 aTexCoord;
@@ -320,6 +323,9 @@ class AugenARView(
         """.trimIndent()
 
         private val program: Int
+        private val positionHandle: Int
+        private val texCoordHandle: Int
+        private val textureUniformHandle: Int
         private val quadVertices: FloatBuffer
         private var quadTexCoords: FloatBuffer
 
@@ -357,6 +363,11 @@ class AugenARView(
             GLES20.glAttachShader(program, vertexShader)
             GLES20.glAttachShader(program, fragmentShader)
             GLES20.glLinkProgram(program)
+
+            // Resolve shader handles once; they are constant after linking
+            positionHandle = GLES20.glGetAttribLocation(program, "aPosition")
+            texCoordHandle = GLES20.glGetAttribLocation(program, "aTexCoord")
+            textureUniformHandle = GLES20.glGetUniformLocation(program, "sTexture")
         }
 
         fun draw(frame: Frame) {
@@ -375,9 +386,6 @@ class AugenARView(
 
             GLES20.glUseProgram(program)
 
-            val positionHandle = GLES20.glGetAttribLocation(program, "aPosition")
-            val texCoordHandle = GLES20.glGetAttribLocation(program, "aTexCoord")
-
             GLES20.glEnableVertexAttribArray(positionHandle)
             GLES20.glEnableVertexAttribArray(texCoordHandle)
 
@@ -386,6 +394,10 @@ class AugenARView(
 
             quadTexCoords.position(0)
             GLES20.glVertexAttribPointer(texCoordHandle, 2, GLES20.GL_FLOAT, false, 0, quadTexCoords)
+
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, cameraTextureId)
+            GLES20.glUniform1i(textureUniformHandle, 0)
 
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
 
