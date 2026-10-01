@@ -23,6 +23,8 @@ Un plugin Flutter multiplataforma para desarrollar aplicaciones de RA (Realidad 
 - **Animaciones** — animaciones esqueléticas con fusión, transiciones y máquinas de estados
 
 > **La iluminación y la oclusión cuentan con soporte nativo en ambas plataformas.** Las consultas de capacidades (`getLightingCapabilities`, `getOcclusionCapabilities`) y la configuración (`setLightingConfig`, `setOcclusionConfig`, `setOcclusionEnabled`) informan las capacidades reales del dispositivo: luces de RealityKit y oclusión de personas de ARKit en iOS, y la API de profundidad de ARCore en Android, degradándose de manera elegante cuando no están disponibles.
+>
+> **Desde la versión 1.5.0, todas las funciones están implementadas de forma nativa en iOS** con ARKit/RealityKit; consulta [Soporte de funciones en iOS](#soporte-de-funciones-en-ios) para ver cómo se corresponde cada una con los frameworks de Apple.
 
 Para documentación detallada de la API y uso avanzado, consulta [Documentation.md](Documentation.md).
 
@@ -39,7 +41,7 @@ Para documentación detallada de la API y uso avanzado, consulta [Documentation.
 
 ```yaml
 dependencies:
-  augen: ^1.4.2
+  augen: ^1.5.0
 ```
 
 ```bash
@@ -77,6 +79,19 @@ Añade lo siguiente a tu `ios/Runner/Info.plist`:
 ```
 
 Establece el destino de despliegue en al menos **iOS 13.0**.
+
+**RA multiusuario (opcional):** las sesiones usan MultipeerConnectivity de Apple a través de la red local. Si usas la API multiusuario, añade también:
+
+```xml
+<key>NSLocalNetworkUsageDescription</key>
+<string>Used to discover nearby devices and share AR sessions.</string>
+
+<key>NSBonjourServices</key>
+<array>
+    <string>_augen-ar._tcp</string>
+    <string>_augen-ar._udp</string>
+</array>
+```
 
 **Gestor de Paquetes Swift (SPM):** Augen incluye soporte tanto para Swift Package Manager como para CocoaPods, por lo que funciona independientemente de que tu aplicación haya migrado a SPM o no. No se requieren pasos adicionales: la herramienta de Flutter configura la integración correcta automáticamente. Si tienes habilitado SPM (`flutter config --enable-swift-package-manager`), `augen` se resuelve como un paquete Swift; de lo contrario, se instala mediante CocoaPods.
 
@@ -174,7 +189,25 @@ await _controller!.addModelFromUrl(
 );
 ```
 
-**Formatos recomendados:** GLB para Android, USDZ para iOS. También se admiten GLTF y OBJ.
+**Formatos recomendados:** GLB para Android, USDZ para iOS. OBJ funciona en ambas plataformas. En iOS, RealityKit no puede leer GLTF/GLB: esos nodos se muestran como una caja naranja de marcador de posición (y se registra una advertencia), así que usa USDZ en iOS.
+
+## Soporte de funciones en iOS
+
+Todas las API de Augen tienen implementación nativa en iOS. Cuando ARKit/RealityKit no ofrece un equivalente directo, el comportamiento se emula y el estado visible desde Dart se mantiene coherente.
+
+| Función | Implementación en iOS | Notas |
+| ------- | --------------------- | ----- |
+| Detección de planos, prueba de impacto | `ARWorldTrackingConfiguration`, `ARView.raycast` | Planos horizontales y verticales |
+| Modelos personalizados | RealityKit (USDZ/Reality), ModelIO (OBJ) | GLTF/GLB → marcador de posición |
+| Animaciones | Reproducción de RealityKit para clips incluidos + clips procedurales integrados (`idle`, `walk`, `run`, `jump`, `spin`, `bounce`, `pulse`, `wobble`) | Fusión, fundidos, árboles de fusión y máquinas de estados funcionan en ambos; las máscaras de huesos se guardan pero no se aplican |
+| Física | `PhysicsBodyComponent` de RealityKit | Las articulaciones/restricciones y colisiones entre nodos requieren **iOS 18+** |
+| Seguimiento de imágenes | Detección con `ARReferenceImage` (assets, archivos, URL o bytes) | ARKit valida los objetivos antes de usarlos |
+| Seguimiento facial | `ARFaceTrackingConfiguration` | Cámara frontal TrueDepth; cambia la sesión a la cámara frontal |
+| Iluminación y sombras | Luces direccionales/puntuales/de foco de RealityKit + estimación de luz de ARKit | La luz ambiental proviene de la texturización del entorno |
+| Oclusión | Segmentación de personas de ARKit (con profundidad en dispositivos compatibles) | |
+| Sondas ambientales | Texturización del entorno de ARKit | |
+| Anclajes en la nube | `ARWorldMap` guardado **en el dispositivo** | Sin backend en la nube; compartir requiere una escena mapeada: mueve el dispositivo primero |
+| Multiusuario | MultipeerConnectivity + colaboración de ARKit | Dispositivos cercanos en la misma red local |
 
 ## RA basada en marcadores para Web
 
@@ -371,6 +404,9 @@ flutter test test/augen_animation_test.dart
 # Integration tests (requires a device or simulator)
 cd example
 flutter test integration_test/plugin_integration_test.dart
+
+# Prueba estricta en dispositivo de todas las funciones de iOS (requiere un iPhone físico)
+flutter test integration_test/ios_features_e2e_test.dart -d <device-id>
 ```
 
 ## Solución de problemas
@@ -384,6 +420,14 @@ flutter test integration_test/plugin_integration_test.dart
 - Requiere chip A9 o posterior (iPhone 6s+)
 - Confirma que el destino de despliegue es iOS 13.0+
 - Asegúrate de que la capacidad `arkit` esté declarada en Info.plist
+
+**iOS — la compilación de depuración muestra "can only be launched from Flutter tooling":**
+- Las compilaciones de depuración deben iniciarse con `flutter run` o Xcode, no desde la pantalla de inicio
+- Si `flutter run` se queda esperando el VM Service, cierra Xcode y ejecuta `flutter config --enable-lldb-debugging`, o usa `flutter run --release`
+
+**iOS — el modo multiusuario no encuentra dispositivos:**
+- Añade `NSLocalNetworkUsageDescription` y `NSBonjourServices` (consulta la configuración para iOS)
+- Permite el aviso de red local; ambos dispositivos deben estar en la misma red
 
 **Permiso de cámara denegado (ambas plataformas):**
 - Añade las entradas de permiso requeridas listadas en las secciones de configuración anteriores

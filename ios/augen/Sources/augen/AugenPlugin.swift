@@ -3,16 +3,18 @@ import UIKit
 
 public class AugenPlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let factory = AugenViewFactory(messenger: registrar.messenger())
+        let factory = AugenViewFactory(messenger: registrar.messenger(), registrar: registrar)
         registrar.register(factory, withId: "augen_ar_view")
     }
 }
 
 class AugenViewFactory: NSObject, FlutterPlatformViewFactory {
     private var messenger: FlutterBinaryMessenger
-    
-    init(messenger: FlutterBinaryMessenger) {
+    private weak var registrar: FlutterPluginRegistrar?
+
+    init(messenger: FlutterBinaryMessenger, registrar: FlutterPluginRegistrar) {
         self.messenger = messenger
+        self.registrar = registrar
         super.init()
     }
     
@@ -26,7 +28,8 @@ class AugenViewFactory: NSObject, FlutterPlatformViewFactory {
             frame: frame,
             viewIdentifier: viewId,
             arguments: creationParams,
-            binaryMessenger: messenger
+            binaryMessenger: messenger,
+            registrar: registrar
         )
     }
     

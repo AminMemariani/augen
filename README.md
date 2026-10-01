@@ -25,6 +25,10 @@ A cross-platform Flutter plugin for building AR (Augmented Reality) apps using *
 > (`setLightingConfig`, `setOcclusionConfig`, `setOcclusionEnabled`) report real
 > device capabilities — RealityKit lights and ARKit people-occlusion on iOS,
 > the ARCore Depth API on Android — and degrade gracefully when unavailable.
+>
+> **Since 1.5.0, every feature is implemented natively on iOS** with
+> ARKit/RealityKit — see [iOS Feature Support](#ios-feature-support) for how
+> each one maps to Apple's frameworks.
 
 For detailed API docs and advanced usage, see [Documentation.md](Documentation.md).
 
@@ -41,7 +45,7 @@ For detailed API docs and advanced usage, see [Documentation.md](Documentation.m
 
 ```yaml
 dependencies:
-  augen: ^1.4.2
+  augen: ^1.5.0
 ```
 
 ```bash
@@ -79,6 +83,20 @@ Add to your `ios/Runner/Info.plist`:
 ```
 
 Set the deployment target to at least **iOS 13.0**.
+
+**Multi-user AR (optional):** sessions use Apple's MultipeerConnectivity over
+the local network. If you use the multi-user API, also add:
+
+```xml
+<key>NSLocalNetworkUsageDescription</key>
+<string>Used to discover nearby devices and share AR sessions.</string>
+
+<key>NSBonjourServices</key>
+<array>
+    <string>_augen-ar._tcp</string>
+    <string>_augen-ar._udp</string>
+</array>
+```
 
 **Swift Package Manager:** Augen ships with both Swift Package Manager and
 CocoaPods support, so it works whether or not your app has migrated to SPM. No
@@ -180,7 +198,29 @@ await _controller!.addModelFromUrl(
 );
 ```
 
-**Recommended formats:** GLB for Android, USDZ for iOS. GLTF and OBJ are also supported.
+**Recommended formats:** GLB for Android, USDZ for iOS. OBJ works on both.
+On iOS, RealityKit cannot read GLTF/GLB — those nodes render as an orange
+placeholder box (and log a warning), so ship USDZ for iOS.
+
+## iOS Feature Support
+
+Every Augen API is backed natively on iOS. Where ARKit/RealityKit has no direct
+equivalent, the behaviour is emulated and the Dart-visible state stays
+consistent.
+
+| Feature | iOS implementation | Notes |
+| ------- | ------------------ | ----- |
+| Plane detection, hit test | `ARWorldTrackingConfiguration`, `ARView.raycast` | Horizontal + vertical planes |
+| Custom models | RealityKit (USDZ/Reality), ModelIO (OBJ) | GLTF/GLB → placeholder |
+| Animations | RealityKit playback for baked clips + built-in procedural clips (`idle`, `walk`, `run`, `jump`, `spin`, `bounce`, `pulse`, `wobble`) | Blending, crossfades, blend trees and state machines work on both; bone masks are stored but not applied |
+| Physics | RealityKit `PhysicsBodyComponent` | Joints/constraints and cross-node collisions need **iOS 18+** |
+| Image tracking | `ARReferenceImage` detection (assets, files, URLs or bytes) | Targets are validated by ARKit before use |
+| Face tracking | `ARFaceTrackingConfiguration` | TrueDepth front camera; switches the session to the front camera |
+| Lighting & shadows | RealityKit directional/point/spot lights + ARKit light estimation | Ambient light comes from environment texturing |
+| Occlusion | ARKit person segmentation (with depth on supported devices) | |
+| Environmental probes | ARKit environment texturing | |
+| Cloud anchors | `ARWorldMap` saved **on device** | No cloud backend; sharing needs a mapped scene — move the device around first |
+| Multi-user | MultipeerConnectivity + ARKit collaboration | Nearby devices on the same local network |
 
 ## Web Marker-Based AR
 
@@ -385,6 +425,9 @@ flutter test test/augen_animation_test.dart
 # Integration tests (requires a device or simulator)
 cd example
 flutter test integration_test/plugin_integration_test.dart
+
+# Strict on-device test of every iOS feature (physical iPhone required)
+flutter test integration_test/ios_features_e2e_test.dart -d <device-id>
 ```
 
 ## Troubleshooting
@@ -398,6 +441,15 @@ flutter test integration_test/plugin_integration_test.dart
 - Requires A9 chip or later (iPhone 6s+)
 - Confirm deployment target is iOS 13.0+
 - Ensure the `arkit` capability is declared in Info.plist
+
+**iOS — debug build shows "can only be launched from Flutter tooling":**
+- Debug builds must be started by `flutter run` or Xcode, not from the home screen
+- If `flutter run` hangs waiting for the VM Service, close Xcode and run
+  `flutter config --enable-lldb-debugging`, or use `flutter run --release`
+
+**iOS — multi-user finds no peers:**
+- Add `NSLocalNetworkUsageDescription` and `NSBonjourServices` (see iOS Setup)
+- Allow the Local Network prompt; both devices must be on the same network
 
 **Camera permission denied (both platforms):**
 - Add the required permission entries listed in the setup sections above

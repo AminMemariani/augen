@@ -4,195 +4,172 @@ import ARKit
 import RealityKit
 import Combine
 
+/// Core AR platform view: owns the ARSession, the method channel, plane
+/// detection, hit testing and the shared node/anchor registries.
+///
+/// Every richer capability (animation, physics, image/face tracking, lighting,
+/// occlusion, environment probes, cloud anchors, multi-user) lives in its own
+/// `AugenFeature` file and is wired in through `features`.
 class AugenARView: NSObject, FlutterPlatformView {
-    private var arView: ARView
-    private var methodChannel: FlutterMethodChannel
-    private var nodes: [String: AnchorEntity] = [:]
+    let arView: ARView
+    let methodChannel: FlutterMethodChannel
+    private let registrar: FlutterPluginRegistrar?
+
+    /// Node id → root anchor of the node's entity hierarchy. The visible
+    /// entity is `anchor.children.first` (a `ModelEntity` for primitives, the
+    /// loaded entity for custom models). Features (physics, animation,
+    /// multi-user, tracked images/faces) look nodes up here.
+    var nodes: [String: AnchorEntity] = [:]
     private var anchors: [String: AnchorEntity] = [:]
-    private var lights: [String: AnchorEntity] = [:]
     private var detectedPlanes: [ARPlaneAnchor] = []
-    private var cancellables = Set<AnyCancellable>()
-    
+
+    /// Last options passed to `initialize` (planeDetection, lightEstimation,
+    /// depthData, autoFocus). Kept so the session can be rebuilt when a
+    /// feature changes its contribution.
+    private(set) var sessionOptions: [String: Any] = [:]
+    private(set) var isSessionInitialized = false
+
+    private(set) var features: [AugenFeature] = []
+    lazy var modelLoader = AugenModelLoader(host: self)
+
     init(
         frame: CGRect,
         viewIdentifier viewId: Int64,
         arguments args: [String: Any],
-        binaryMessenger messenger: FlutterBinaryMessenger
+        binaryMessenger messenger: FlutterBinaryMessenger,
+        registrar: FlutterPluginRegistrar? = nil
     ) {
         arView = ARView(frame: frame)
-        methodChannel = FlutterMethodChannel(
-            name: "augen_\(viewId)",
-            binaryMessenger: messenger
-        )
-        
+        methodChannel = FlutterMethodChannel(name: "augen_\(viewId)", binaryMessenger: messenger)
+        self.registrar = registrar
         super.init()
-        
-        methodChannel.setMethodCallHandler { [weak self] (call, result) in
+
+        features = [
+            AugenAnimationFeature(host: self),
+            AugenPhysicsFeature(host: self),
+            AugenImageTrackingFeature(host: self),
+            AugenFaceTrackingFeature(host: self),
+            AugenLightingFeature(host: self),
+            AugenOcclusionFeature(host: self),
+            AugenEnvironmentProbeFeature(host: self),
+            AugenCloudAnchorFeature(host: self),
+            AugenMultiUserFeature(host: self),
+        ]
+
+        methodChannel.setMethodCallHandler { [weak self] call, result in
             self?.handleMethodCall(call, result: result)
         }
-        
-        setupARSession(config: args)
+        arView.session.delegate = self
     }
 
     deinit {
         NSLog("AugenARView deinit — releasing AR session and channel")
         methodChannel.setMethodCallHandler(nil)
+        features.forEach { $0.dispose() }
+        features.removeAll()
         arView.session.delegate = nil
         arView.session.pause()
-        cancellables.forEach { $0.cancel() }
-        cancellables.removeAll()
         nodes.values.forEach { arView.scene.removeAnchor($0) }
         nodes.removeAll()
         anchors.values.forEach { arView.scene.removeAnchor($0) }
         anchors.removeAll()
-        lights.values.forEach { arView.scene.removeAnchor($0) }
-        lights.removeAll()
         detectedPlanes.removeAll()
     }
 
-    func view() -> UIView {
-        return arView
-    }
-    
-    private func setupARSession(config: [String: Any]) {
-        // ARSession delegate setup happens during initialization
-        arView.session.delegate = self
-    }
-    
-    private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        switch call.method {
-        case "initialize":
-            initialize(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "isARSupported":
-            isARSupported(result: result)
-        case "addNode":
-            addNode(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "removeNode":
-            removeNode(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "updateNode":
-            updateNode(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "hitTest":
-            hitTest(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "addAnchor":
-            addAnchor(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "removeAnchor":
-            removeAnchor(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "pause":
-            pause(result: result)
-        case "resume":
-            resume(result: result)
-        case "reset":
-            reset(result: result)
-        case "playAnimation":
-            playAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "pauseAnimation":
-            pauseAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "stopAnimation":
-            stopAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "resumeAnimation":
-            resumeAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "seekAnimation":
-            seekAnimation(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "getAvailableAnimations":
-            getAvailableAnimations(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "setAnimationSpeed":
-            setAnimationSpeed(arguments: call.arguments as? [String: Any] ?? [:], result: result)
+    func view() -> UIView { arView }
 
-        // ===== Feature support checks =====
-        // These must NEVER throw or notImplemented — the Dart side relies on
-        // them for graceful UI degradation. iOS reports what ARKit/RealityKit
-        // actually supports; everything else returns false.
-        case "isImageTrackingSupported":
-            result(ARImageTrackingConfiguration.isSupported)
-        case "isFaceTrackingSupported":
-            result(ARFaceTrackingConfiguration.isSupported)
-        case "isEnvironmentalProbesSupported":
-            // iOS exposes environment texturing on ARWorldTrackingConfiguration.
-            // RealityKit auto-generates env probes when environmentTexturing
-            // is set to .automatic on iOS 14+.
-            if #available(iOS 14.0, *) {
-                result(ARWorldTrackingConfiguration.isSupported)
-            } else {
-                result(false)
-            }
-        case "getEnvironmentalProbesCapabilities":
-            // Report what ARKit/RealityKit can actually do for environment
-            // probes. iOS 14+ supports automatic environment texturing; on
-            // anything older we report no capabilities rather than throwing,
-            // so the Dart side can degrade gracefully.
-            if #available(iOS 14.0, *), ARWorldTrackingConfiguration.isSupported {
-                result([
-                    "supported": true,
-                    "automaticPlacement": true,
-                    "manualPlacement": true,
-                    "realTimeUpdates": true,
-                    "maxActiveProbes": 8,
-                    "supportedResolutions": [256, 512, 1024],
-                    "maxTextureResolution": 1024,
-                ])
-            } else {
-                result([
-                    "supported": false,
-                    "automaticPlacement": false,
-                    "manualPlacement": false,
-                    "realTimeUpdates": false,
-                    "maxActiveProbes": 0,
-                    "supportedResolutions": [Int](),
-                    "maxTextureResolution": 0,
-                ])
-            }
-        case "isOcclusionSupported":
-            // People occlusion is supported on iOS 13+ on devices with an A12+ chip
-            // exposing personSegmentation. Scene reconstruction needs LiDAR.
-            if #available(iOS 13.0, *) {
-                result(ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation))
-            } else {
-                result(false)
-            }
-        case "isLightingSupported":
-            // ARKit always provides light estimation when running.
-            result(ARWorldTrackingConfiguration.isSupported)
-        case "isCloudAnchorsSupported":
-            // Cloud anchors require a backend (ARCore Cloud Anchors or custom).
-            // Augen does not ship one for iOS — report false honestly.
-            result(false)
-        case "isPhysicsSupported":
-            // RealityKit has physics built in; report based on AR support.
-            result(ARWorldTrackingConfiguration.isSupported)
-        case "isMultiUserSupported":
-            // ARKit collaborative sessions exist (iOS 13+) but Augen does not
-            // ship the networking/sync layer — report false honestly.
-            result(false)
+    // MARK: - Host API for features
 
-        // ===== Capability descriptors / config =====
-        // The Dart side gates these behind the support checks above, so they
-        // must answer truthfully rather than notImplemented — otherwise a
-        // device that reports `isLightingSupported == true` would then throw
-        // MissingPluginException on the follow-up capabilities call.
-        case "getLightingCapabilities":
-            getLightingCapabilities(result: result)
-        case "setLightingConfig":
-            setLightingConfig(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "addLight":
-            addLight(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "removeLight":
-            removeLight(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "updateLight":
-            updateLight(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "getOcclusionCapabilities":
-            getOcclusionCapabilities(result: result)
-        case "setOcclusionConfig":
-            setOcclusionConfig(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "setOcclusionEnabled":
-            setOcclusionEnabled(arguments: call.arguments as? [String: Any] ?? [:], result: result)
-        case "isOcclusionEnabled":
-            isOcclusionEnabled(result: result)
-
-        default:
-            result(FlutterMethodNotImplemented)
+    /// Send a native → Dart event on the main thread.
+    func sendEvent(_ name: String, _ arguments: Any?) {
+        if Thread.isMainThread {
+            methodChannel.invokeMethod(name, arguments: arguments)
+        } else {
+            DispatchQueue.main.async { [weak self] in
+                self?.methodChannel.invokeMethod(name, arguments: arguments)
+            }
         }
     }
-    
+
+    /// Rebuild the session configuration from the base options plus every
+    /// feature's contribution, and run it. Features call this whenever their
+    /// contribution changes (e.g. image tracking toggled, new target added).
+    /// No-op until Dart has called `initialize`.
+    func applySessionConfiguration(resetTracking: Bool = false) {
+        guard isSessionInitialized else { return }
+        let previousType = arView.session.configuration.map { type(of: $0) }
+        var configuration: ARConfiguration = makeBaseConfiguration()
+        for feature in features {
+            configuration = feature.configure(configuration)
+        }
+        // Switching configuration class (world ↔ face) changes the camera, so
+        // existing anchors are meaningless — reset tracking in that case.
+        let typeChanged = previousType.map { $0 != type(of: configuration) } ?? false
+        let options: ARSession.RunOptions =
+            (resetTracking || typeChanged) ? [.resetTracking, .removeExistingAnchors] : []
+        arView.session.run(configuration, options: options)
+    }
+
+    /// Resolve a Flutter asset key (e.g. `assets/models/robot.usdz`) to a
+    /// path inside the app bundle. Returns nil when the key is not an asset.
+    func assetPath(forKey key: String) -> String? {
+        let lookup = registrar?.lookupKey(forAsset: key) ?? FlutterDartProject.lookupKey(forAsset: key)
+        return Bundle.main.path(forResource: lookup, ofType: nil)
+    }
+
+    /// The visible entity of a node (child of its anchor), if any.
+    func entity(forNode nodeId: String) -> Entity? {
+        nodes[nodeId]?.children.first
+    }
+
+    private func makeBaseConfiguration() -> ARWorldTrackingConfiguration {
+        let configuration = ARWorldTrackingConfiguration()
+        let planeDetection = sessionOptions["planeDetection"] as? Bool ?? true
+        configuration.planeDetection = planeDetection ? [.horizontal, .vertical] : []
+
+        let lightEstimation = sessionOptions["lightEstimation"] as? Bool ?? true
+        configuration.isLightEstimationEnabled = lightEstimation
+        if #available(iOS 14.0, *) {
+            configuration.environmentTexturing = lightEstimation ? .automatic : .none
+        }
+
+        let depthData = sessionOptions["depthData"] as? Bool ?? false
+        if #available(iOS 14.0, *),
+           depthData,
+           ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
+            configuration.sceneReconstruction = .mesh
+        }
+
+        configuration.isAutoFocusEnabled = sessionOptions["autoFocus"] as? Bool ?? true
+        return configuration
+    }
+
+    // MARK: - Method dispatch
+
+    private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        for feature in features where feature.handle(call, result: result) {
+            return
+        }
+
+        let args = call.arguments as? [String: Any] ?? [:]
+        switch call.method {
+        case "initialize": initialize(arguments: args, result: result)
+        case "isARSupported": result(ARWorldTrackingConfiguration.isSupported)
+        case "addNode": addNode(arguments: args, result: result)
+        case "removeNode": removeNode(arguments: args, result: result)
+        case "updateNode": updateNode(arguments: args, result: result)
+        case "hitTest", "raycast": hitTest(arguments: args, result: result)
+        case "addAnchor": addAnchor(arguments: args, result: result)
+        case "removeAnchor": removeAnchor(arguments: args, result: result)
+        case "pause":
+            arView.session.pause()
+            result(nil)
+        case "resume": resume(result: result)
+        case "reset": reset(result: result)
+        default: result(FlutterMethodNotImplemented)
+        }
+    }
+
     private func initialize(arguments: [String: Any], result: @escaping FlutterResult) {
         guard ARWorldTrackingConfiguration.isSupported else {
             result(FlutterError(
@@ -202,674 +179,199 @@ class AugenARView: NSObject, FlutterPlatformView {
             ))
             return
         }
-        
-        let configuration = ARWorldTrackingConfiguration()
-        
-        // Apply configuration
-        let planeDetection = arguments["planeDetection"] as? Bool ?? true
-        if planeDetection {
-            configuration.planeDetection = [.horizontal, .vertical]
-        } else {
-            configuration.planeDetection = []
-        }
-        
-        let lightEstimation = arguments["lightEstimation"] as? Bool ?? true
-        if #available(iOS 14.0, *) {
-            configuration.environmentTexturing = lightEstimation ? .automatic : .none
-        }
-        
-        let depthData = arguments["depthData"] as? Bool ?? false
-        if #available(iOS 14.0, *) {
-            if ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) && depthData {
-                configuration.sceneReconstruction = .mesh
-            }
-        }
-        
-        let autoFocus = arguments["autoFocus"] as? Bool ?? true
-        if autoFocus {
-            configuration.isAutoFocusEnabled = true
-        }
-        
-        arView.session.run(configuration, options: [.resetTracking, .removeExistingAnchors])
+        sessionOptions = arguments
+        isSessionInitialized = true
+        applySessionConfiguration(resetTracking: true)
         result(nil)
     }
-    
-    private func isARSupported(result: @escaping FlutterResult) {
-        result(ARWorldTrackingConfiguration.isSupported)
-    }
-    
+
+    // MARK: - Nodes
+
     private func addNode(arguments: [String: Any], result: @escaping FlutterResult) {
         guard let nodeId = arguments["id"] as? String,
-              let type = arguments["type"] as? String,
-              let positionData = arguments["position"] as? [String: Any],
-              let rotationData = arguments["rotation"] as? [String: Any],
-              let scaleData = arguments["scale"] as? [String: Any] else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing required node parameters",
-                details: nil
-            ))
+              let type = arguments["type"] as? String else {
+            result(AugenCodec.invalidArguments("Missing required node parameters"))
             return
         }
-        
-        let position = SIMD3<Float>(
-            x: (positionData["x"] as? NSNumber)?.floatValue ?? 0,
-            y: (positionData["y"] as? NSNumber)?.floatValue ?? 0,
-            z: (positionData["z"] as? NSNumber)?.floatValue ?? 0
-        )
-        
-        let rotation = simd_quatf(
-            ix: (rotationData["x"] as? NSNumber)?.floatValue ?? 0,
-            iy: (rotationData["y"] as? NSNumber)?.floatValue ?? 0,
-            iz: (rotationData["z"] as? NSNumber)?.floatValue ?? 0,
-            r: (rotationData["w"] as? NSNumber)?.floatValue ?? 1
-        )
-        
-        let scale = SIMD3<Float>(
-            x: (scaleData["x"] as? NSNumber)?.floatValue ?? 1,
-            y: (scaleData["y"] as? NSNumber)?.floatValue ?? 1,
-            z: (scaleData["z"] as? NSNumber)?.floatValue ?? 1
-        )
-        
+
+        let position = AugenCodec.vector3(arguments["position"])
+        let rotation = AugenCodec.quaternion(arguments["rotation"])
+        let scale = AugenCodec.vector3(arguments["scale"], SIMD3<Float>(repeating: 1))
+
+        if let existing = nodes.removeValue(forKey: nodeId) {
+            arView.scene.removeAnchor(existing)
+        }
         let anchor = AnchorEntity(world: position)
-        
-        // Handle custom 3D model loading
-        if type.lowercased() == "model" {
-            let modelPath = arguments["modelPath"] as? String
-            let modelData = arguments["modelData"] as? FlutterStandardTypedData
-            let modelFormat = arguments["modelFormat"] as? String
-            
-            loadCustomModel(
-                modelPath: modelPath,
-                modelData: modelData?.data,
-                modelFormat: modelFormat,
-                scale: scale,
-                rotation: rotation,
-                anchor: anchor,
-                result: result
-            )
-            
-            arView.scene.addAnchor(anchor)
-            nodes[nodeId] = anchor
-            result(nil)
-            return
-        }
-        
-        // Create mesh based on type for primitive shapes
-        let mesh: MeshResource
-        let material = SimpleMaterial(color: .blue, isMetallic: false)
-        
-        switch type.lowercased() {
-        case "sphere":
-            mesh = MeshResource.generateSphere(radius: 0.1)
-        case "cube":
-            mesh = MeshResource.generateBox(size: 0.1)
-        case "cylinder":
-            if #available(iOS 18.0, *) {
-                mesh = MeshResource.generateCylinder(height: 0.2, radius: 0.05)
-            } else {
-                mesh = MeshResource.generateBox(size: [0.1, 0.2, 0.1])
-            }
-        default:
-            mesh = MeshResource.generateSphere(radius: 0.1)
-        }
-        
-        let modelEntity = ModelEntity(mesh: mesh, materials: [material])
-        modelEntity.scale = scale
-        modelEntity.orientation = rotation
-        
-        anchor.addChild(modelEntity)
+        anchor.name = nodeId
         arView.scene.addAnchor(anchor)
         nodes[nodeId] = anchor
-        
+
+        if type.lowercased() == "model" {
+            modelLoader.load(arguments: arguments, into: anchor, scale: scale, rotation: rotation) { error in
+                if let error = error {
+                    result(FlutterError(code: "MODEL_LOAD_FAILED", message: error, details: nil))
+                } else {
+                    result(nil)
+                }
+            }
+            return
+        }
+
+        let entity = AugenARView.makePrimitive(type: type)
+        entity.name = nodeId
+        entity.scale = scale
+        entity.orientation = rotation
+        anchor.addChild(entity)
         result(nil)
     }
-    
-    private func loadCustomModel(
-        modelPath: String?,
-        modelData: Data?,
-        modelFormat: String?,
-        scale: SIMD3<Float>,
-        rotation: simd_quatf,
-        anchor: AnchorEntity,
-        result: @escaping FlutterResult
-    ) {
-        // Load custom 3D model (USDZ, Reality, or other formats)
-        // RealityKit natively supports USDZ and Reality file formats
-        //
-        // Implementation for loading 3D models:
-        // 1. For USDZ files: Use ModelEntity.loadAsync()
-        // 2. For GLB/GLTF: Convert to USDZ or use a third-party loader
-        // 3. Apply scale and rotation transformations
-        //
-        // Example implementation for USDZ:
-        // if let path = modelPath, let url = URL(string: path) {
-        //     ModelEntity.loadAsync(contentsOf: url).sink(
-        //         receiveCompletion: { completion in
-        //             if case .failure(let error) = completion {
-        //                 print("Failed to load model: \(error)")
-        //             }
-        //         },
-        //         receiveValue: { [weak self] model in
-        //             model.scale = scale
-        //             model.orientation = rotation
-        //             anchor.addChild(model)
-        //         }
-        //     ).store(in: &cancellables)
-        // } else if let data = modelData {
-        //     // Load from data bytes
-        //     // Create temporary file and load from it
-        // }
-        
-        NSLog("AugenARView: loadCustomModel is not yet implemented — rendering placeholder cube. modelPath=\(modelPath ?? "nil") format=\(modelFormat ?? "nil")")
-        // For now, add a placeholder cube to indicate custom model position
-        let mesh = MeshResource.generateBox(size: 0.1)
-        let material = SimpleMaterial(color: .orange, isMetallic: false)
-        let modelEntity = ModelEntity(mesh: mesh, materials: [material])
-        modelEntity.scale = scale
-        modelEntity.orientation = rotation
-        anchor.addChild(modelEntity)
+
+    /// Primitive shapes for `sphere`, `cube`, `cylinder` (unknown → sphere).
+    static func makePrimitive(type: String) -> ModelEntity {
+        let mesh: MeshResource
+        switch type.lowercased() {
+        case "cube":
+            mesh = .generateBox(size: 0.1)
+        case "cylinder":
+            if #available(iOS 18.0, *) {
+                mesh = .generateCylinder(height: 0.2, radius: 0.05)
+            } else {
+                mesh = .generateBox(size: [0.1, 0.2, 0.1])
+            }
+        default:
+            mesh = .generateSphere(radius: 0.1)
+        }
+        let entity = ModelEntity(mesh: mesh, materials: [SimpleMaterial(color: .systemBlue, isMetallic: false)])
+        entity.generateCollisionShapes(recursive: false)
+        return entity
     }
-    
+
     private func removeNode(arguments: [String: Any], result: @escaping FlutterResult) {
         guard let nodeId = arguments["nodeId"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing nodeId parameter",
-                details: nil
-            ))
+            result(AugenCodec.invalidArguments("Missing nodeId parameter"))
             return
         }
-        
-        if let anchor = nodes[nodeId] {
-            arView.scene.removeAnchor(anchor)
-            nodes.removeValue(forKey: nodeId)
-            result(nil)
-        } else {
-            result(FlutterError(
-                code: "NODE_NOT_FOUND",
-                message: "Node with id \(nodeId) not found",
-                details: nil
-            ))
+        guard let anchor = nodes.removeValue(forKey: nodeId) else {
+            result(FlutterError(code: "NODE_NOT_FOUND", message: "Node with id \(nodeId) not found", details: nil))
+            return
         }
+        arView.scene.removeAnchor(anchor)
+        result(nil)
     }
-    
+
     private func updateNode(arguments: [String: Any], result: @escaping FlutterResult) {
         guard let nodeId = arguments["id"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing id parameter",
-                details: nil
-            ))
+            result(AugenCodec.invalidArguments("Missing id parameter"))
             return
         }
-        
-        if nodes[nodeId] != nil {
-            // Remove old node and add new one
-            removeNode(arguments: ["nodeId": nodeId], result: { _ in })
-            addNode(arguments: arguments, result: result)
-        } else {
-            result(FlutterError(
-                code: "NODE_NOT_FOUND",
-                message: "Node with id \(nodeId) not found",
-                details: nil
-            ))
+        guard nodes[nodeId] != nil else {
+            result(FlutterError(code: "NODE_NOT_FOUND", message: "Node with id \(nodeId) not found", details: nil))
+            return
         }
+        addNode(arguments: arguments, result: result)
     }
-    
+
+    // MARK: - Hit testing & anchors
+
     private func hitTest(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let x = arguments["x"] as? NSNumber,
-              let y = arguments["y"] as? NSNumber else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing x or y coordinate",
-                details: nil
-            ))
+        guard let x = arguments["x"] as? NSNumber, let y = arguments["y"] as? NSNumber else {
+            result(AugenCodec.invalidArguments("Missing x or y coordinate"))
             return
         }
-        
-        let point = CGPoint(x: CGFloat(x.doubleValue), y: CGFloat(y.doubleValue))
-        let hits = arView.hitTest(point, types: [.existingPlaneUsingExtent, .estimatedHorizontalPlane])
-        
-        let results = hits.map { hit -> [String: Any] in
-            let transform = hit.worldTransform
-            let position = SIMD3<Float>(transform.columns.3.x, transform.columns.3.y, transform.columns.3.z)
-            let rotation = simd_quatf(transform)
-            
-            return [
-                "position": [
-                    "x": position.x,
-                    "y": position.y,
-                    "z": position.z
-                ],
-                "rotation": [
-                    "x": rotation.imag.x,
-                    "y": rotation.imag.y,
-                    "z": rotation.imag.z,
-                    "w": rotation.real
-                ],
-                "distance": hit.distance,
-                "planeId": hit.anchor?.identifier.uuidString ?? NSNull()
-            ]
+        let point = CGPoint(x: x.doubleValue, y: y.doubleValue)
+        var results: [[String: Any]] = []
+        for target in [ARRaycastQuery.Target.existingPlaneGeometry, .estimatedPlane] {
+            let hits = arView.raycast(from: point, allowing: target, alignment: .any)
+            results = hits.map { hit in
+                let transform = hit.worldTransform
+                let cameraPosition = arView.cameraTransform.translation
+                return [
+                    "position": AugenCodec.map(AugenCodec.position(of: transform)),
+                    "rotation": AugenCodec.map(simd_quatf(transform)),
+                    "distance": Double(simd_distance(cameraPosition, AugenCodec.position(of: transform))),
+                    "planeId": hit.anchor?.identifier.uuidString ?? NSNull(),
+                ]
+            }
+            if !results.isEmpty { break }
         }
-        
         result(results)
     }
-    
+
     private func addAnchor(arguments: [String: Any], result: @escaping FlutterResult) {
         guard let x = arguments["x"] as? NSNumber,
               let y = arguments["y"] as? NSNumber,
               let z = arguments["z"] as? NSNumber else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing position coordinates",
-                details: nil
-            ))
+            result(AugenCodec.invalidArguments("Missing position coordinates"))
             return
         }
-        
-        let position = SIMD3<Float>(
-            x: x.floatValue,
-            y: y.floatValue,
-            z: z.floatValue
-        )
-        
+        let position = SIMD3<Float>(x.floatValue, y.floatValue, z.floatValue)
         let anchor = AnchorEntity(world: position)
         let anchorId = UUID().uuidString
-        
+        // Named so features (e.g. cloud anchors) can resolve core anchors by id.
+        anchor.name = anchorId
         arView.scene.addAnchor(anchor)
         anchors[anchorId] = anchor
-        
-        let anchorData: [String: Any] = [
+        result([
             "id": anchorId,
-            "position": [
-                "x": position.x,
-                "y": position.y,
-                "z": position.z
-            ],
-            "rotation": [
-                "x": 0,
-                "y": 0,
-                "z": 0,
-                "w": 1
-            ],
-            "timestamp": Int(Date().timeIntervalSince1970 * 1000)
-        ]
-        
-        result(anchorData)
+            "position": AugenCodec.map(position),
+            "rotation": ["x": 0, "y": 0, "z": 0, "w": 1],
+            "timestamp": AugenCodec.nowMillis(),
+        ])
     }
-    
+
     private func removeAnchor(arguments: [String: Any], result: @escaping FlutterResult) {
         guard let anchorId = arguments["anchorId"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing anchorId parameter",
-                details: nil
-            ))
+            result(AugenCodec.invalidArguments("Missing anchorId parameter"))
             return
         }
-        
-        if let anchor = anchors[anchorId] {
-            arView.scene.removeAnchor(anchor)
-            anchors.removeValue(forKey: anchorId)
-            result(nil)
-        } else {
-            result(FlutterError(
-                code: "ANCHOR_NOT_FOUND",
-                message: "Anchor with id \(anchorId) not found",
-                details: nil
-            ))
+        guard let anchor = anchors.removeValue(forKey: anchorId) else {
+            result(FlutterError(code: "ANCHOR_NOT_FOUND", message: "Anchor with id \(anchorId) not found", details: nil))
+            return
         }
-    }
-    
-    private func pause(result: @escaping FlutterResult) {
-        arView.session.pause()
+        arView.scene.removeAnchor(anchor)
         result(nil)
     }
-    
+
+    // MARK: - Session lifecycle
+
     private func resume(result: @escaping FlutterResult) {
-        if let configuration = arView.session.configuration {
-            arView.session.run(configuration)
-            result(nil)
-        } else {
-            result(FlutterError(
-                code: "NO_CONFIGURATION",
-                message: "AR session has no configuration",
-                details: nil
-            ))
+        guard isSessionInitialized else {
+            result(FlutterError(code: "NO_CONFIGURATION", message: "AR session has no configuration", details: nil))
+            return
         }
+        applySessionConfiguration()
+        result(nil)
     }
-    
+
     private func reset(result: @escaping FlutterResult) {
         nodes.values.forEach { arView.scene.removeAnchor($0) }
         nodes.removeAll()
-        
         anchors.values.forEach { arView.scene.removeAnchor($0) }
         anchors.removeAll()
-        
         detectedPlanes.removeAll()
+        features.forEach { $0.reset() }
         result(nil)
-    }
-    
-    // MARK: - Animation Methods
-    
-    private func playAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let nodeId = arguments["nodeId"] as? String,
-              let animationId = arguments["animationId"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing required parameters",
-                details: nil
-            ))
-            return
-        }
-        
-        let _ = (arguments["speed"] as? NSNumber)?.floatValue ?? 1.0
-        let _ = arguments["loopMode"] as? String ?? "loop"
-
-        // Animations are not yet implemented for primitive shapes / placeholder models.
-        result(FlutterMethodNotImplemented)
-    }
-
-    private func pauseAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        result(FlutterMethodNotImplemented)
-    }
-
-    private func stopAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        result(FlutterMethodNotImplemented)
-    }
-
-    private func resumeAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        result(FlutterMethodNotImplemented)
-    }
-
-    private func seekAnimation(arguments: [String: Any], result: @escaping FlutterResult) {
-        result(FlutterMethodNotImplemented)
-    }
-    
-    private func getAvailableAnimations(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let nodeId = arguments["nodeId"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing nodeId parameter",
-                details: nil
-            ))
-            return
-        }
-        
-        // Get available animations from model
-        // Example:
-        // if let anchor = nodes[nodeId],
-        //    let modelEntity = anchor.children.first as? ModelEntity {
-        //     let animationNames = modelEntity.availableAnimations.map { $0.name }
-        //     result(animationNames)
-        // } else {
-        //     result([])
-        // }
-        
-        result([])
-    }
-    
-    private func setAnimationSpeed(arguments: [String: Any], result: @escaping FlutterResult) {
-        result(FlutterMethodNotImplemented)
-    }
-
-    // MARK: - Lighting & Occlusion capabilities
-
-    private func getLightingCapabilities(result: @escaping FlutterResult) {
-        // ARKit always provides light estimation while a session runs, and
-        // RealityKit drives image-based lighting + shadows from it. Report a
-        // truthful capability set the Dart layer can read directly (documented
-        // keys: `maxLights`, `shadowQuality`).
-        let supported = ARWorldTrackingConfiguration.isSupported
-        var environmentTexturing = false
-        if #available(iOS 14.0, *) {
-            environmentTexturing = supported
-        }
-        result([
-            "supported": supported,
-            "maxLights": supported ? 8 : 0,
-            "shadowQuality": "medium",
-            "supportsLightEstimation": supported,
-            "supportsEnvironmentTexturing": environmentTexturing,
-            "supportsShadows": supported,
-            "supportsContactShadows": false,
-            "maxShadowCasters": supported ? 4 : 0,
-        ])
-    }
-
-    private func getOcclusionCapabilities(result: @escaping FlutterResult) {
-        // Report what ARKit can actually occlude (documented keys:
-        // `personOcclusion`, `depthOcclusion`, `maxOcclusions`). People
-        // occlusion needs an A12+ chip (iOS 13+); depth occlusion needs LiDAR
-        // (personSegmentationWithDepth, iOS 14+).
-        guard #available(iOS 13.0, *) else {
-            result([
-                "supported": false,
-                "personOcclusion": false,
-                "depthOcclusion": false,
-                "planeOcclusion": false,
-                "maxOcclusions": 0,
-            ])
-            return
-        }
-        let personOcclusion =
-            ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation)
-        var depthOcclusion = false
-        if #available(iOS 14.0, *) {
-            depthOcclusion =
-                ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentationWithDepth)
-        }
-        result([
-            "supported": personOcclusion || depthOcclusion,
-            "personOcclusion": personOcclusion,
-            "depthOcclusion": depthOcclusion,
-            "planeOcclusion": ARWorldTrackingConfiguration.isSupported,
-            "maxOcclusions": personOcclusion ? 16 : 0,
-        ])
-    }
-
-    private func setOcclusionConfig(arguments: [String: Any], result: @escaping FlutterResult) {
-        // Apply people occlusion to the running session by toggling the
-        // appropriate frame semantics. Plane occlusion is handled implicitly by
-        // RealityKit's scene understanding, so there is nothing extra to flip.
-        guard #available(iOS 13.0, *),
-              let configuration = arView.session.configuration as? ARWorldTrackingConfiguration else {
-            // Nothing to configure (older OS or no running world-tracking
-            // session). Succeed quietly so the Dart side can carry on.
-            result(nil)
-            return
-        }
-
-        let enablePerson = arguments["enablePersonOcclusion"] as? Bool ?? true
-        let enableDepth = arguments["enableDepthOcclusion"] as? Bool ?? true
-
-        var semantics = configuration.frameSemantics
-        if #available(iOS 14.0, *),
-           enableDepth,
-           ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentationWithDepth) {
-            semantics.insert(.personSegmentationWithDepth)
-        } else if enablePerson,
-                  ARWorldTrackingConfiguration.supportsFrameSemantics(.personSegmentation) {
-            semantics.insert(.personSegmentation)
-        } else {
-            semantics.remove(.personSegmentation)
-            if #available(iOS 14.0, *) {
-                semantics.remove(.personSegmentationWithDepth)
-            }
-        }
-
-        configuration.frameSemantics = semantics
-        arView.session.run(configuration)
-        result(nil)
-    }
-
-    private func setOcclusionEnabled(arguments: [String: Any], result: @escaping FlutterResult) {
-        // Convenience toggle layered on top of setOcclusionConfig: enabling
-        // turns on people occlusion (with depth when LiDAR is present),
-        // disabling clears the segmentation semantics.
-        let enabled = arguments["enabled"] as? Bool ?? false
-        setOcclusionConfig(
-            arguments: [
-                "enablePersonOcclusion": enabled,
-                "enableDepthOcclusion": enabled,
-            ],
-            result: result
-        )
-    }
-
-    private func isOcclusionEnabled(result: @escaping FlutterResult) {
-        guard #available(iOS 13.0, *),
-              let configuration = arView.session.configuration as? ARWorldTrackingConfiguration else {
-            result(false)
-            return
-        }
-        var enabled = configuration.frameSemantics.contains(.personSegmentation)
-        if #available(iOS 14.0, *) {
-            enabled = enabled || configuration.frameSemantics.contains(.personSegmentationWithDepth)
-        }
-        result(enabled)
-    }
-
-    // MARK: - Lighting
-
-    private func setLightingConfig(arguments: [String: Any], result: @escaping FlutterResult) {
-        // RealityKit drives global illumination from ARKit's environment
-        // texturing, which is already enabled in `initialize`. Ambient
-        // intensity/colour and shadow toggles are applied per-light, so there
-        // is no global session knob to flip here — accept the config so the
-        // Dart side can proceed rather than throwing.
-        result(nil)
-    }
-
-    private func addLight(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let lightId = arguments["id"] as? String,
-              let type = arguments["type"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing required light parameters (id, type)",
-                details: nil
-            ))
-            return
-        }
-
-        let position = vector(from: arguments["position"]) ?? SIMD3<Float>(0, 1, 0)
-        let intensity = (arguments["intensity"] as? NSNumber)?.floatValue ?? 1000
-        let lightColor = color(from: arguments["color"])
-
-        let anchor = AnchorEntity(world: position)
-
-        switch type.lowercased() {
-        case "directional":
-            let light = DirectionalLight()
-            light.light.color = lightColor
-            light.light.intensity = intensity
-            orient(light, towards: arguments["direction"])
-            anchor.addChild(light)
-        case "point":
-            let light = PointLight()
-            light.light.color = lightColor
-            light.light.intensity = intensity
-            light.light.attenuationRadius = 10
-            anchor.addChild(light)
-        case "spot":
-            let light = SpotLight()
-            light.light.color = lightColor
-            light.light.intensity = intensity
-            light.light.attenuationRadius = 10
-            light.light.innerAngleInDegrees = 30
-            light.light.outerAngleInDegrees = 45
-            orient(light, towards: arguments["direction"])
-            anchor.addChild(light)
-        default:
-            // ambient / environment lighting is provided by ARKit's
-            // environment texturing — track an empty anchor so removeLight /
-            // updateLight stay consistent, but add no discrete light entity.
-            break
-        }
-
-        arView.scene.addAnchor(anchor)
-        lights[lightId] = anchor
-        result(lightId)
-    }
-
-    private func removeLight(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let lightId = arguments["lightId"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing lightId parameter",
-                details: nil
-            ))
-            return
-        }
-        if let anchor = lights.removeValue(forKey: lightId) {
-            arView.scene.removeAnchor(anchor)
-        }
-        result(nil)
-    }
-
-    private func updateLight(arguments: [String: Any], result: @escaping FlutterResult) {
-        guard let lightId = arguments["id"] as? String else {
-            result(FlutterError(
-                code: "INVALID_ARGUMENTS",
-                message: "Missing id parameter",
-                details: nil
-            ))
-            return
-        }
-        // Re-create the light entity in place so colour/intensity/direction
-        // changes take effect.
-        if let anchor = lights.removeValue(forKey: lightId) {
-            arView.scene.removeAnchor(anchor)
-        }
-        addLight(arguments: arguments, result: result)
-    }
-
-    // MARK: - Lighting helpers
-
-    private func vector(from value: Any?) -> SIMD3<Float>? {
-        guard let map = value as? [String: Any] else { return nil }
-        return SIMD3<Float>(
-            x: (map["x"] as? NSNumber)?.floatValue ?? 0,
-            y: (map["y"] as? NSNumber)?.floatValue ?? 0,
-            z: (map["z"] as? NSNumber)?.floatValue ?? 0
-        )
-    }
-
-    private func color(from value: Any?) -> UIColor {
-        guard let map = value as? [String: Any] else { return .white }
-        return UIColor(
-            red: CGFloat((map["x"] as? NSNumber)?.floatValue ?? 1),
-            green: CGFloat((map["y"] as? NSNumber)?.floatValue ?? 1),
-            blue: CGFloat((map["z"] as? NSNumber)?.floatValue ?? 1),
-            alpha: 1
-        )
-    }
-
-    private func orient(_ entity: Entity, towards direction: Any?) {
-        guard let dir = vector(from: direction), simd_length(dir) > 0 else { return }
-        // RealityKit lights emit along their local -Z axis; rotate that onto
-        // the requested direction.
-        let forward = SIMD3<Float>(0, 0, -1)
-        let target = simd_normalize(dir)
-        entity.orientation = simd_quatf(from: forward, to: target)
     }
 }
 
 // MARK: - ARSessionDelegate
+
 extension AugenARView: ARSessionDelegate {
+    func session(_ session: ARSession, didUpdate frame: ARFrame) {
+        features.forEach { $0.session(session, didUpdate: frame) }
+    }
+
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
         let planes = anchors.compactMap { $0 as? ARPlaneAnchor }
         if !planes.isEmpty {
             detectedPlanes.append(contentsOf: planes)
             notifyPlanesUpdated()
         }
+        features.forEach { $0.session(session, didAdd: anchors) }
     }
-    
+
     func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
         let planes = anchors.compactMap { $0 as? ARPlaneAnchor }
         if !planes.isEmpty {
-            // Update existing planes
             for plane in planes {
                 if let index = detectedPlanes.firstIndex(where: { $0.identifier == plane.identifier }) {
                     detectedPlanes[index] = plane
@@ -877,49 +379,35 @@ extension AugenARView: ARSessionDelegate {
             }
             notifyPlanesUpdated()
         }
+        features.forEach { $0.session(session, didUpdate: anchors) }
     }
-    
+
     func session(_ session: ARSession, didRemove anchors: [ARAnchor]) {
-        let planes = anchors.compactMap { $0 as? ARPlaneAnchor }
-        if !planes.isEmpty {
-            for plane in planes {
-                detectedPlanes.removeAll { $0.identifier == plane.identifier }
-            }
+        let removed = Set(anchors.compactMap { ($0 as? ARPlaneAnchor)?.identifier })
+        if !removed.isEmpty {
+            detectedPlanes.removeAll { removed.contains($0.identifier) }
             notifyPlanesUpdated()
         }
+        features.forEach { $0.session(session, didRemove: anchors) }
     }
-    
+
     private func notifyPlanesUpdated() {
         let planesData = detectedPlanes.map { plane -> [String: Any] in
-            let center = plane.center
-            let extent = plane.extent
-            
-            return [
+            [
                 "id": plane.identifier.uuidString,
-                "center": [
-                    "x": center.x,
-                    "y": center.y,
-                    "z": center.z
-                ],
-                "extent": [
-                    "x": extent.x,
-                    "y": extent.y,
-                    "z": extent.z
-                ],
-                "type": plane.alignment == .horizontal ? "horizontal" : "vertical"
+                "center": AugenCodec.map(plane.center),
+                "extent": AugenCodec.map(plane.extent),
+                "type": plane.alignment == .horizontal ? "horizontal" : "vertical",
             ]
         }
-        
-        DispatchQueue.main.async { [weak self] in
-            self?.methodChannel.invokeMethod("onPlanesUpdated", arguments: planesData)
-        }
+        sendEvent("onPlanesUpdated", planesData)
+    }
+
+    func session(_ session: ARSession, didOutputCollaborationData data: ARSession.CollaborationData) {
+        features.forEach { ($0 as? AugenCollaborationDataReceiver)?.session(session, didOutputCollaborationData: data) }
     }
 
     func session(_ session: ARSession, didFailWithError error: Error) {
-        let message = error.localizedDescription
-        DispatchQueue.main.async { [weak self] in
-            self?.methodChannel.invokeMethod("onError", arguments: message)
-        }
+        sendEvent("onError", error.localizedDescription)
     }
 }
-

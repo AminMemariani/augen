@@ -532,8 +532,30 @@ class AugenController {
   @visibleForTesting
   Future<Uint8List> debugLoadAsset(String assetPath) => _loadAsset(assetPath);
 
-  void _handlePlatformCallback(String method, dynamic arguments) {
+  /// Platform channels decode maps as `Map<Object?, Object?>`, which makes
+  /// `as Map<String, dynamic>` casts throw. Normalize every event payload
+  /// once at the boundary so handlers and model `fromMap`s can rely on
+  /// string-keyed maps at any depth.
+  ///
+  /// Already-typed payloads (e.g. the web backend forwarding a
+  /// `List<ARTrackedMarker>`) are returned unchanged so their identity and
+  /// static type survive.
+  static dynamic _normalizeChannelValue(dynamic value) {
+    if (value is Map && value is! Map<String, dynamic>) {
+      return <String, dynamic>{
+        for (final entry in value.entries)
+          entry.key.toString(): _normalizeChannelValue(entry.value),
+      };
+    }
+    if (value is List && value.any((e) => e is Map || e is List)) {
+      return value.map(_normalizeChannelValue).toList();
+    }
+    return value;
+  }
+
+  void _handlePlatformCallback(String method, dynamic rawArguments) {
     if (_isDisposed) return;
+    final dynamic arguments = _normalizeChannelValue(rawArguments);
 
     switch (method) {
       case 'onPlanesUpdated':

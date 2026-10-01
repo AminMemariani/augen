@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.5.0] - 2026-10-01
+
+> Minor release: **every Augen feature is now implemented natively on iOS.**
+> Previously the iOS plugin handled only core AR, lighting and occlusion, so
+> apps saw "not supported" for most features.
+
+### Added
+- **iOS native implementations** (ARKit / RealityKit), each in its own Swift
+  feature module behind a shared session-configuration pipeline:
+  - **Animations** — RealityKit playback for baked USDZ clips plus built-in
+    procedural clips (`idle`, `walk`, `run`, `jump`, `spin`, `bounce`, `pulse`,
+    `wobble`); blend sets, crossfades, blend trees, state machines, layers.
+  - **Physics** — `PhysicsBodyComponent` bodies, forces, impulses, velocities,
+    world config; joints/constraints and cross-node collisions on iOS 18+.
+  - **Image tracking** — `ARReferenceImage` targets from assets, files, URLs or
+    bytes, with ARKit validation; nodes attached to tracked images.
+  - **Face tracking** — `ARFaceTrackingConfiguration` with landmarks,
+    expressions and nodes attached to faces.
+  - **Lighting** — full light CRUD, per-light updates, shadows, ambient config.
+  - **Occlusion** — occlusion objects (create/update/remove) on top of people
+    segmentation.
+  - **Environmental probes** — probe CRUD, config and updates backed by ARKit
+    environment texturing.
+  - **Cloud anchors** — persisted on device as `ARWorldMap`s (no cloud backend).
+  - **Multi-user** — MultipeerConnectivity sessions with ARKit collaboration
+    data, participants, roles and shared objects.
+  - **Custom models** — USDZ/Reality via RealityKit and OBJ via ModelIO, from
+    assets, files, URLs or bytes. GLTF/GLB render a placeholder on iOS.
+- `example/integration_test/ios_features_e2e_test.dart` — strict on-device
+  test of every feature against the real native layer.
+
+### Fixed
+- **Native event payloads** are normalized to `Map<String, dynamic>` before
+  dispatch. Physics, occlusion, multi-user, lighting and probe events
+  previously threw a cast error and never reached their streams.
+- **Example app:** the AR tab is kept alive across tab switches (feature tabs
+  were acting on a disposed controller and showing "Not Supported"); image
+  targets use real bundled images; status SnackBars that covered the buttons
+  are replaced by a non-blocking, auto-hiding banner.
+
+### Docs
+- README (EN/ES): iOS feature-support table, multi-user Info.plist keys, model
+  format notes for iOS, and iOS debugging tips.
+
 ## [1.4.2] - 2026-06-17
 
 > Patch release: fixes the **Android AR camera preview** not rendering. The

@@ -210,7 +210,7 @@ class ARMultiUserSession {
         orElse: () => MultiUserConnectionState.disconnected,
       ),
       participants: (map['participants'] as List)
-          .map((p) => MultiUserParticipant.fromMap(p as Map<String, dynamic>))
+          .map((p) => MultiUserParticipant.fromMap(Map<String, dynamic>.from(p as Map)))
           .toList(),
       capabilities: (map['capabilities'] as List)
           .map(

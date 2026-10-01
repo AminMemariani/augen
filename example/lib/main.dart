@@ -58,6 +58,22 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
   bool _imageTrackingEnabled = false;
   bool _faceTrackingEnabled = false;
   bool _cloudAnchorsSupported = false;
+
+  // Feedback banner. Replaces SnackBars, which stacked up from status streams
+  // and covered the buttons at the bottom of each tab. The banner ignores
+  // pointer events, so taps always reach the controls underneath.
+  Widget? _notice;
+  Timer? _noticeTimer;
+
+  void _notify(Widget content) {
+    if (!mounted) return;
+    _noticeTimer?.cancel();
+    setState(() => _notice = content);
+    _noticeTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _notice = null);
+    });
+  }
+
   bool _occlusionSupported = false;
   bool _occlusionEnabled = false;
   bool _physicsSupported = false;
@@ -248,17 +264,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           if (!mounted) return;
           if (status.isComplete) {
             if (status.isSuccessful) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Cloud anchor ${status.cloudAnchorId} ready!'),
-                ),
-              );
+              _notify(Text('Cloud anchor ${status.cloudAnchorId} ready!'));
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Cloud anchor failed: ${status.errorMessage}'),
-                ),
-              );
+              _notify(Text('Cloud anchor failed: ${status.errorMessage}'));
             }
           }
         });
@@ -279,13 +287,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       if (status.isComplete) {
         if (status.isSuccessful) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Occlusion ${status.occlusionId} ready!')),
-          );
+          _notify(Text('Occlusion ${status.occlusionId} ready!'));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Occlusion failed: ${status.errorMessage}')),
-          );
+          _notify(Text('Occlusion failed: ${status.errorMessage}'));
         }
       }
     });
@@ -313,17 +317,9 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       if (status.isComplete) {
         if (status.isSuccessful) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Physics simulation complete!')),
-          );
+          _notify(Text('Physics simulation complete!'));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Physics simulation failed: ${status.errorMessage}',
-              ),
-            ),
-          );
+          _notify(Text('Physics simulation failed: ${status.errorMessage}'));
         }
       }
     });
@@ -331,9 +327,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     // Error handling
     _errorSubscription = _controller!.errorStream.listen((error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('AR Error: $error')));
+      _notify(Text('AR Error: $error'));
     });
 
     // Animation status
@@ -369,13 +363,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         ARImageTarget(
           id: 'poster1',
           name: 'Movie Poster',
-          imagePath: 'https://example.com/images/sample_poster.jpg',
+          imagePath: 'assets/images/sample_poster.jpg',
           physicalSize: const ImageTargetSize(0.3, 0.4), // 30cm x 40cm
         ),
         ARImageTarget(
           id: 'business_card',
           name: 'Business Card',
-          imagePath: 'https://example.com/images/sample_card.jpg',
+          imagePath: 'assets/images/sample_card.jpg',
           physicalSize: const ImageTargetSize(
             0.085,
             0.055,
@@ -388,14 +382,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sample image targets added')),
-      );
+      _notify(const Text('Sample image targets added'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add image targets: $e')),
-      );
+      _notify(Text('Failed to add image targets: $e'));
     }
   }
 
@@ -421,14 +411,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Content added to ${trackedImage.targetId}')),
-      );
+      _notify(Text('Content added to ${trackedImage.targetId}'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add content: $e')));
+      _notify(Text('Failed to add content: $e'));
     }
   }
 
@@ -454,14 +440,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Content added to face ${face.id}')),
-      );
+      _notify(Text('Content added to face ${face.id}'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add content to face: $e')),
-      );
+      _notify(Text('Failed to add content to face: $e'));
     }
   }
 
@@ -484,9 +466,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to check cloud anchor support: $e')),
-      );
+      _notify(Text('Failed to check cloud anchor support: $e'));
     }
   }
 
@@ -506,15 +486,11 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         );
 
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Creating cloud anchor: $cloudAnchorId')),
-        );
+        _notify(Text('Creating cloud anchor: $cloudAnchorId'));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create cloud anchor: $e')),
-      );
+      _notify(Text('Failed to create cloud anchor: $e'));
     }
   }
 
@@ -531,14 +507,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         _currentSessionId = sessionId;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Session ID: $sessionId')));
+      _notify(Text('Session ID: $sessionId'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to share cloud anchor: $e')),
-      );
+      _notify(Text('Failed to share cloud anchor: $e'));
     }
   }
 
@@ -581,14 +553,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           _currentSessionId = sessionId;
         });
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Joined session: $sessionId')));
+        _notify(Text('Joined session: $sessionId'));
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to join session: $e')));
+        _notify(Text('Failed to join session: $e'));
       }
     }
   }
@@ -604,20 +572,16 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() {});
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _imageTrackingEnabled
-                ? 'Image tracking enabled'
-                : 'Image tracking disabled',
-          ),
+      _notify(
+        Text(
+          _imageTrackingEnabled
+              ? 'Image tracking enabled'
+              : 'Image tracking disabled',
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to toggle image tracking: $e')),
-      );
+      _notify(Text('Failed to toggle image tracking: $e'));
     }
   }
 
@@ -631,20 +595,16 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() {});
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _faceTrackingEnabled
-                ? 'Face tracking enabled'
-                : 'Face tracking disabled',
-          ),
+      _notify(
+        Text(
+          _faceTrackingEnabled
+              ? 'Face tracking enabled'
+              : 'Face tracking disabled',
         ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to toggle face tracking: $e')),
-      );
+      _notify(Text('Failed to toggle face tracking: $e'));
     }
   }
 
@@ -655,21 +615,17 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       final target = ARImageTarget(
         id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
         name: 'Custom Target',
-        imagePath: 'https://example.com/images/custom_target.jpg',
+        imagePath: 'assets/images/custom_target.jpg',
         physicalSize: const ImageTargetSize(0.2, 0.2), // 20cm x 20cm
       );
 
       await _controller!.addImageTarget(target);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Custom image target added')),
-      );
+      _notify(const Text('Custom image target added'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add custom target: $e')),
-      );
+      _notify(Text('Failed to add custom target: $e'));
     }
   }
 
@@ -751,9 +707,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Created physics body: $bodyId')));
+      _notify(Text('Created physics body: $bodyId'));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -773,9 +727,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Applied force to ${body.id}')));
+      _notify(Text('Applied force to ${body.id}'));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -963,9 +915,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add point light: $e')));
+      _notify(Text('Failed to add point light: $e'));
     }
   }
 
@@ -1009,9 +959,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add spot light: $e')));
+      _notify(Text('Failed to add spot light: $e'));
     }
   }
 
@@ -1026,9 +974,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to toggle shadows: $e')));
+      _notify(Text('Failed to toggle shadows: $e'));
     }
   }
 
@@ -1043,9 +989,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to set shadow quality: $e')),
-      );
+      _notify(Text('Failed to set shadow quality: $e'));
     }
   }
 
@@ -1060,9 +1004,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to clear lights: $e')));
+      _notify(Text('Failed to clear lights: $e'));
     }
   }
 
@@ -1104,9 +1046,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add spherical probe: $e')),
-      );
+      _notify(Text('Failed to add spherical probe: $e'));
     }
   }
 
@@ -1147,9 +1087,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add box probe: $e')));
+      _notify(Text('Failed to add box probe: $e'));
     }
   }
 
@@ -1190,9 +1128,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add planar probe: $e')));
+      _notify(Text('Failed to add planar probe: $e'));
     }
   }
 
@@ -1207,9 +1143,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to clear environmental probes: $e')),
-      );
+      _notify(Text('Failed to clear environmental probes: $e'));
     }
   }
 
@@ -1233,9 +1167,7 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to check occlusion support: $e')),
-      );
+      _notify(Text('Failed to check occlusion support: $e'));
     }
   }
 
@@ -1249,18 +1181,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() {});
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Occlusion ${_occlusionEnabled ? 'enabled' : 'disabled'}',
-          ),
-        ),
-      );
+      _notify(Text('Occlusion ${_occlusionEnabled ? 'enabled' : 'disabled'}'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to toggle occlusion: $e')));
+      _notify(Text('Failed to toggle occlusion: $e'));
     }
   }
 
@@ -1276,14 +1200,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Created occlusion: $occlusionId')),
-      );
+      _notify(Text('Created occlusion: $occlusionId'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to create occlusion: $e')));
+      _notify(Text('Failed to create occlusion: $e'));
     }
   }
 
@@ -1301,14 +1221,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() {});
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Playing animation: $animationName')),
-      );
+      _notify(Text('Playing animation: $animationName'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to play animation: $e')));
+      _notify(Text('Failed to play animation: $e'));
     }
   }
 
@@ -1322,14 +1238,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Animation blending applied')),
-      );
+      _notify(const Text('Animation blending applied'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to blend animations: $e')));
+      _notify(Text('Failed to blend animations: $e'));
     }
   }
 
@@ -1345,14 +1257,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Animation crossfade applied')),
-      );
+      _notify(const Text('Animation crossfade applied'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to crossfade animation: $e')),
-      );
+      _notify(Text('Failed to crossfade animation: $e'));
     }
   }
 
@@ -1369,12 +1277,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
       if (results.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No surface detected. Try moving your device around.',
-            ),
-          ),
+        _notify(
+          const Text('No surface detected. Try moving your device around.'),
         );
         return;
       }
@@ -1395,14 +1299,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Added object: $nodeId')));
+      _notify(Text('Added object: $nodeId'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add object: $e')));
+      _notify(Text('Failed to add object: $e'));
     }
   }
 
@@ -1421,15 +1321,11 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
 
       if (anchor != null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Anchor added: ${anchor.id}')));
+        _notify(Text('Anchor added: ${anchor.id}'));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add anchor: $e')));
+      _notify(Text('Failed to add anchor: $e'));
     }
   }
 
@@ -1443,14 +1339,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         _nodeCounter = 0;
         _detectedPlanes.clear();
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('AR Session Reset')));
+      _notify(const Text('AR Session Reset'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to reset: $e')));
+      _notify(Text('Failed to reset: $e'));
     }
   }
 
@@ -1483,22 +1375,57 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Stack(
         children: [
-          _buildARView(),
-          _buildImageTrackingView(),
-          _buildFaceTrackingView(),
-          _buildCloudAnchorView(),
-          _buildOcclusionView(),
-          _buildPhysicsView(),
-          _buildLightingView(),
-          _buildEnvironmentalProbesView(),
-          _buildAnimationView(),
-          _buildDemoView(),
-          _buildStatusView(),
-          const WebMarkerDemo(),
+          TabBarView(
+            controller: _tabController,
+            children: [
+              // TabBarView disposes off-screen pages. The AR view owns the native
+              // session and the AugenController every other tab talks to, so it
+              // must survive tab switches — otherwise feature tabs act on a
+              // disposed controller and report every feature as unsupported.
+              _KeepAlive(child: _buildARView()),
+              _buildImageTrackingView(),
+              _buildFaceTrackingView(),
+              _buildCloudAnchorView(),
+              _buildOcclusionView(),
+              _buildPhysicsView(),
+              _buildLightingView(),
+              _buildEnvironmentalProbesView(),
+              _buildAnimationView(),
+              _buildDemoView(),
+              _buildStatusView(),
+              const WebMarkerDemo(),
+            ],
+          ),
+          if (_notice != null) _buildNoticeBanner(_notice!),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNoticeBanner(Widget content) {
+    return Positioned(
+      left: 16,
+      right: 16,
+      bottom: 16,
+      child: IgnorePointer(
+        child: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: DefaultTextStyle.merge(
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              child: content,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1886,19 +1813,11 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                                     setState(() {
                                       _currentSessionId = null;
                                     });
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Left session'),
-                                      ),
-                                    );
+                                    _notify(const Text('Left session'));
                                   } catch (e) {
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Failed to leave session: $e',
-                                        ),
-                                      ),
+                                    _notify(
+                                      Text('Failed to leave session: $e'),
                                     );
                                   }
                                 }
@@ -1959,24 +1878,15 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                             ],
                             onSelected: (value) async {
                               if (value == 'delete') {
-                                final messenger = ScaffoldMessenger.of(context);
                                 try {
                                   await _controller?.deleteCloudAnchor(
                                     anchor.id,
                                   );
                                   if (!mounted) return;
-                                  messenger.showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Cloud anchor deleted'),
-                                    ),
-                                  );
+                                  _notify(const Text('Cloud anchor deleted'));
                                 } catch (e) {
                                   if (!mounted) return;
-                                  messenger.showSnackBar(
-                                    SnackBar(
-                                      content: Text('Failed to delete: $e'),
-                                    ),
-                                  );
+                                  _notify(Text('Failed to delete: $e'));
                                 }
                               }
                             },
@@ -2491,14 +2401,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                                     setState(() {});
                                   } catch (e) {
                                     if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Failed to toggle light: $e',
-                                          ),
-                                        ),
+                                      _notify(
+                                        Text('Failed to toggle light: $e'),
                                       );
                                     }
                                   }
@@ -2521,14 +2425,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                                     setState(() {});
                                   } catch (e) {
                                     if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Failed to remove light: $e',
-                                          ),
-                                        ),
+                                      _notify(
+                                        Text('Failed to remove light: $e'),
                                       );
                                     }
                                   }
@@ -2737,14 +2635,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                                     setState(() {});
                                   } catch (e) {
                                     if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Failed to toggle probe: $e',
-                                          ),
-                                        ),
+                                      _notify(
+                                        Text('Failed to toggle probe: $e'),
                                       );
                                     }
                                   }
@@ -2769,14 +2661,8 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
                                     setState(() {});
                                   } catch (e) {
                                     if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Failed to remove probe: $e',
-                                          ),
-                                        ),
+                                      _notify(
+                                        Text('Failed to remove probe: $e'),
                                       );
                                     }
                                   }
@@ -3284,14 +3170,10 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         _nodeCounter++;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('3D model added to scene')));
+      _notify(const Text('3D model added to scene'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add model: $e')));
+      _notify(Text('Failed to add model: $e'));
     }
   }
 
@@ -3307,19 +3189,13 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
         );
 
         if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Animation started')));
+        _notify(const Text('Animation started'));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Add a model first to play animations')),
-        );
+        _notify(const Text('Add a model first to play animations'));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to play animation: $e')));
+      _notify(Text('Failed to play animation: $e'));
     }
   }
 
@@ -3330,19 +3206,16 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
       final results = await _controller!.hitTest(0.5, 0.5);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hit test found ${results.length} surfaces')),
-      );
+      _notify(Text('Hit test found ${results.length} surfaces'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Hit test failed: $e')));
+      _notify(Text('Hit test failed: $e'));
     }
   }
 
   @override
   void dispose() {
+    _noticeTimer?.cancel();
     _planesSubscription?.cancel();
     _imageTargetsSubscription?.cancel();
     _trackedImagesSubscription?.cancel();
@@ -3363,5 +3236,27 @@ class _ARHomePageState extends State<ARHomePage> with TickerProviderStateMixin {
     _blendController.dispose();
     _controller?.dispose();
     super.dispose();
+  }
+}
+
+/// Keeps a [TabBarView] page (and its platform view) alive when off-screen.
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
